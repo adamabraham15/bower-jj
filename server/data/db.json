@@ -49818,7 +49818,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794355105254,
-      "lastActive": 1794363018851
+      "lastActive": 1794363599050
     },
     "dev_e2e_player_2": {
       "id": "dev_e2e_player_2",
@@ -49913,7 +49913,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794355105258,
-      "lastActive": 1794363018855
+      "lastActive": 1794363599054
     },
     "dev_e2e_player_3": {
       "id": "dev_e2e_player_3",
@@ -50008,7 +50008,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794355105260,
-      "lastActive": 1794363018858
+      "lastActive": 1794363599057
     },
     "dev_e2e_player_4": {
       "id": "dev_e2e_player_4",
@@ -50103,7 +50103,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794355105262,
-      "lastActive": 1794363018862
+      "lastActive": 1794363599059
     },
     "dev_queue_human_1_1794355105336": {
       "id": "dev_queue_human_1_1794355105336",
@@ -50578,7 +50578,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794355106747,
-      "lastActive": 1794363020360
+      "lastActive": 1794363600593
     },
     "dev_beta_p1": {
       "id": "dev_beta_p1",
@@ -50673,7 +50673,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794355106749,
-      "lastActive": 1794363020380
+      "lastActive": 1794363600596
     },
     "dev_alpha_p2": {
       "id": "dev_alpha_p2",
@@ -50768,7 +50768,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794355106752,
-      "lastActive": 1794363020383
+      "lastActive": 1794363600597
     },
     "dev_beta_p2": {
       "id": "dev_beta_p2",
@@ -50863,7 +50863,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794355106754,
-      "lastActive": 1794363020385
+      "lastActive": 1794363600601
     },
     "dev_alpha_p3": {
       "id": "dev_alpha_p3",
@@ -50958,7 +50958,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794355106756,
-      "lastActive": 1794363020386
+      "lastActive": 1794363600603
     },
     "dev_beta_p3": {
       "id": "dev_beta_p3",
@@ -51053,7 +51053,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794355106758,
-      "lastActive": 1794363020388
+      "lastActive": 1794363600605
     },
     "dev_alpha_p4": {
       "id": "dev_alpha_p4",
@@ -51148,7 +51148,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794355106759,
-      "lastActive": 1794363020389
+      "lastActive": 1794363600606
     },
     "dev_beta_p4": {
       "id": "dev_beta_p4",
@@ -51243,7 +51243,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794355106760,
-      "lastActive": 1794363020390
+      "lastActive": 1794363600607
     },
     "dev_recon_player_1": {
       "id": "dev_recon_player_1",
@@ -51338,7 +51338,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794355106775,
-      "lastActive": 1794363020436
+      "lastActive": 1794363600653
     },
     "dev_recon_player_2": {
       "id": "dev_recon_player_2",
@@ -51433,7 +51433,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794355106778,
-      "lastActive": 1794363020450
+      "lastActive": 1794363600665
     },
     "dev_recon_player_3": {
       "id": "dev_recon_player_3",
@@ -51528,7 +51528,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794355106779,
-      "lastActive": 1794363020439
+      "lastActive": 1794363600655
     },
     "dev_recon_player_4": {
       "id": "dev_recon_player_4",
@@ -51623,7 +51623,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794355106780,
-      "lastActive": 1794363020440
+      "lastActive": 1794363600657
     },
     "dev_spamtester": {
       "id": "dev_spamtester",
@@ -51718,7 +51718,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794355106786,
-      "lastActive": 1794363020473
+      "lastActive": 1794363600688
     },
     "dev_legituser": {
       "id": "dev_legituser",
@@ -51813,7 +51813,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794355106789,
-      "lastActive": 1794363020479
+      "lastActive": 1794363600692
     },
     "dev_queue_human_1_1794355173620": {
       "id": "dev_queue_human_1_1794355173620",
@@ -54244,7 +54244,7 @@
       },
       "matchHistory": [],
       "createdAt": 1794362321458,
-      "lastActive": 1794362540039
+      "lastActive": 1794363119320
     },
     "dev_bench_c3axq_6": {
       "id": "dev_bench_c3axq_6",
@@ -60801,9 +60801,9 @@
       "createdAt": 1794362444006,
       "lastActive": 1794362444006
     },
-    "dev_queue_human_1_1794363019022": {
-      "id": "dev_queue_human_1_1794363019022",
-      "username": "Queue_Human_1_1794363019022",
+    "dev_queue_human_1_1794363574576": {
+      "id": "dev_queue_human_1_1794363574576",
+      "username": "Queue_Human_1_1794363574576",
       "avatarIcon": "🤖",
       "level": 1,
       "xp": 0,
@@ -60893,12 +60893,12 @@
         "title": "Recruit"
       },
       "matchHistory": [],
-      "createdAt": 1794363019022,
-      "lastActive": 1794363019022
+      "createdAt": 1794363574576,
+      "lastActive": 1794363574576
     },
-    "dev_queue_human_2_1794363019026": {
-      "id": "dev_queue_human_2_1794363019026",
-      "username": "Queue_Human_2_1794363019026",
+    "dev_queue_human_2_1794363574579": {
+      "id": "dev_queue_human_2_1794363574579",
+      "username": "Queue_Human_2_1794363574579",
       "avatarIcon": "🤖",
       "level": 1,
       "xp": 0,
@@ -60988,12 +60988,12 @@
         "title": "Recruit"
       },
       "matchHistory": [],
-      "createdAt": 1794363019027,
-      "lastActive": 1794363019027
+      "createdAt": 1794363574581,
+      "lastActive": 1794363574581
     },
-    "dev_queue_human_3_1794363019034": {
-      "id": "dev_queue_human_3_1794363019034",
-      "username": "Queue_Human_3_1794363019034",
+    "dev_queue_human_3_1794363574585": {
+      "id": "dev_queue_human_3_1794363574585",
+      "username": "Queue_Human_3_1794363574585",
       "avatarIcon": "🤖",
       "level": 1,
       "xp": 0,
@@ -61083,12 +61083,12 @@
         "title": "Recruit"
       },
       "matchHistory": [],
-      "createdAt": 1794363019034,
-      "lastActive": 1794363019034
+      "createdAt": 1794363574586,
+      "lastActive": 1794363574586
     },
-    "dev_queue_human_4_1794363019038": {
-      "id": "dev_queue_human_4_1794363019038",
-      "username": "Queue_Human_4_1794363019038",
+    "dev_queue_human_4_1794363574590": {
+      "id": "dev_queue_human_4_1794363574590",
+      "username": "Queue_Human_4_1794363574590",
       "avatarIcon": "🤖",
       "level": 1,
       "xp": 0,
@@ -61178,8 +61178,388 @@
         "title": "Recruit"
       },
       "matchHistory": [],
-      "createdAt": 1794363019039,
-      "lastActive": 1794363019039
+      "createdAt": 1794363574591,
+      "lastActive": 1794363574591
+    },
+    "dev_queue_human_1_1794363599213": {
+      "id": "dev_queue_human_1_1794363599213",
+      "username": "Queue_Human_1_1794363599213",
+      "avatarIcon": "🤖",
+      "level": 1,
+      "xp": 0,
+      "rankTier": "9",
+      "rankPoints": 0,
+      "mmr": 1200,
+      "placementMatchesRemaining": 5,
+      "hasDemotionShield": true,
+      "totalGames": 0,
+      "wins": 0,
+      "losses": 0,
+      "tricksWon": 0,
+      "euchres": 0,
+      "marches": 0,
+      "successfulLoners": 0,
+      "winStreak": 0,
+      "bestWinStreak": 0,
+      "friends": [],
+      "friendRequests": [],
+      "recentPlayers": [],
+      "battlePass": {
+        "tier": 1,
+        "xp": 0,
+        "tierXpRequired": 500,
+        "isPremium": false,
+        "claimedFreeTiers": [],
+        "claimedPremiumTiers": []
+      },
+      "challenges": [
+        {
+          "id": "ch_1",
+          "title": "Trick Taker",
+          "desc": "Win 15 total tricks across any game mode",
+          "target": 15,
+          "current": 0,
+          "xpReward": 300,
+          "completed": false
+        },
+        {
+          "id": "ch_2",
+          "title": "Euchre Master",
+          "desc": "Defend and Euchre the opponents 2 times",
+          "target": 2,
+          "current": 0,
+          "xpReward": 450,
+          "completed": false
+        },
+        {
+          "id": "ch_3",
+          "title": "March of the Kings",
+          "desc": "Score a March (take all 5 tricks in a single hand)",
+          "target": 1,
+          "current": 0,
+          "xpReward": 500,
+          "completed": false
+        },
+        {
+          "id": "ch_4",
+          "title": "Victorious Bower",
+          "desc": "Win 2 full matches",
+          "target": 2,
+          "current": 0,
+          "xpReward": 600,
+          "completed": false
+        }
+      ],
+      "unlockedCosmetics": {
+        "hats": [
+          "🤠",
+          "🧢"
+        ],
+        "cardBacks": [
+          "classic_blue",
+          "classic_red"
+        ],
+        "banners": [
+          "default_navy"
+        ],
+        "titles": [
+          "Recruit"
+        ]
+      },
+      "equippedCosmetics": {
+        "hat": "🤠",
+        "cardBack": "classic_blue",
+        "banner": "default_navy",
+        "title": "Recruit"
+      },
+      "matchHistory": [],
+      "createdAt": 1794363599213,
+      "lastActive": 1794363599213
+    },
+    "dev_queue_human_2_1794363599217": {
+      "id": "dev_queue_human_2_1794363599217",
+      "username": "Queue_Human_2_1794363599217",
+      "avatarIcon": "🤖",
+      "level": 1,
+      "xp": 0,
+      "rankTier": "9",
+      "rankPoints": 0,
+      "mmr": 1200,
+      "placementMatchesRemaining": 5,
+      "hasDemotionShield": true,
+      "totalGames": 0,
+      "wins": 0,
+      "losses": 0,
+      "tricksWon": 0,
+      "euchres": 0,
+      "marches": 0,
+      "successfulLoners": 0,
+      "winStreak": 0,
+      "bestWinStreak": 0,
+      "friends": [],
+      "friendRequests": [],
+      "recentPlayers": [],
+      "battlePass": {
+        "tier": 1,
+        "xp": 0,
+        "tierXpRequired": 500,
+        "isPremium": false,
+        "claimedFreeTiers": [],
+        "claimedPremiumTiers": []
+      },
+      "challenges": [
+        {
+          "id": "ch_1",
+          "title": "Trick Taker",
+          "desc": "Win 15 total tricks across any game mode",
+          "target": 15,
+          "current": 0,
+          "xpReward": 300,
+          "completed": false
+        },
+        {
+          "id": "ch_2",
+          "title": "Euchre Master",
+          "desc": "Defend and Euchre the opponents 2 times",
+          "target": 2,
+          "current": 0,
+          "xpReward": 450,
+          "completed": false
+        },
+        {
+          "id": "ch_3",
+          "title": "March of the Kings",
+          "desc": "Score a March (take all 5 tricks in a single hand)",
+          "target": 1,
+          "current": 0,
+          "xpReward": 500,
+          "completed": false
+        },
+        {
+          "id": "ch_4",
+          "title": "Victorious Bower",
+          "desc": "Win 2 full matches",
+          "target": 2,
+          "current": 0,
+          "xpReward": 600,
+          "completed": false
+        }
+      ],
+      "unlockedCosmetics": {
+        "hats": [
+          "🤠",
+          "🧢"
+        ],
+        "cardBacks": [
+          "classic_blue",
+          "classic_red"
+        ],
+        "banners": [
+          "default_navy"
+        ],
+        "titles": [
+          "Recruit"
+        ]
+      },
+      "equippedCosmetics": {
+        "hat": "🤠",
+        "cardBack": "classic_blue",
+        "banner": "default_navy",
+        "title": "Recruit"
+      },
+      "matchHistory": [],
+      "createdAt": 1794363599218,
+      "lastActive": 1794363599218
+    },
+    "dev_queue_human_3_1794363599223": {
+      "id": "dev_queue_human_3_1794363599223",
+      "username": "Queue_Human_3_1794363599223",
+      "avatarIcon": "🤖",
+      "level": 1,
+      "xp": 0,
+      "rankTier": "9",
+      "rankPoints": 0,
+      "mmr": 1200,
+      "placementMatchesRemaining": 5,
+      "hasDemotionShield": true,
+      "totalGames": 0,
+      "wins": 0,
+      "losses": 0,
+      "tricksWon": 0,
+      "euchres": 0,
+      "marches": 0,
+      "successfulLoners": 0,
+      "winStreak": 0,
+      "bestWinStreak": 0,
+      "friends": [],
+      "friendRequests": [],
+      "recentPlayers": [],
+      "battlePass": {
+        "tier": 1,
+        "xp": 0,
+        "tierXpRequired": 500,
+        "isPremium": false,
+        "claimedFreeTiers": [],
+        "claimedPremiumTiers": []
+      },
+      "challenges": [
+        {
+          "id": "ch_1",
+          "title": "Trick Taker",
+          "desc": "Win 15 total tricks across any game mode",
+          "target": 15,
+          "current": 0,
+          "xpReward": 300,
+          "completed": false
+        },
+        {
+          "id": "ch_2",
+          "title": "Euchre Master",
+          "desc": "Defend and Euchre the opponents 2 times",
+          "target": 2,
+          "current": 0,
+          "xpReward": 450,
+          "completed": false
+        },
+        {
+          "id": "ch_3",
+          "title": "March of the Kings",
+          "desc": "Score a March (take all 5 tricks in a single hand)",
+          "target": 1,
+          "current": 0,
+          "xpReward": 500,
+          "completed": false
+        },
+        {
+          "id": "ch_4",
+          "title": "Victorious Bower",
+          "desc": "Win 2 full matches",
+          "target": 2,
+          "current": 0,
+          "xpReward": 600,
+          "completed": false
+        }
+      ],
+      "unlockedCosmetics": {
+        "hats": [
+          "🤠",
+          "🧢"
+        ],
+        "cardBacks": [
+          "classic_blue",
+          "classic_red"
+        ],
+        "banners": [
+          "default_navy"
+        ],
+        "titles": [
+          "Recruit"
+        ]
+      },
+      "equippedCosmetics": {
+        "hat": "🤠",
+        "cardBack": "classic_blue",
+        "banner": "default_navy",
+        "title": "Recruit"
+      },
+      "matchHistory": [],
+      "createdAt": 1794363599223,
+      "lastActive": 1794363599223
+    },
+    "dev_queue_human_4_1794363599226": {
+      "id": "dev_queue_human_4_1794363599226",
+      "username": "Queue_Human_4_1794363599226",
+      "avatarIcon": "🤖",
+      "level": 1,
+      "xp": 0,
+      "rankTier": "9",
+      "rankPoints": 0,
+      "mmr": 1200,
+      "placementMatchesRemaining": 5,
+      "hasDemotionShield": true,
+      "totalGames": 0,
+      "wins": 0,
+      "losses": 0,
+      "tricksWon": 0,
+      "euchres": 0,
+      "marches": 0,
+      "successfulLoners": 0,
+      "winStreak": 0,
+      "bestWinStreak": 0,
+      "friends": [],
+      "friendRequests": [],
+      "recentPlayers": [],
+      "battlePass": {
+        "tier": 1,
+        "xp": 0,
+        "tierXpRequired": 500,
+        "isPremium": false,
+        "claimedFreeTiers": [],
+        "claimedPremiumTiers": []
+      },
+      "challenges": [
+        {
+          "id": "ch_1",
+          "title": "Trick Taker",
+          "desc": "Win 15 total tricks across any game mode",
+          "target": 15,
+          "current": 0,
+          "xpReward": 300,
+          "completed": false
+        },
+        {
+          "id": "ch_2",
+          "title": "Euchre Master",
+          "desc": "Defend and Euchre the opponents 2 times",
+          "target": 2,
+          "current": 0,
+          "xpReward": 450,
+          "completed": false
+        },
+        {
+          "id": "ch_3",
+          "title": "March of the Kings",
+          "desc": "Score a March (take all 5 tricks in a single hand)",
+          "target": 1,
+          "current": 0,
+          "xpReward": 500,
+          "completed": false
+        },
+        {
+          "id": "ch_4",
+          "title": "Victorious Bower",
+          "desc": "Win 2 full matches",
+          "target": 2,
+          "current": 0,
+          "xpReward": 600,
+          "completed": false
+        }
+      ],
+      "unlockedCosmetics": {
+        "hats": [
+          "🤠",
+          "🧢"
+        ],
+        "cardBacks": [
+          "classic_blue",
+          "classic_red"
+        ],
+        "banners": [
+          "default_navy"
+        ],
+        "titles": [
+          "Recruit"
+        ]
+      },
+      "equippedCosmetics": {
+        "hat": "🤠",
+        "cardBack": "classic_blue",
+        "banner": "default_navy",
+        "title": "Recruit"
+      },
+      "matchHistory": [],
+      "createdAt": 1794363599227,
+      "lastActive": 1794363599227
     }
   },
   "sessions": {
@@ -62001,36 +62381,61 @@
     "tok_8fbb415a7e8d99aec66b55bbaaa940b4": "dev_bench_fywod_26",
     "tok_60fa40ab35ba3c0e103e56a630f49d8e": "dev_bowerking",
     "tok_aff3f0cf273e2eefe9858b33d66069b9": "dev_bowerking",
-    "tok_25b7f45ee3d714730929ce12e9f8b1b9": "dev_e2e_player_1",
-    "tok_e04d9a3b542429c6f9af46a7677eb835": "dev_e2e_player_2",
-    "tok_772e3391ed3197f614383c0fede3e906": "dev_e2e_player_3",
-    "tok_3166d85a3b9a3a2d85184334e92e43f6": "dev_e2e_player_4",
-    "tok_2608bdff904eed7f26e2efe42a5892bf": "dev_queue_human_1_1794363019022",
-    "tok_605474a979e1574f47faf642ccc6a709": "dev_queue_human_2_1794363019026",
-    "tok_e180286ca2a1d0011420a46907d5cbcc": "dev_queue_human_3_1794363019034",
-    "tok_ab936530361bbfa0ed631b2a0de09263": "dev_queue_human_4_1794363019038",
-    "tok_5ca58e28995210bbb5d39f6f66027949": "dev_alpha_p1",
-    "tok_e3939d1fc2ae560de98be1afa10b6461": "dev_beta_p1",
-    "tok_400bd0e86f7c2279d09fe4a4f63b21a1": "dev_alpha_p2",
-    "tok_09fec866563285e9e2b99e084fe10438": "dev_beta_p2",
-    "tok_078ec5d6cc230152f80def94350a244c": "dev_alpha_p3",
-    "tok_f56522d1aa68acf73d5a5196c4a141ca": "dev_beta_p3",
-    "tok_5fc55ac3391c126ce549c2b01b97169a": "dev_alpha_p4",
-    "tok_66180d33dc0dcbd7af501cdef663bae9": "dev_beta_p4",
-    "tok_b99fe7c477df0c11b5bbbcd75913f4a4": "dev_recon_player_1",
-    "tok_5816c0e2aacaa692c63acca4568a304e": "dev_recon_player_2",
-    "tok_6d14a102e6ff4bf69cb529eaa8da07c5": "dev_recon_player_3",
-    "tok_c05b45b00a524f941fe86049a1e85a0e": "dev_recon_player_4",
-    "tok_28d13110414baf564169ba96812750e6": "dev_recon_player_2",
-    "tok_a06c5a9cd99ad7754aa66e67c73c7b94": "dev_spamtester",
-    "tok_d54e3e84abe366d76735d62841bc0c9a": "dev_legituser"
+    "tok_2b945e6500558320729be99453f4c699": "dev_bowerking",
+    "tok_aa75c783003059b7aa7dc669e411d857": "dev_bowerking",
+    "tok_f6b9f30982e8460a4697fdee10db0f29": "dev_e2e_player_1",
+    "tok_9be573fa1cb571640ccc2f33cbf65984": "dev_e2e_player_2",
+    "tok_5bb3d1478cd4aa66370b81800623ab14": "dev_e2e_player_3",
+    "tok_ab4ba625df6fce1bd72f26147072bea1": "dev_e2e_player_4",
+    "tok_0ab400b90b1f9579a249c8ce83fe36a4": "dev_queue_human_1_1794363574576",
+    "tok_554d168987febf052b64a28bb4ab0608": "dev_queue_human_2_1794363574579",
+    "tok_77741c2db0df112536cf13818959088d": "dev_queue_human_3_1794363574585",
+    "tok_7da55a5541588c20f5fe48016cf6fd56": "dev_queue_human_4_1794363574590",
+    "tok_59fc454e1db545c8cc50f0a85a02df8d": "dev_alpha_p1",
+    "tok_cdbbdf81a096c0acd4076c879a3424ac": "dev_beta_p1",
+    "tok_31b9b0afe2a6911a5b28059f01aaa928": "dev_alpha_p2",
+    "tok_bf772a8184e7829c3e6708a068405a50": "dev_beta_p2",
+    "tok_5bd357b4423c42ee0bece9c03a0b72b3": "dev_alpha_p3",
+    "tok_c8d0247a98a5b49be6987147dac55d6b": "dev_beta_p3",
+    "tok_e133731a6218140e333dec3acf223ad5": "dev_alpha_p4",
+    "tok_ccd59baaea66107224481c942dca73d2": "dev_beta_p4",
+    "tok_eaa837a69c2e4ab24045c986f6190e69": "dev_recon_player_1",
+    "tok_e8681232562704f21165a7055bb79c0b": "dev_recon_player_2",
+    "tok_1749dba24bf176fc91e5c9df9eaf3496": "dev_recon_player_3",
+    "tok_8aecd1ea47ef05bd2ff8e8dd06c8dbba": "dev_recon_player_4",
+    "tok_174ab604a58f9b82a03730bf02d6ec7b": "dev_recon_player_2",
+    "tok_8da4d7e575aa5618f1b0bc88358fa471": "dev_spamtester",
+    "tok_a26cf8366d68845f951e4884a3818068": "dev_legituser",
+    "tok_313343a417e25e565d2b4a25a9fc1877": "dev_e2e_player_1",
+    "tok_95a186d1b3623244280f4f65b39f0469": "dev_e2e_player_2",
+    "tok_f919f43c13864cb3bed0bfa4a531cf6b": "dev_e2e_player_3",
+    "tok_2145dc127b641346a8337bee4505ea4b": "dev_e2e_player_4",
+    "tok_30e6af932a25f1896ba91ee96579d916": "dev_queue_human_1_1794363599213",
+    "tok_8ebe39d732365a4d06045102cb072a80": "dev_queue_human_2_1794363599217",
+    "tok_ba0e5b0eae5949167c5bdd9495552320": "dev_queue_human_3_1794363599223",
+    "tok_74854cf81a021a98deee562e68dcbb3b": "dev_queue_human_4_1794363599226",
+    "tok_14b03ae460dc5885d68ce7cf8b0aee13": "dev_alpha_p1",
+    "tok_de0428e9c23c7e9a8a72927f0f0389ca": "dev_beta_p1",
+    "tok_699baf12ffbc96292929dbc879522678": "dev_alpha_p2",
+    "tok_5620cb21667ea224d3fb697429f899d8": "dev_beta_p2",
+    "tok_abdd7e481fffb8e5ae7e5881e29843ad": "dev_alpha_p3",
+    "tok_a080ada4c8e3f5d8fd5c4b4be9732e66": "dev_beta_p3",
+    "tok_580c0c63dfbe683b14947c18148bc3d1": "dev_alpha_p4",
+    "tok_3499ee61e688dd28210d53eb328e32dd": "dev_beta_p4",
+    "tok_6f1db7a1a0bbc312f952193ffd316692": "dev_recon_player_1",
+    "tok_2c2294f459ffcc6ac4bc1942c7e4d3ee": "dev_recon_player_2",
+    "tok_7fb17d28a3abbb074903ad4e9f61a262": "dev_recon_player_3",
+    "tok_45de2ffe6ec92d7b29ad19bb31c754aa": "dev_recon_player_4",
+    "tok_60e5bcfb65b0d794800e7e4ac5639cdf": "dev_recon_player_2",
+    "tok_f5a6ee82adf3d8bbf067e65da994ac5d": "dev_spamtester",
+    "tok_fedadf5b2e228892d802f5a5a1897a50": "dev_legituser"
   },
   "matchmakingStats": {
-    "totalMatches": 17,
-    "fourHumans": 13,
+    "totalMatches": 18,
+    "fourHumans": 14,
     "threeHumansOneBot": 0,
     "twoHumansTwoBots": 2,
     "oneHumanThreeBots": 2,
-    "totalWaitTimeMs": 173438
+    "totalWaitTimeMs": 174722
   }
 }

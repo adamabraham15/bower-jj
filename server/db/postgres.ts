@@ -287,20 +287,6 @@ export class PostgresDatabaseRepository {
       const profRes = await client.query(`SELECT id FROM public.profiles WHERE id = $1 LIMIT 1`, [targetId]);
 
       if (profRes.rows.length === 0) {
-        // Compatibility: insert into auth.users if auth schema exists
-        try {
-          await client.query(
-            `
-            INSERT INTO auth.users (id, raw_user_meta_data, created_at)
-            VALUES ($1, $2::jsonb, NOW())
-            ON CONFLICT (id) DO NOTHING;
-            `,
-            [targetId, JSON.stringify({ username, avatarIcon })]
-          );
-        } catch {
-          // In standalone environments without Supabase auth schema, profiles is self-contained
-        }
-
         // Generate unique playerId e.g. "JJ-4819"
         const playerId = `JJ-${targetId.replace(/[^a-zA-Z0-9]/g, '').slice(-4).toUpperCase()}`;
 
