@@ -56,7 +56,6 @@ export class TunnelSupervisor {
     // Locate cloudflared.exe
     const possiblePaths = [
       path.resolve(process.cwd(), 'cloudflared.exe'),
-      path.resolve(__dirname, '..', 'cloudflared.exe'),
       path.resolve(process.cwd(), '..', 'cloudflared.exe'),
       'C:\\Users\\adama\\.gemini\\antigravity\\scratch\\cloudflared.exe',
     ];
