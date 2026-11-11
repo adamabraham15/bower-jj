@@ -90,6 +90,8 @@ export const App: React.FC = () => {
   const [isEmoteWheelOpen, setIsEmoteWheelOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authModalReason, setAuthModalReason] = useState<string | undefined>();
+  const [authModalInitialTab, setAuthModalInitialTab] = useState<'login' | 'register'>('register');
   const [authUser, setAuthUser] = useState<any | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
 
@@ -158,6 +160,18 @@ export const App: React.FC = () => {
           session.user.user_metadata?.avatar_icon || profile.avatarIcon,
           session.access_token
         );
+      } else {
+        // Unauthenticated visitor: prompt new players to register or sign in
+        try {
+          const hasPrompted = localStorage.getItem('bower_jj_auth_prompted');
+          if (!hasPrompted) {
+            setTimeout(() => {
+              setAuthModalInitialTab('register');
+              setAuthModalReason('Create a free account or sign in to track your competitive rank, battle pass, and match history!');
+              setIsAuthOpen(true);
+            }, 600);
+          }
+        } catch {}
       }
     });
 
@@ -294,7 +308,9 @@ export const App: React.FC = () => {
   // Handle first time tutorial trigger
   useEffect(() => {
     const hasSeenTutorial = localStorage.getItem('bower_jj_tutorial_seen');
-    if (!hasSeenTutorial) {
+    const hasPromptedAuth = localStorage.getItem('bower_jj_auth_prompted');
+    // If auth modal is about to prompt a brand new user, let auth finish first
+    if (!hasSeenTutorial && hasPromptedAuth) {
       setIsTutorialOpen(true);
     }
   }, []);
@@ -302,6 +318,31 @@ export const App: React.FC = () => {
   const handleTutorialComplete = () => {
     localStorage.setItem('bower_jj_tutorial_seen', 'true');
     setIsTutorialOpen(false);
+  };
+
+  const handleAuthDismissOrContinue = () => {
+    setIsAuthOpen(false);
+    try {
+      localStorage.setItem('bower_jj_auth_prompted', 'true');
+    } catch {}
+    const hasSeenTutorial = localStorage.getItem('bower_jj_tutorial_seen');
+    if (!hasSeenTutorial) {
+      setTimeout(() => setIsTutorialOpen(true), 350);
+    }
+  };
+
+  const handleOpenMatchmaking = (queue: QueueType) => {
+    if (!authUser && (queue === 'ranked_solo' || queue === 'ranked_duo')) {
+      const hasPromptedRanked = sessionStorage.getItem('bower_jj_ranked_prompted');
+      if (!hasPromptedRanked) {
+        sessionStorage.setItem('bower_jj_ranked_prompted', 'true');
+        setAuthModalInitialTab('register');
+        setAuthModalReason('Ranked Queue records your MMR & Global Leaderboard rank! Sign in or register to save your progression.');
+        setIsAuthOpen(true);
+        return;
+      }
+    }
+    setMatchmakingQueue(queue);
   };
 
   const handleToggleMute = () => {
@@ -499,7 +540,7 @@ export const App: React.FC = () => {
         <MainMenu
           profile={profile}
           onStartAIMatch={handleStartAIMatch}
-          onOpenMatchmaking={q => setMatchmakingQueue(q)}
+          onOpenMatchmaking={handleOpenMatchmaking}
           onOpenTutorial={() => setIsTutorialOpen(true)}
           onOpenRules={() => setIsRulesOpen(true)}
           onOpenProfile={() => setIsProfileOpen(true)}
@@ -512,7 +553,11 @@ export const App: React.FC = () => {
           isMuted={isMuted}
           onToggleMute={handleToggleMute}
           isAuthenticated={Boolean(authUser)}
-          onOpenAuth={() => setIsAuthOpen(true)}
+          onOpenAuth={(tab = 'register', reason) => {
+            setAuthModalInitialTab(tab);
+            setAuthModalReason(reason);
+            setIsAuthOpen(true);
+          }}
           onLogout={handleLogout}
         />
       )}
@@ -614,16 +659,20 @@ export const App: React.FC = () => {
       {/* Cloud Authentication Modal */}
       <AuthModal
         isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
+        onClose={handleAuthDismissOrContinue}
+        initialTab={authModalInitialTab}
+        reason={authModalReason}
         onAuthSuccess={(user, token) => {
           setAuthUser(user);
           if (token) setAuthToken(token);
+          handleAuthDismissOrContinue();
           setNotice({
             title: 'Welcome Back!',
             message: `Signed in as ${user.user_metadata?.username || user.email}. Cloud sync active.`,
           });
         }}
         onContinueAsGuest={() => {
+          handleAuthDismissOrContinue();
           setNotice({
             title: 'Guest Mode Active',
             message: 'Playing locally as guest. Progression is stored on this device.',

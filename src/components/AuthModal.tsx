@@ -14,6 +14,8 @@ interface AuthModalProps {
   onClose: () => void;
   onAuthSuccess: (user: any, token?: string) => void;
   onContinueAsGuest: () => void;
+  initialTab?: 'login' | 'register';
+  reason?: string;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -21,8 +23,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   onAuthSuccess,
   onContinueAsGuest,
+  initialTab = 'register',
+  reason,
 }) => {
-  const [tab, setTab] = useState<'login' | 'register' | 'forgot'>('login');
+  const [tab, setTab] = useState<'login' | 'register' | 'forgot'>(initialTab);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -32,6 +36,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isUsernameValidating, setIsUsernameValidating] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'available' | 'taken' | 'invalid' | null>(null);
+
+  // Sync initial tab when modal opens
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setTab(initialTab);
+      setErrorMessage(null);
+      setSuccessMessage(null);
+    }
+  }, [isOpen, initialTab]);
 
   // Debounced username availability check
   useEffect(() => {
@@ -202,6 +215,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Custom Reason Prompt Banner */}
+        {reason && (
+          <div className="px-4 py-2.5 bg-amber-500/15 border-b border-amber-500/30 text-amber-200 text-xs font-semibold flex items-center space-x-2">
+            <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <span className="leading-tight">{reason}</span>
+          </div>
+        )}
 
         {/* Supabase Status Notice */}
         {!isSupabaseConfigured && (

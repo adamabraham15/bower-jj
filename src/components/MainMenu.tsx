@@ -44,7 +44,7 @@ interface MainMenuProps {
   isMuted: boolean;
   onToggleMute: () => void;
   isAuthenticated?: boolean;
-  onOpenAuth?: () => void;
+  onOpenAuth?: (tab?: 'login' | 'register', reason?: string) => void;
   onLogout?: () => void;
 }
 
@@ -172,7 +172,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             <button
               onClick={() => {
                 sounds.playUiClick();
-                onOpenAuth?.();
+                onOpenAuth?.('login', 'Sign in to access your saved BOWER JJ profile & rank.');
               }}
               className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 text-[10px] sm:text-[11px] font-black flex items-center space-x-1 sm:space-x-1.5 shadow-md shadow-amber-500/25 transition-all active:scale-95"
               title="Sign In / Register to Save Rank & Progress"
@@ -259,6 +259,37 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             </button>
           </div>
         </section>
+
+        {/* Unauthenticated Guest Callout Banner */}
+        {!isAuthenticated && (
+          <section className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-900 to-amber-950/30 border border-amber-500/30 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center space-x-3 w-full sm:w-auto">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center flex-shrink-0 text-amber-400">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-xs sm:text-sm font-black text-amber-300">
+                  Playing as Guest (Unsaved Progress)
+                </h3>
+                <p className="text-[11px] sm:text-xs text-gray-300">
+                  Create a free account or sign in to save your MMR, competitive rank, and battle pass across devices.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2 w-full sm:w-auto justify-end flex-shrink-0">
+              <button
+                onClick={() => {
+                  sounds.playUiClick();
+                  onOpenAuth?.('register', 'Create your account or sign in to save your rank, stats, and match history!');
+                }}
+                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-300 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 transition-all active:scale-95 flex items-center justify-center space-x-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Create Account / Sign In</span>
+              </button>
+            </div>
+          </section>
+        )}
 
         {/* Tab Selector: Play vs Battle Pass */}
         <div className="flex border-b border-slate-800 space-x-4">
