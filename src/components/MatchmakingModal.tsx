@@ -61,6 +61,9 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
     if (!isOpen) return;
 
     const unsubscribe = multiplayerClient.setCallbacks({
+      onAuth: () => {
+        setErrorMessage(null);
+      },
       onRoom: (room) => {
         setCurrentRoom(room);
         setErrorMessage(null);

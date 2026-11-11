@@ -493,18 +493,35 @@ class AuthService {
    * Fetch live authoritative multiplayer server URL from Supabase registry
    */
   public async getLiveServerUrl(): Promise<string | null> {
-    if (!supabase) return null;
-    try {
-      const { data, error } = await supabase
-        .from('server_registry')
-        .select('public_url, updated_at')
-        .eq('id', 'primary')
-        .single();
-      if (error || !data) return null;
-      return data.public_url;
-    } catch {
-      return null;
+    // 1. Try via Supabase JS client
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('server_registry')
+          .select('public_url, updated_at')
+          .eq('id', 'primary')
+          .single();
+        if (!error && data?.public_url) return data.public_url;
+      } catch {}
     }
+
+    // 2. Direct bulletproof REST fallback via fetch (bypasses any Supabase client session lock)
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/server_registry?id=eq.primary&select=public_url`, {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        if (Array.isArray(rows) && rows.length > 0 && rows[0].public_url) {
+          return rows[0].public_url;
+        }
+      }
+    } catch {}
+
+    return null;
   }
 }
 

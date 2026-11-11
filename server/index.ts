@@ -376,7 +376,7 @@ export async function createMultiplayerServer(
           telemetry.recordAuthLatency(Date.now() - authStart);
 
           // Send initial social and battle pass data
-          activeRm.sendFriendListUpdate(user.id);
+          await activeRm.sendFriendListUpdate(user.id);
           activeRm.sendBattlePass(user.id);
           return;
         }
@@ -480,7 +480,14 @@ export async function createMultiplayerServer(
               ws.send(JSON.stringify({ type: 'NOTICE', message: `Friend request sent to ${msg.targetUsername}!` }));
               const target = await activeDb.getUserByUsername(msg.targetUsername);
               if (target) {
-                activeRm.sendFriendListUpdate(target.id);
+                await activeRm.sendFriendListUpdate(target.id);
+                // Real-time banner to recipient
+                const sender = await activeDb.getUserById(uid);
+                activeRm.sendToUser(target.id, {
+                  type: 'NOTICE',
+                  title: 'Friend Request',
+                  message: `${sender?.username || 'A player'} sent you a friend request!`,
+                });
               }
             }
             break;
@@ -489,8 +496,8 @@ export async function createMultiplayerServer(
           case 'FRIEND_REQUEST_ACCEPT': {
             const res = await activeDb.acceptFriendRequest(uid, msg.fromUserId);
             if (res.success) {
-              activeRm.sendFriendListUpdate(uid);
-              activeRm.sendFriendListUpdate(msg.fromUserId);
+              await activeRm.sendFriendListUpdate(uid);
+              await activeRm.sendFriendListUpdate(msg.fromUserId);
               ws.send(JSON.stringify({ type: 'NOTICE', message: 'Friend added!' }));
             }
             break;
@@ -498,19 +505,19 @@ export async function createMultiplayerServer(
 
           case 'FRIEND_REQUEST_DECLINE': {
             await activeDb.declineFriendRequest(uid, msg.fromUserId);
-            activeRm.sendFriendListUpdate(uid);
+            await activeRm.sendFriendListUpdate(uid);
             break;
           }
 
           case 'FRIEND_REMOVE': {
             await activeDb.removeFriend(uid, msg.friendUserId);
-            activeRm.sendFriendListUpdate(uid);
-            activeRm.sendFriendListUpdate(msg.friendUserId);
+            await activeRm.sendFriendListUpdate(uid);
+            await activeRm.sendFriendListUpdate(msg.friendUserId);
             break;
           }
 
           case 'GET_FRIENDS': {
-            activeRm.sendFriendListUpdate(uid);
+            await activeRm.sendFriendListUpdate(uid);
             break;
           }
 

@@ -55,9 +55,10 @@ export class TunnelSupervisor {
 
     // Locate cloudflared.exe
     const possiblePaths = [
-      'C:\\Users\\adama\\.gemini\\antigravity\\scratch\\cloudflared.exe',
-      path.resolve(process.cwd(), '..', 'cloudflared.exe'),
       path.resolve(process.cwd(), 'cloudflared.exe'),
+      path.resolve(__dirname, '..', 'cloudflared.exe'),
+      path.resolve(process.cwd(), '..', 'cloudflared.exe'),
+      'C:\\Users\\adama\\.gemini\\antigravity\\scratch\\cloudflared.exe',
     ];
 
     let binPath = '';
@@ -65,6 +66,23 @@ export class TunnelSupervisor {
       if (fs.existsSync(p)) {
         binPath = p;
         break;
+      }
+    }
+
+    if (!binPath) {
+      try {
+        const dest = path.resolve(process.cwd(), 'cloudflared.exe');
+        logger.info('[TUNNEL SUPERVISOR] cloudflared.exe not found. Auto-downloading latest official Windows binary...');
+        require('child_process').execSync(
+          `curl.exe -s -L -o "${dest}" https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe`,
+          { timeout: 30000 }
+        );
+        if (fs.existsSync(dest)) {
+          binPath = dest;
+          logger.info('[TUNNEL SUPERVISOR] Successfully downloaded cloudflared.exe.');
+        }
+      } catch (dlErr: any) {
+        logger.warn(`[TUNNEL SUPERVISOR] Could not auto-download cloudflared: ${dlErr.message}`);
       }
     }
 

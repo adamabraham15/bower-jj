@@ -43,6 +43,7 @@ import {
 } from '../src/engine/ai';
 import { db, TIER_ORDER } from './db';
 import { PostgresDatabaseRepository } from './db/postgres';
+import { logger } from './telemetry';
 
 export const RANKED_BOT_FALLBACK_MS = process.env.RANKED_BOT_WAIT_MS
   ? parseInt(process.env.RANKED_BOT_WAIT_MS, 10)
@@ -1379,15 +1380,31 @@ export class RoomManager {
     });
   }
 
-  public sendFriendListUpdate(userId: string) {
-    const friends = db.getFriendsSummary(userId, this.connections);
-    const user = db.getUserById(userId);
-    if (!user) return;
+  public async sendFriendListUpdate(userId: string) {
+    let friends: FriendSummary[] = [];
+    let incomingRequests: UserAccount['friendRequests'] = [];
+
+    if (this.pgRepo) {
+      try {
+        const onlineIds = new Set<string>();
+        for (const [cId, conn] of this.connections) {
+          if (conn.userId) onlineIds.add(conn.userId);
+        }
+        friends = await this.pgRepo.getFriendsSummary(userId, onlineIds);
+        incomingRequests = await this.pgRepo.getIncomingFriendRequests(userId);
+      } catch (err) {
+        logger.warn(`[FRIENDS] Error querying friends from PostgreSQL: ${err}`);
+      }
+    } else {
+      friends = db.getFriendsSummary(userId, this.connections);
+      const user = db.getUserById(userId);
+      if (user) incomingRequests = user.friendRequests || [];
+    }
 
     this.sendToUser(userId, {
       type: 'FRIENDS_LIST',
       friends,
-      incomingRequests: user.friendRequests,
+      incomingRequests,
     });
   }
 

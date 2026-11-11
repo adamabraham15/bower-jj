@@ -813,6 +813,30 @@ export class PostgresDatabaseRepository {
     }
   }
 
+  public async getIncomingFriendRequests(userId: string): Promise<{ fromUserId: string; fromUsername: string; fromAvatar: string; timestamp: number }[]> {
+    const res = await this.queryWithRetry(
+      `
+      SELECT
+        r.from_user_id as "fromUserId",
+        p.username as "fromUsername",
+        p.avatar_icon as "fromAvatar",
+        EXTRACT(EPOCH FROM r.created_at) as "timestamp"
+      FROM public.friend_requests r
+      JOIN public.profiles p ON r.from_user_id = p.id
+      WHERE r.to_user_id = $1
+      ORDER BY r.created_at DESC;
+      `,
+      [userId]
+    );
+
+    return res.rows.map(row => ({
+      fromUserId: row.fromUserId,
+      fromUsername: row.fromUsername,
+      fromAvatar: row.fromAvatar || '🤠',
+      timestamp: Math.floor(parseFloat(row.timestamp) * 1000) || Date.now(),
+    }));
+  }
+
   // --- LEADERBOARD & STATS ---
 
   public async getLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
