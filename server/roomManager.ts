@@ -1141,25 +1141,25 @@ export class RoomManager {
 
     // If PostgreSQL repository is connected, record transactional match result with idempotency key
     if (this.pgRepo) {
-      const composition = room.composition || (room.slots.filter(s => !s.isBot).length === 4 ? '4H' : '1H3B');
-      const humanPlayers = room.slots
-        .filter(s => s && !s.isBot && s.userId)
-        .map(s => {
-          const pTeam = getPlayerTeam(s.position);
-          return {
-            userId: s.userId!,
-            position: s.position,
-            team: pTeam,
-            username: s.username,
-            rankTier: s.rankTier || '9',
-            rankPoints: s.rankPoints || 0,
-            mmr: s.mmr || 1200,
-            tricksWon: state.tricksWon[pTeam] || 0,
-            euchres: state.scores[pTeam] >= 2 ? 1 : 0,
-            marches: state.scores[pTeam] >= 2 ? 1 : 0,
-            successfulLoners: state.scores[pTeam] >= 4 ? 1 : 0,
-          };
-        });
+      const humanSlots = room.slots.filter(s => s && !s.isAI && s.userId);
+      const composition = room.composition || (humanSlots.length === 4 ? '4H' : humanSlots.length === 3 ? '3H1B' : humanSlots.length === 2 ? '2H2B' : '1H3B');
+      const humanPlayers = humanSlots.map(s => {
+        const pTeam = getPlayerTeam(s.position);
+        const userAcc = db.getUserById(s.userId!);
+        return {
+          userId: s.userId!,
+          position: s.position,
+          team: pTeam,
+          username: s.username,
+          rankTier: s.rankTier || userAcc?.rankTier || '9',
+          rankPoints: userAcc?.rankPoints || 0,
+          mmr: userAcc?.eloMmr || 1200,
+          tricksWon: state.tricksWon[pTeam] || 0,
+          euchres: state.scores[pTeam] >= 2 ? 1 : 0,
+          marches: state.scores[pTeam] >= 2 ? 1 : 0,
+          successfulLoners: state.scores[pTeam] >= 4 ? 1 : 0,
+        };
+      });
 
       this.pgRepo.recordMatchResult({
         matchId: room.id,

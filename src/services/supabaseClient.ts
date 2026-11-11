@@ -249,6 +249,37 @@ class AuthService {
   }
 
   /**
+   * Record match outcome for authenticated users
+   */
+  public async recordOfflineMatch(userId: string, won: boolean): Promise<void> {
+    if (!supabase) return;
+    try {
+      const [statsRes, xpRes] = await Promise.all([
+        supabase.from('player_statistics').select('wins, losses, total_games').eq('user_id', userId).maybeSingle(),
+        supabase.from('player_xp').select('xp, level, next_level_xp').eq('user_id', userId).maybeSingle(),
+      ]);
+
+      if (statsRes.data) {
+        const wins = won ? (statsRes.data.wins || 0) + 1 : (statsRes.data.wins || 0);
+        const losses = won ? (statsRes.data.losses || 0) : (statsRes.data.losses || 0) + 1;
+        const total_games = (statsRes.data.total_games || 0) + 1;
+        await supabase.from('player_statistics').update({ wins, losses, total_games, updated_at: new Date().toISOString() }).eq('user_id', userId);
+      }
+
+      if (xpRes.data) {
+        const xpEarned = won ? 150 : 50;
+        const totalXp = (xpRes.data.xp || 0) + xpEarned;
+        const levelUp = totalXp >= (xpRes.data.next_level_xp || 1000);
+        const level = levelUp ? (xpRes.data.level || 1) + 1 : (xpRes.data.level || 1);
+        const next_level_xp = levelUp ? (xpRes.data.next_level_xp || 1000) + 1000 : (xpRes.data.next_level_xp || 1000);
+        await supabase.from('player_xp').update({ xp: totalXp, level, next_level_xp, updated_at: new Date().toISOString() }).eq('user_id', userId);
+      }
+    } catch (err) {
+      console.warn('Could not record match to Supabase:', err);
+    }
+  }
+
+  /**
    * Fetch live authoritative multiplayer server URL from Supabase registry
    */
   public async getLiveServerUrl(): Promise<string | null> {

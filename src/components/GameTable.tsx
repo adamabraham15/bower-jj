@@ -63,6 +63,7 @@ interface GameTableProps {
   isMuted: boolean;
   onToggleMute: () => void;
   onExitGame: () => void;
+  onMatchComplete?: (won: boolean, myScore: number, oppScore: number) => void;
 }
 
 export const GameTable: React.FC<GameTableProps> = ({
@@ -74,15 +75,18 @@ export const GameTable: React.FC<GameTableProps> = ({
   isMuted,
   onToggleMute,
   onExitGame,
+  onMatchComplete,
 }) => {
   const [state, setState] = useState<EuchreGameState>(initialState);
   const [aloneToggle, setAloneToggle] = useState(false);
   const [isProcessingAI, setIsProcessingAI] = useState(false);
   const [inspectedPlayer, setInspectedPlayer] = useState<PublicPlayerData | null>(null);
+  const [matchReported, setMatchReported] = useState(false);
 
   // Trigger celebration on match victory
   useEffect(() => {
-    if (state.phase === 'game_over') {
+    if (state.phase === 'game_over' && !matchReported) {
+      setMatchReported(true);
       const userTeamWon = state.scores[0] >= state.rules.targetScore;
       if (userTeamWon) {
         confetti({
@@ -92,8 +96,9 @@ export const GameTable: React.FC<GameTableProps> = ({
         });
         sounds.playVictoryFanfare();
       }
+      onMatchComplete?.(userTeamWon, state.scores[0], state.scores[1]);
     }
-  }, [state.phase, state.scores, state.rules.targetScore]);
+  }, [state.phase, state.scores, state.rules.targetScore, matchReported, onMatchComplete]);
 
   // Trick completion pause: Keep all 4 cards on screen for 1.8 seconds with winner announcement
   useEffect(() => {

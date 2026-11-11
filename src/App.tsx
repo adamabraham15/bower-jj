@@ -112,6 +112,18 @@ export const App: React.FC = () => {
 
   // Notice Toast & Party Invite Toast
   const [notice, setNotice] = useState<{ message: string; title?: string } | null>(null);
+  const noticeTimerRef = React.useRef<any>(null);
+
+  const showToast = (message: string, title?: string, durationMs: number = 3800) => {
+    if (noticeTimerRef.current) {
+      clearTimeout(noticeTimerRef.current);
+    }
+    setNotice({ message, title });
+    noticeTimerRef.current = setTimeout(() => {
+      setNotice(null);
+    }, durationMs);
+  };
+
   const [partyInvite, setPartyInvite] = useState<{
     fromUsername: string;
     fromAvatar: string;
@@ -133,23 +145,23 @@ export const App: React.FC = () => {
           if (sync) {
             setProfile(prev => ({
               ...prev,
-              username: sync.profile.username || prev.username,
-              playerId: sync.profile.player_id || prev.playerId,
-              avatarIcon: sync.profile.avatar_icon || prev.avatarIcon,
-              level: sync.xp?.level || prev.level,
-              xp: sync.xp?.current_xp || prev.xp,
-              nextLevelXp: sync.xp?.next_level_xp || prev.nextLevelXp,
-              rankTier: (sync.rank?.current_tier as RankTier) || prev.rankTier,
-              rankPoints: sync.rank?.current_points ?? prev.rankPoints,
-              wins: sync.statistics?.wins ?? prev.wins,
-              losses: sync.statistics?.losses ?? prev.losses,
-              totalGames: sync.statistics?.total_games ?? prev.totalGames,
-              tricksWon: sync.statistics?.tricks_won ?? prev.tricksWon,
-              euchres: sync.statistics?.euchres ?? prev.euchres,
-              marches: sync.statistics?.marches ?? prev.marches,
-              successfulLoners: sync.statistics?.successful_loners ?? prev.successfulLoners,
-              currentStreak: sync.statistics?.current_streak ?? prev.currentStreak,
-              bestStreak: sync.statistics?.best_streak ?? prev.bestStreak,
+              username: sync.profile?.username || session.user.user_metadata?.username || prev.username,
+              playerId: sync.profile?.player_id || prev.playerId,
+              avatarIcon: sync.profile?.avatar_icon || session.user.user_metadata?.avatar_icon || prev.avatarIcon,
+              level: sync.xp?.level ?? 1,
+              xp: sync.xp?.xp ?? 0,
+              nextLevelXp: sync.xp?.next_level_xp ?? 1000,
+              rankTier: (sync.rank?.rank_tier as RankTier) || '9',
+              rankPoints: sync.rank?.rank_points ?? 0,
+              wins: sync.statistics?.wins ?? 0,
+              losses: sync.statistics?.losses ?? 0,
+              totalGames: sync.statistics?.total_games ?? 0,
+              tricksWon: sync.statistics?.tricks_won ?? 0,
+              euchres: sync.statistics?.euchres ?? 0,
+              marches: sync.statistics?.marches ?? 0,
+              successfulLoners: sync.statistics?.successful_loners ?? 0,
+              currentStreak: sync.statistics?.current_streak ?? 0,
+              bestStreak: sync.statistics?.best_streak ?? 0,
             }));
           }
         });
@@ -270,8 +282,7 @@ export const App: React.FC = () => {
         sounds.playTrickWin();
       },
       onNotice: (message, title) => {
-        setNotice({ message, title });
-        setTimeout(() => setNotice(null), 4000);
+        showToast(message, title);
       },
       onError: (msg) => {
         console.warn('Multiplayer notice:', msg);
@@ -356,10 +367,11 @@ export const App: React.FC = () => {
     await authService.logout();
     setAuthUser(null);
     setAuthToken(null);
-    setNotice({
-      title: 'Signed Out',
-      message: 'You have been signed out. Active in offline guest mode.',
-    });
+    setProfile(DEFAULT_PROFILE);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {}
+    showToast('You have been signed out. Active in offline guest mode.', 'Signed Out');
   };
 
   // Launch Local AI Match
@@ -402,6 +414,43 @@ export const App: React.FC = () => {
     const initialGame = initializeGame(players, rules, 0);
     setActiveGameState(initialGame);
     setCurrentView('ai_game');
+  };
+
+  // Handle AI Match Completion (Offline stats & progression)
+  const handleAIMatchComplete = (won: boolean, userScore: number, oppScore: number) => {
+    setProfile(prev => {
+      const nextWins = won ? prev.wins + 1 : prev.wins;
+      const nextLosses = won ? prev.losses : prev.losses + 1;
+      const nextGames = prev.totalGames + 1;
+      const earnedXp = won ? 150 : 50;
+      const totalXp = prev.xp + earnedXp;
+      const levelUp = totalXp >= prev.nextLevelXp;
+      const nextLevel = levelUp ? prev.level + 1 : prev.level;
+      const nextLevelXp = levelUp ? prev.nextLevelXp + 1000 : prev.nextLevelXp;
+      const currentStreak = won ? prev.currentStreak + 1 : 0;
+      const bestStreak = Math.max(prev.bestStreak, currentStreak);
+
+      return {
+        ...prev,
+        wins: nextWins,
+        losses: nextLosses,
+        totalGames: nextGames,
+        level: nextLevel,
+        xp: totalXp,
+        nextLevelXp,
+        currentStreak,
+        bestStreak,
+      };
+    });
+
+    if (authUser?.id) {
+      authService.recordOfflineMatch(authUser.id, won);
+    }
+
+    showToast(
+      won ? `Victory! Match won ${userScore}-${oppScore}. +150 XP earned.` : `Match finished ${userScore}-${oppScore}. +50 XP earned.`,
+      won ? 'Match Won!' : 'Match Finished'
+    );
   };
 
   // Send an Emote
@@ -471,11 +520,17 @@ export const App: React.FC = () => {
       {/* Toast Notice */}
       {notice && (
         <div
-          className="fixed left-1/2 -translate-x-1/2 z-[100] px-4 py-2.5 rounded-2xl bg-amber-500 text-slate-950 font-black text-xs shadow-2xl animate-in slide-in-from-top-4 flex items-center space-x-2"
+          onClick={() => {
+            if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+            setNotice(null);
+          }}
+          className="fixed left-1/2 -translate-x-1/2 z-[100] px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-2xl animate-in slide-in-from-top-4 flex items-center space-x-2 cursor-pointer transition-all active:scale-95 group"
           style={{ top: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}
+          title="Click to dismiss"
         >
           <span>✨</span>
           <span>{notice.message}</span>
+          <span className="text-[10px] ml-1.5 opacity-60 group-hover:opacity-100 font-bold">✕</span>
         </div>
       )}
 
@@ -520,6 +575,7 @@ export const App: React.FC = () => {
           isMuted={isMuted}
           onToggleMute={handleToggleMute}
           onExitGame={() => setCurrentView('menu')}
+          onMatchComplete={handleAIMatchComplete}
         />
       ) : currentView === 'multiplayer_game' && multiplayerState ? (
         <MultiplayerGameTable
@@ -589,7 +645,7 @@ export const App: React.FC = () => {
         friends={friendsList}
         incomingRequests={incomingFriendRequests}
         onInviteToParty={() => {
-          setNotice({ message: 'Invited friend to party!' });
+          showToast('Invited friend to party!');
         }}
       />
 
@@ -666,17 +722,11 @@ export const App: React.FC = () => {
           setAuthUser(user);
           if (token) setAuthToken(token);
           handleAuthDismissOrContinue();
-          setNotice({
-            title: 'Welcome Back!',
-            message: `Signed in as ${user.user_metadata?.username || user.email}. Cloud sync active.`,
-          });
+          showToast(`Signed in as ${user.user_metadata?.username || user.email}. Cloud sync active.`, 'Welcome Back!');
         }}
         onContinueAsGuest={() => {
           handleAuthDismissOrContinue();
-          setNotice({
-            title: 'Guest Mode Active',
-            message: 'Playing locally as guest. Progression is stored on this device.',
-          });
+          showToast('Playing locally as guest. Progression is stored on this device.', 'Guest Mode Active');
         }}
       />
     </div>
