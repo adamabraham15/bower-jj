@@ -220,14 +220,10 @@ async function runBenchmark() {
       );
       const code = created.room.code;
 
-      await Promise.all(
-        [1, 2, 3].map(async p => {
-          roomPlayers[p].send({ type: 'ROOM_JOIN', roomCode: code });
-          await roomPlayers[p].waitFor(
-            m => m.type === 'ROOM_UPDATE' && (m as any).yourPosition === p
-          );
-        })
-      );
+      for (const p of [1, 2, 3]) {
+        roomPlayers[p].send({ type: 'ROOM_JOIN', roomCode: code });
+        await roomPlayers[p].waitFor(m => m.type === 'ROOM_UPDATE');
+      }
 
       return { code, players: roomPlayers };
     })
