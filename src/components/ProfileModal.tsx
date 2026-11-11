@@ -129,47 +129,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   const xpPercent = Math.min(100, Math.round((profile.xp / profile.nextLevelXp) * 100));
 
-  // Synthesize sample recent matches if none exist
-  const matches: MatchHistoryItem[] = profile.recentMatches && profile.recentMatches.length > 0
-    ? profile.recentMatches
-    : [
-        {
-          id: 'm_1',
-          date: Date.now() - 1000 * 60 * 14,
-          mode: 'Ranked Solo',
-          won: true,
-          score: '10 - 7',
-          lpChange: +26,
-          opponentNames: ['AceKing', 'LonerPro'],
-        },
-        {
-          id: 'm_2',
-          date: Date.now() - 1000 * 60 * 45,
-          mode: 'Friendly Rivals',
-          won: true,
-          score: '10 - 4',
-          lpChange: +18,
-          opponentNames: ['RivalFriend', 'Bot West'],
-        },
-        {
-          id: 'm_3',
-          date: Date.now() - 1000 * 60 * 120,
-          mode: 'Ranked Solo',
-          won: false,
-          score: '8 - 10',
-          lpChange: -16,
-          opponentNames: ['BowerBoss', 'CardShark'],
-        },
-        {
-          id: 'm_4',
-          date: Date.now() - 1000 * 60 * 300,
-          mode: 'Ranked Solo',
-          won: true,
-          score: '10 - 9',
-          lpChange: +24,
-          opponentNames: ['EuchreQueen', 'JackOfClubs'],
-        },
-      ];
+  const matches: MatchHistoryItem[] = profile.recentMatches || [];
 
   const currentBannerTheme = BANNER_THEMES[selectedBanner] || BANNER_THEMES.default_navy;
 
@@ -487,48 +447,58 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <span>Recent Match Outcomes</span>
             </div>
 
-            {matches.map((m) => (
-              <div
-                key={m.id}
-                className="p-3 bg-slate-800/70 rounded-2xl border border-slate-700/80 flex items-center justify-between"
-              >
-                <div className="flex items-center space-x-3">
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs ${
-                      m.won
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50'
-                        : 'bg-red-500/20 text-red-300 border border-red-500/50'
-                    }`}
-                  >
-                    {m.won ? 'VICTORY' : 'DEFEAT'}
-                  </div>
-
-                  <div>
-                    <div className="text-xs font-black text-white flex items-center space-x-2">
-                      <span>{m.mode}</span>
-                      <span className="text-gray-400">•</span>
-                      <span className="font-mono text-amber-300 font-bold">{m.score}</span>
-                    </div>
-                    <div className="text-[10px] text-gray-400">
-                      vs {m.opponentNames.join(', ')}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <span
-                    className={`font-mono text-xs font-black block ${
-                      m.lpChange > 0 ? 'text-emerald-400' : 'text-red-400'
-                    }`}
-                  >
-                    {m.lpChange > 0 ? `+${m.lpChange} LP` : `${m.lpChange} LP`}
-                  </span>
-                  <span className="text-[9px] text-gray-500">
-                    {Math.round((Date.now() - m.date) / 60000)}m ago
-                  </span>
+            {matches.length === 0 ? (
+              <div className="p-8 text-center text-gray-400 space-y-2 bg-slate-800/40 rounded-2xl border border-slate-700/60">
+                <History className="w-8 h-8 text-amber-400/50 mx-auto" />
+                <div className="text-sm font-bold text-gray-200">No Match History Yet</div>
+                <div className="text-xs text-gray-400">
+                  Complete an AI match or Ranked Solo match to record your match history and ladder climb.
                 </div>
               </div>
-            ))}
+            ) : (
+              matches.map((m) => (
+                <div
+                  key={m.id}
+                  className="p-3 bg-slate-800/70 rounded-2xl border border-slate-700/80 flex items-center justify-between"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs ${
+                        m.won
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50'
+                          : 'bg-red-500/20 text-red-300 border border-red-500/50'
+                      }`}
+                    >
+                      {m.won ? 'VICTORY' : 'DEFEAT'}
+                    </div>
+
+                    <div>
+                      <div className="text-xs font-black text-white flex items-center space-x-2">
+                        <span>{m.mode}</span>
+                        <span className="text-gray-400">•</span>
+                        <span className="font-mono text-amber-300 font-bold">{m.score}</span>
+                      </div>
+                      <div className="text-[10px] text-gray-400">
+                        vs {m.opponentNames.join(', ')}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span
+                      className={`font-mono text-xs font-black block ${
+                        m.lpChange > 0 ? 'text-emerald-400' : 'text-red-400'
+                      }`}
+                    >
+                      {m.lpChange > 0 ? `+${m.lpChange} LP` : `${m.lpChange} LP`}
+                    </span>
+                    <span className="text-[9px] text-gray-500">
+                      {Math.round((Date.now() - m.date) / 60000)}m ago
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
       </div>

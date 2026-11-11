@@ -14366,12 +14366,12 @@
       "xp": 0,
       "rankTier": "9",
       "rankPoints": 0,
-      "mmr": 1170,
+      "mmr": 1140,
       "placementMatchesRemaining": 5,
       "hasDemotionShield": false,
-      "totalGames": 1,
+      "totalGames": 2,
       "wins": 0,
-      "losses": 1,
+      "losses": 2,
       "tricksWon": 0,
       "euchres": 0,
       "marches": 0,
@@ -14450,6 +14450,18 @@
         "title": "Recruit"
       },
       "matchHistory": [
+        {
+          "id": "m_aband_1794368172311_48b098",
+          "date": 1794368172311,
+          "mode": "Ranked Abandonment (Penalty)",
+          "won": false,
+          "score": "Forfeit",
+          "lpChange": -20,
+          "opponentNames": [
+            "Human_2",
+            "Human_4"
+          ]
+        },
         {
           "id": "m_aband_1794367356048_955bc6",
           "date": 1794367356049,
@@ -14465,7 +14477,7 @@
       ],
       "createdAt": 1794353316612,
       "lastActive": 1794353551340,
-      "abandonments": 1
+      "abandonments": 2
     },
     "usr_h2": {
       "id": "usr_h2",
@@ -14475,12 +14487,12 @@
       "xp": 0,
       "rankTier": "9",
       "rankPoints": 0,
-      "mmr": 1170,
+      "mmr": 1140,
       "placementMatchesRemaining": 5,
       "hasDemotionShield": false,
-      "totalGames": 1,
+      "totalGames": 2,
       "wins": 0,
-      "losses": 1,
+      "losses": 2,
       "tricksWon": 0,
       "euchres": 0,
       "marches": 0,
@@ -14559,6 +14571,18 @@
         "title": "Recruit"
       },
       "matchHistory": [
+        {
+          "id": "m_aband_1794368172312_eae0a3",
+          "date": 1794368172312,
+          "mode": "Ranked Abandonment (Penalty)",
+          "won": false,
+          "score": "Forfeit",
+          "lpChange": -20,
+          "opponentNames": [
+            "Human_3",
+            "Human_1 (Bot)"
+          ]
+        },
         {
           "id": "m_aband_1794367356049_74cf04",
           "date": 1794367356049,
@@ -14574,7 +14598,7 @@
       ],
       "createdAt": 1794353316619,
       "lastActive": 1794353551351,
-      "abandonments": 1
+      "abandonments": 2
     },
     "usr_h3": {
       "id": "usr_h3",
@@ -14584,12 +14608,12 @@
       "xp": 0,
       "rankTier": "9",
       "rankPoints": 0,
-      "mmr": 1170,
+      "mmr": 1140,
       "placementMatchesRemaining": 5,
       "hasDemotionShield": false,
-      "totalGames": 1,
+      "totalGames": 2,
       "wins": 0,
-      "losses": 1,
+      "losses": 2,
       "tricksWon": 0,
       "euchres": 0,
       "marches": 0,
@@ -14668,6 +14692,18 @@
         "title": "Recruit"
       },
       "matchHistory": [
+        {
+          "id": "m_aband_1794368172312_1eea91",
+          "date": 1794368172312,
+          "mode": "Ranked Abandonment (Penalty)",
+          "won": false,
+          "score": "Forfeit",
+          "lpChange": -20,
+          "opponentNames": [
+            "Human_4",
+            "Human_2 (Bot)"
+          ]
+        },
         {
           "id": "m_aband_1794367356049_a3ae2b",
           "date": 1794367356049,
@@ -14683,7 +14719,7 @@
       ],
       "createdAt": 1794353316624,
       "lastActive": 1794353551365,
-      "abandonments": 1
+      "abandonments": 2
     },
     "usr_h4": {
       "id": "usr_h4",
@@ -14693,12 +14729,12 @@
       "xp": 0,
       "rankTier": "9",
       "rankPoints": 0,
-      "mmr": 1170,
+      "mmr": 1140,
       "placementMatchesRemaining": 5,
       "hasDemotionShield": false,
-      "totalGames": 1,
+      "totalGames": 2,
       "wins": 0,
-      "losses": 1,
+      "losses": 2,
       "tricksWon": 0,
       "euchres": 0,
       "marches": 0,
@@ -14778,6 +14814,18 @@
       },
       "matchHistory": [
         {
+          "id": "m_aband_1794368172312_66901b",
+          "date": 1794368172312,
+          "mode": "Ranked Abandonment (Penalty)",
+          "won": false,
+          "score": "Forfeit",
+          "lpChange": -20,
+          "opponentNames": [
+            "Human_1 (Bot)",
+            "Human_3 (Bot)"
+          ]
+        },
+        {
           "id": "m_aband_1794367356049_318073",
           "date": 1794367356049,
           "mode": "Ranked Abandonment (Penalty)",
@@ -14792,7 +14840,7 @@
       ],
       "createdAt": 1794353316631,
       "lastActive": 1794353551386,
-      "abandonments": 1
+      "abandonments": 2
     },
     "usr_dc_reconnect": {
       "id": "usr_dc_reconnect",
@@ -65118,12 +65166,12 @@
       "xp": 0,
       "rankTier": "9",
       "rankPoints": 0,
-      "mmr": 1200,
+      "mmr": 1170,
       "placementMatchesRemaining": 5,
-      "hasDemotionShield": true,
-      "totalGames": 0,
+      "hasDemotionShield": false,
+      "totalGames": 1,
       "wins": 0,
-      "losses": 0,
+      "losses": 1,
       "tricksWon": 0,
       "euchres": 0,
       "marches": 0,
@@ -65201,9 +65249,23 @@
         "banner": "default_navy",
         "title": "Recruit"
       },
-      "matchHistory": [],
+      "matchHistory": [
+        {
+          "id": "m_aband_1794368172313_dc5dbd",
+          "date": 1794368172313,
+          "mode": "Ranked Abandonment (Penalty)",
+          "won": false,
+          "score": "Forfeit",
+          "lpChange": -20,
+          "opponentNames": [
+            "Queue_Human_2_1794367993857",
+            "Queue_Human_4_1794367993867"
+          ]
+        }
+      ],
       "createdAt": 1794367993852,
-      "lastActive": 1794367993852
+      "lastActive": 1794367993852,
+      "abandonments": 1
     },
     "dev_queue_human_2_1794367993857": {
       "id": "dev_queue_human_2_1794367993857",
@@ -65213,12 +65275,12 @@
       "xp": 0,
       "rankTier": "9",
       "rankPoints": 0,
-      "mmr": 1200,
+      "mmr": 1170,
       "placementMatchesRemaining": 5,
-      "hasDemotionShield": true,
-      "totalGames": 0,
+      "hasDemotionShield": false,
+      "totalGames": 1,
       "wins": 0,
-      "losses": 0,
+      "losses": 1,
       "tricksWon": 0,
       "euchres": 0,
       "marches": 0,
@@ -65296,9 +65358,23 @@
         "banner": "default_navy",
         "title": "Recruit"
       },
-      "matchHistory": [],
+      "matchHistory": [
+        {
+          "id": "m_aband_1794368172313_f990f2",
+          "date": 1794368172313,
+          "mode": "Ranked Abandonment (Penalty)",
+          "won": false,
+          "score": "Forfeit",
+          "lpChange": -20,
+          "opponentNames": [
+            "Queue_Human_3_1794367993861",
+            "Queue_Human_1_1794367993851 (Bot)"
+          ]
+        }
+      ],
       "createdAt": 1794367993858,
-      "lastActive": 1794367993858
+      "lastActive": 1794367993858,
+      "abandonments": 1
     },
     "dev_queue_human_3_1794367993861": {
       "id": "dev_queue_human_3_1794367993861",
@@ -65308,12 +65384,12 @@
       "xp": 0,
       "rankTier": "9",
       "rankPoints": 0,
-      "mmr": 1200,
+      "mmr": 1170,
       "placementMatchesRemaining": 5,
-      "hasDemotionShield": true,
-      "totalGames": 0,
+      "hasDemotionShield": false,
+      "totalGames": 1,
       "wins": 0,
-      "losses": 0,
+      "losses": 1,
       "tricksWon": 0,
       "euchres": 0,
       "marches": 0,
@@ -65391,9 +65467,23 @@
         "banner": "default_navy",
         "title": "Recruit"
       },
-      "matchHistory": [],
+      "matchHistory": [
+        {
+          "id": "m_aband_1794368172313_4f929a",
+          "date": 1794368172313,
+          "mode": "Ranked Abandonment (Penalty)",
+          "won": false,
+          "score": "Forfeit",
+          "lpChange": -20,
+          "opponentNames": [
+            "Queue_Human_4_1794367993867",
+            "Queue_Human_2_1794367993857 (Bot)"
+          ]
+        }
+      ],
       "createdAt": 1794367993862,
-      "lastActive": 1794367993862
+      "lastActive": 1794367993862,
+      "abandonments": 1
     },
     "dev_queue_human_4_1794367993867": {
       "id": "dev_queue_human_4_1794367993867",
@@ -65403,12 +65493,12 @@
       "xp": 0,
       "rankTier": "9",
       "rankPoints": 0,
-      "mmr": 1200,
+      "mmr": 1170,
       "placementMatchesRemaining": 5,
-      "hasDemotionShield": true,
-      "totalGames": 0,
+      "hasDemotionShield": false,
+      "totalGames": 1,
       "wins": 0,
-      "losses": 0,
+      "losses": 1,
       "tricksWon": 0,
       "euchres": 0,
       "marches": 0,
@@ -65486,9 +65576,23 @@
         "banner": "default_navy",
         "title": "Recruit"
       },
-      "matchHistory": [],
+      "matchHistory": [
+        {
+          "id": "m_aband_1794368172313_64f0d5",
+          "date": 1794368172313,
+          "mode": "Ranked Abandonment (Penalty)",
+          "won": false,
+          "score": "Forfeit",
+          "lpChange": -20,
+          "opponentNames": [
+            "Queue_Human_1_1794367993851 (Bot)",
+            "Queue_Human_3_1794367993861 (Bot)"
+          ]
+        }
+      ],
       "createdAt": 1794367993868,
-      "lastActive": 1794367993868
+      "lastActive": 1794367993868,
+      "abandonments": 1
     }
   },
   "sessions": {
