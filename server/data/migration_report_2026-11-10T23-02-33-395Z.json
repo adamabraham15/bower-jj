@@ -1,0 +1,43 @@
+{
+  "timestamp": "2026-11-10T23:02:33.399Z",
+  "sourceFile": "C:\\Users\\adama\\.gemini\\antigravity\\scratch\\bower-jj\\server\\data\\db.json",
+  "backupFile": "C:\\Users\\adama\\.gemini\\antigravity\\scratch\\bower-jj\\server\\data\\db.json.backup.2026-11-10T23-02-33-395Z.json",
+  "totalUsersFound": 60,
+  "migratedCount": 55,
+  "duplicateUsernamesFound": [
+    "TestPlayer",
+    "HostPlayer1",
+    "GuestPlayer2",
+    "HostPlayer1",
+    "GuestPlayer2"
+  ],
+  "skippedRecords": [
+    {
+      "id": "usr_e6d4040d63f4",
+      "username": "TestPlayer",
+      "reason": "Duplicate username conflict in legacy data"
+    },
+    {
+      "id": "usr_8c9a98c0d854",
+      "username": "HostPlayer1",
+      "reason": "Duplicate username conflict in legacy data"
+    },
+    {
+      "id": "usr_6b32cd15e5f9",
+      "username": "GuestPlayer2",
+      "reason": "Duplicate username conflict in legacy data"
+    },
+    {
+      "id": "usr_6696234a1aec",
+      "username": "HostPlayer1",
+      "reason": "Duplicate username conflict in legacy data"
+    },
+    {
+      "id": "usr_18e775b5ba9a",
+      "username": "GuestPlayer2",
+      "reason": "Duplicate username conflict in legacy data"
+    }
+  ],
+  "status": "PARTIAL",
+  "sqlOutputPath": "C:\\Users\\adama\\.gemini\\antigravity\\scratch\\bower-jj\\server\\data\\legacy_migration_2026-11-10T23-02-33-395Z.sql"
+}

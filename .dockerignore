@@ -1,0 +1,8 @@
+node_modules
+dist
+.git
+.vscode
+*.log
+server/data/backups/*
+!server/data/backups/.gitkeep
+test_migration_sandbox

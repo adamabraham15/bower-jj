@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-11-11T00:45:25.029Z",
+  "sourceFile": "C:\\Users\\adama\\.gemini\\antigravity\\scratch\\bower-jj\\test_migration_sandbox\\test_db.json",
+  "backupFile": "C:\\Users\\adama\\.gemini\\antigravity\\scratch\\bower-jj\\test_migration_sandbox\\test_db.json.backup.2026-11-11T00-45-25-014Z.json",
+  "totalUsersFound": 3,
+  "migratedCount": 2,
+  "duplicateUsernamesFound": [
+    "MasterEuchre"
+  ],
+  "skippedRecords": [
+    {
+      "id": "usr_alpha2",
+      "username": "MasterEuchre",
+      "reason": "Duplicate username conflict in legacy data"
+    }
+  ],
+  "status": "PARTIAL",
+  "sqlOutputPath": "C:\\Users\\adama\\.gemini\\antigravity\\scratch\\bower-jj\\test_migration_sandbox\\test_migration.sql"
+}

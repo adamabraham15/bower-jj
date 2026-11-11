@@ -1,0 +1,46 @@
+{
+  "name": "bower-jj",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "server": "tsx server/index.ts",
+    "backup": "tsx server/db/backup.ts",
+    "restore": "tsx server/db/restore.ts",
+    "backup:pg": "tsx server/db/postgres_backup.ts",
+    "restore:pg": "tsx server/db/postgres_restore.ts",
+    "benchmark": "tsx server/benchmarks/loadTest.ts",
+    "migrate:pg": "tsx scripts/migrate_to_postgres.ts",
+    "check:deploy": "tsx scripts/deploy_check.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.109.0",
+    "canvas-confetti": "^1.9.3",
+    "lucide-react": "^0.453.0",
+    "pg": "^8.23.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "ws": "^8.22.2"
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/node": "^22.7.5",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.0",
+    "@types/ws": "^8.18.2",
+    "@vitejs/plugin-react": "^4.3.2",
+    "autoprefixer": "^10.6.2",
+    "pg-mem": "^3.0.14",
+    "postcss": "^8.5.32",
+    "tailwindcss": "3.4.14",
+    "tsx": "^4.23.15",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.8",
+    "vitest": "^2.1.2"
+  }
+}
