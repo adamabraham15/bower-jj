@@ -17,6 +17,7 @@ import {
   MatchmakingStats,
 } from '../../server/types';
 import { PlayerPosition, Suit, AIDifficulty, EuchreHouseRules } from '../engine/types';
+import { authService } from './supabaseClient';
 
 export class MultiplayerClient {
   private ws: WebSocket | null = null;
@@ -27,35 +28,55 @@ export class MultiplayerClient {
   private serverUrl: string = '';
   private isConnecting: boolean = false;
 
-  private getServerUrl(): string {
+  private cachedResolvedUrl: string | null = null;
+
+  public async resolveServerUrl(): Promise<string> {
+    if (this.cachedResolvedUrl) return this.cachedResolvedUrl;
+
     // 1. Explicit Vite environment variable
     const envWs = import.meta.env?.VITE_WS_URL;
-    if (envWs) {
+    if (envWs && !envWs.includes('api.bowerjj.com')) {
       if (envWs.startsWith('ws://') || envWs.startsWith('wss://')) {
-        return envWs.endsWith('/ws') ? envWs : `${envWs}/ws`;
+        this.cachedResolvedUrl = envWs.endsWith('/ws') ? envWs : `${envWs}/ws`;
+        return this.cachedResolvedUrl;
       }
       const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
       const proto = isHttps ? 'wss:' : 'ws:';
-      return `${proto}//${envWs.replace(/^\/+/, '')}/ws`;
+      this.cachedResolvedUrl = `${proto}//${envWs.replace(/^\/+/, '')}/ws`;
+      return this.cachedResolvedUrl;
     }
 
     // 2. Dynamic browser location
     if (typeof window !== 'undefined' && window.location) {
-      const isHttps = window.location.protocol === 'https:';
-      const proto = isHttps ? 'wss:' : 'ws:';
       const host = window.location.hostname;
 
       // Local development default (backend runs on 3001)
       if (host === 'localhost' || host === '127.0.0.1') {
-        return `${proto}//${host}:3001/ws`;
+        this.cachedResolvedUrl = `ws://${host}:3001/ws`;
+        return this.cachedResolvedUrl;
       }
 
-      // Staging / Production: use current origin host + /ws or port
-      const port = window.location.port ? `:${window.location.port}` : '';
-      return `${proto}//${host}${port}/ws`;
+      // If already connected through the Cloudflare tunnel domain
+      if (host.endsWith('trycloudflare.com')) {
+        this.cachedResolvedUrl = `wss://${window.location.host}/ws`;
+        return this.cachedResolvedUrl;
+      }
     }
 
-    return 'ws://localhost:3001/ws';
+    // 3. Dynamic lookup from Supabase server_registry table!
+    try {
+      const livePublicUrl = await authService.getLiveServerUrl();
+      if (livePublicUrl) {
+        const clean = livePublicUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+        this.cachedResolvedUrl = `wss://${clean}/ws`;
+        return this.cachedResolvedUrl;
+      }
+    } catch (err) {
+      console.warn('Could not fetch server registry from Supabase:', err);
+    }
+
+    // 4. Fallback to latest verified public tunnel
+    return 'wss://tax-insulin-eligibility-updated.trycloudflare.com/ws';
   }
 
   // Event Listeners
@@ -128,7 +149,7 @@ export class MultiplayerClient {
     if (callbacks.onError) this.onErrorCallback = callbacks.onError;
   }
 
-  public connect(username?: string, avatarIcon?: string, accessToken?: string): Promise<boolean> {
+  public async connect(username?: string, avatarIcon?: string, accessToken?: string): Promise<boolean> {
     if (username) this.username = username;
     if (avatarIcon) this.avatarIcon = avatarIcon;
     if (accessToken) this.accessToken = accessToken;
@@ -137,14 +158,15 @@ export class MultiplayerClient {
       if (accessToken && accessToken !== this.accessToken) {
         this.reauthenticate(accessToken, username, avatarIcon);
       }
-      return Promise.resolve(true);
+      return true;
     }
 
     this.isConnecting = true;
+    const resolvedUrl = await this.resolveServerUrl();
+    this.serverUrl = resolvedUrl;
 
     return new Promise((resolve) => {
       try {
-        this.serverUrl = this.getServerUrl();
         this.ws = new WebSocket(this.serverUrl);
 
         this.ws.onopen = () => {
@@ -171,6 +193,7 @@ export class MultiplayerClient {
 
         this.ws.onerror = (err) => {
           console.warn('Multiplayer WebSocket error:', err);
+          this.cachedResolvedUrl = null;
           this.onErrorCallback?.('Connection error to multiplayer server');
           resolve(false);
         };

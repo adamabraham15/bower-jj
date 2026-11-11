@@ -689,6 +689,38 @@ if (isMainModule() && !process.env.VITEST) {
     logger.info(`[BOWER JJ] WebSocket endpoint: ws://localhost:${port}/ws`);
     logger.info(`[BOWER JJ] Health & Metrics: http://localhost:${port}/health | http://localhost:${port}/metrics`);
 
+    // Background heartbeat to sync active Cloudflare tunnel URL into PostgreSQL
+    let lastRegisteredUrl: string | null = null;
+    const syncTunnelUrl = async () => {
+      try {
+        const logPath = path.resolve(process.cwd(), 'tunnel.log');
+        if (fs.existsSync(logPath)) {
+          const content = fs.readFileSync(logPath, 'utf8');
+          const matches = content.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/g);
+          if (matches && matches.length > 0) {
+            const currentUrl = matches[matches.length - 1];
+            if (currentUrl !== lastRegisteredUrl) {
+              lastRegisteredUrl = currentUrl;
+              if (db instanceof PostgresDatabaseRepository) {
+                await (db as any).pool.query(
+                  `INSERT INTO public.server_registry (id, public_url, updated_at)
+                   VALUES ('primary', $1, NOW())
+                   ON CONFLICT (id) DO UPDATE SET public_url = EXCLUDED.public_url, updated_at = NOW()`,
+                  [currentUrl]
+                );
+                logger.info(`[EDGE TUNNEL REGISTRY] Synced public URL to Supabase: ${currentUrl}`);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        // non-blocking
+      }
+    };
+
+    setTimeout(syncTunnelUrl, 2500);
+    setInterval(syncTunnelUrl, 30000);
+
     // Graceful Shutdown Handling (SIGTERM, SIGINT)
     const gracefulShutdown = (signal: string) => {
       logger.info(`Received ${signal}. Initiating graceful server shutdown...`);

@@ -6,13 +6,14 @@
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js';
 
 const env = (import.meta as any).env || {};
-const SUPABASE_URL = env.VITE_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = env.VITE_SUPABASE_ANON_KEY || '';
+const SUPABASE_URL = env.VITE_SUPABASE_URL || 'https://luqyiarxemhreuxfuzwz.supabase.co';
+const SUPABASE_ANON_KEY = env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1cXlpYXJ4ZW1ocmV1eGZ1end6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyOTU0ODEsImV4cCI6MjEwNjg3MTQ4MX0.zEGNBVy4wdSBjw7SDr_6WJbQc1ifwBakgv1XzL4cst4';
 
 export const isSupabaseConfigured = Boolean(
   SUPABASE_URL &&
   SUPABASE_ANON_KEY &&
-  !SUPABASE_URL.includes('your-project')
+  !SUPABASE_URL.includes('your-project') &&
+  !SUPABASE_URL.includes('prod-project')
 );
 
 // Initialize Supabase Client
@@ -84,10 +85,15 @@ class AuthService {
     }
 
     try {
+      const redirectUrl = typeof window !== 'undefined'
+        ? window.location.origin
+        : 'https://bower-jj.vercel.app';
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: redirectUrl,
           data: {
             username: cleanUsername,
             avatar_icon: avatarIcon,
@@ -238,6 +244,24 @@ class AuthService {
       };
     } catch (err) {
       console.error('Failed to fetch full authoritative profile:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Fetch live authoritative multiplayer server URL from Supabase registry
+   */
+  public async getLiveServerUrl(): Promise<string | null> {
+    if (!supabase) return null;
+    try {
+      const { data, error } = await supabase
+        .from('server_registry')
+        .select('public_url, updated_at')
+        .eq('id', 'primary')
+        .single();
+      if (error || !data) return null;
+      return data.public_url;
+    } catch {
       return null;
     }
   }
