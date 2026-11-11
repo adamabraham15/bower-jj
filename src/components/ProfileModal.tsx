@@ -121,15 +121,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [selectedBanner, setSelectedBanner] = useState(profile.equippedCosmetics?.banner || 'default_navy');
   const [selectedCardBack, setSelectedCardBack] = useState(profile.equippedCosmetics?.cardBack || 'classic_blue');
   const [selectedTitle, setSelectedTitle] = useState(profile.equippedCosmetics?.title || 'Recruit');
-
-  if (!isOpen) return null;
-
-  const winRate = profile.totalGames > 0
-    ? Math.round((profile.wins / profile.totalGames) * 100)
-    : 0;
-
-  const xpPercent = Math.min(100, Math.round((profile.xp / profile.nextLevelXp) * 100));
-
   const [localMatches, setLocalMatches] = useState<MatchHistoryItem[]>(profile.recentMatches || []);
 
   useEffect(() => {
@@ -157,6 +148,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     }
   }, [isOpen, profile.playerId]);
 
+  if (!isOpen) return null;
+
+  const winRate = profile.totalGames > 0
+    ? Math.round((profile.wins / profile.totalGames) * 100)
+    : 0;
+
+  const xpPercent = Math.min(100, Math.round((profile.xp / profile.nextLevelXp) * 100));
   const matches: MatchHistoryItem[] = localMatches;
 
   const currentBannerTheme = BANNER_THEMES[selectedBanner] || BANNER_THEMES.default_navy;

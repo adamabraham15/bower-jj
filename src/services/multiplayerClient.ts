@@ -76,7 +76,7 @@ export class MultiplayerClient {
     }
 
     // 4. Fallback to latest verified public tunnel
-    return 'wss://intelligence-statement-hunting-reynolds.trycloudflare.com/ws';
+    return 'wss://rome-assembled-true-patient.trycloudflare.com/ws';
   }
 
   // Event Listeners
