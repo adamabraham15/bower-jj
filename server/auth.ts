@@ -4,6 +4,12 @@
  */
 
 import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
+import WebSocket from 'ws';
+
+// Ensure globalThis.WebSocket is available for Supabase client in Node < 22 runtimes
+if (typeof globalThis.WebSocket === 'undefined') {
+  (globalThis as any).WebSocket = WebSocket;
+}
 
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -20,6 +26,9 @@ export const supabaseAdmin: SupabaseClient | null = isServerSupabaseConfigured
       auth: {
         autoRefreshToken: false,
         persistSession: false,
+      },
+      realtime: {
+        transport: WebSocket,
       },
     })
   : null;
