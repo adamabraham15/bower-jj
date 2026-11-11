@@ -38,6 +38,7 @@ export interface RunningServer {
   wss: WebSocketServer;
   port: number;
   roomManager: RoomManager;
+  pgRepo?: PostgresDatabaseRepository;
   close: () => Promise<void>;
 }
 
@@ -665,6 +666,7 @@ export async function createMultiplayerServer(
             });
           });
         },
+        pgRepo: activePgRepo,
       });
     });
     server.on('error', reject);
@@ -684,7 +686,7 @@ const isMainModule = () => {
 
 // Automatically start standalone server on PORT ONLY when run directly (e.g. npx tsx server/index.ts)
 if (isMainModule() && !process.env.VITEST) {
-  createMultiplayerServer(PORT).then(({ port, roomManager, close }) => {
+  createMultiplayerServer(PORT).then(({ port, roomManager, pgRepo, close }) => {
     logger.info(`[BOWER JJ] Authoritative Multiplayer Server running on http://localhost:${port}`);
     logger.info(`[BOWER JJ] WebSocket endpoint: ws://localhost:${port}/ws`);
     logger.info(`[BOWER JJ] Health & Metrics: http://localhost:${port}/health | http://localhost:${port}/metrics`);
@@ -701,8 +703,8 @@ if (isMainModule() && !process.env.VITEST) {
             const currentUrl = matches[matches.length - 1];
             if (currentUrl !== lastRegisteredUrl) {
               lastRegisteredUrl = currentUrl;
-              if (db instanceof PostgresDatabaseRepository) {
-                await (db as any).pool.query(
+              if (pgRepo) {
+                await (pgRepo as any).pool.query(
                   `INSERT INTO public.server_registry (id, public_url, updated_at)
                    VALUES ('primary', $1, NOW())
                    ON CONFLICT (id) DO UPDATE SET public_url = EXCLUDED.public_url, updated_at = NOW()`,
@@ -718,8 +720,8 @@ if (isMainModule() && !process.env.VITEST) {
       }
     };
 
-    setTimeout(syncTunnelUrl, 2500);
-    setInterval(syncTunnelUrl, 30000);
+    setTimeout(syncTunnelUrl, 1500);
+    setInterval(syncTunnelUrl, 15000);
 
     // Graceful Shutdown Handling (SIGTERM, SIGINT)
     const gracefulShutdown = (signal: string) => {
