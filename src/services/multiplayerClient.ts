@@ -102,6 +102,15 @@ export class MultiplayerClient {
   private onNoticeCallback?: (message: string, title?: string) => void;
   private onErrorCallback?: (errorMsg: string) => void;
 
+  // Multi-subscriber listener sets to prevent child modals from clobbering App.tsx listeners
+  private roomListeners = new Set<(room: Room, yourPosition?: PlayerPosition) => void>();
+  private gameSyncListeners = new Set<(state: SanitizedGameState) => void>();
+  private queueListeners = new Set<(data: { inQueue: boolean; mode?: string; playersFound: number; elapsedSeconds: number }) => void>();
+  private errorListeners = new Set<(errorMsg: string) => void>();
+
+  // Outgoing message queue for requests made while connecting
+  private pendingMessages: ClientMessage[] = [];
+
   constructor() {
     try {
       this.sessionToken = localStorage.getItem('bower_jj_session_token');
@@ -132,11 +141,20 @@ export class MultiplayerClient {
     onMatchmakingStats?: (stats: MatchmakingStats) => void;
     onNotice?: (message: string, title?: string) => void;
     onError?: (errorMsg: string) => void;
-  }) {
+  }): () => void {
     if (callbacks.onAuth) this.onAuthCallback = callbacks.onAuth;
-    if (callbacks.onRoom) this.onRoomCallback = callbacks.onRoom;
-    if (callbacks.onGameSync) this.onGameSyncCallback = callbacks.onGameSync;
-    if (callbacks.onQueue) this.onQueueCallback = callbacks.onQueue;
+    if (callbacks.onRoom) {
+      this.onRoomCallback = callbacks.onRoom;
+      this.roomListeners.add(callbacks.onRoom);
+    }
+    if (callbacks.onGameSync) {
+      this.onGameSyncCallback = callbacks.onGameSync;
+      this.gameSyncListeners.add(callbacks.onGameSync);
+    }
+    if (callbacks.onQueue) {
+      this.onQueueCallback = callbacks.onQueue;
+      this.queueListeners.add(callbacks.onQueue);
+    }
     if (callbacks.onEmote) this.onEmoteCallback = callbacks.onEmote;
     if (callbacks.onFriends) this.onFriendsCallback = callbacks.onFriends;
     if (callbacks.onLeaderboard) this.onLeaderboardCallback = callbacks.onLeaderboard;
@@ -146,7 +164,17 @@ export class MultiplayerClient {
     if (callbacks.onProfile) this.onProfileCallback = callbacks.onProfile;
     if (callbacks.onMatchmakingStats) this.onMatchmakingStatsCallback = callbacks.onMatchmakingStats;
     if (callbacks.onNotice) this.onNoticeCallback = callbacks.onNotice;
-    if (callbacks.onError) this.onErrorCallback = callbacks.onError;
+    if (callbacks.onError) {
+      this.onErrorCallback = callbacks.onError;
+      this.errorListeners.add(callbacks.onError);
+    }
+
+    return () => {
+      if (callbacks.onRoom) this.roomListeners.delete(callbacks.onRoom);
+      if (callbacks.onGameSync) this.gameSyncListeners.delete(callbacks.onGameSync);
+      if (callbacks.onQueue) this.queueListeners.delete(callbacks.onQueue);
+      if (callbacks.onError) this.errorListeners.delete(callbacks.onError);
+    };
   }
 
   public async connect(username?: string, avatarIcon?: string, accessToken?: string): Promise<boolean> {
@@ -195,6 +223,7 @@ export class MultiplayerClient {
           console.warn('Multiplayer WebSocket error:', err);
           this.cachedResolvedUrl = null;
           this.onErrorCallback?.('Connection error to multiplayer server');
+          this.errorListeners.forEach(cb => cb('Connection error to multiplayer server'));
           resolve(false);
         };
 
@@ -224,6 +253,19 @@ export class MultiplayerClient {
     }
   }
 
+  private flushPendingMessages() {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    const queued = [...this.pendingMessages];
+    this.pendingMessages = [];
+    for (const msg of queued) {
+      try {
+        this.ws.send(JSON.stringify(msg));
+      } catch (err) {
+        console.warn('Failed to dispatch queued message:', err);
+      }
+    }
+  }
+
   private handleMessage(msg: ServerMessage) {
     switch (msg.type) {
       case 'AUTH_SUCCESS':
@@ -232,18 +274,22 @@ export class MultiplayerClient {
           localStorage.setItem('bower_jj_session_token', msg.sessionToken);
         } catch {}
         this.onAuthCallback?.(msg.user, msg.sessionToken);
+        this.flushPendingMessages();
         break;
 
       case 'ROOM_UPDATE':
         this.onRoomCallback?.(msg.room, msg.yourPosition);
+        this.roomListeners.forEach(cb => cb(msg.room, msg.yourPosition));
         break;
 
       case 'GAME_SYNC':
         this.onGameSyncCallback?.(msg.state);
+        this.gameSyncListeners.forEach(cb => cb(msg.state));
         break;
 
       case 'QUEUE_UPDATE':
         this.onQueueCallback?.(msg);
+        this.queueListeners.forEach(cb => cb(msg));
         break;
 
       case 'EMOTE_BROADCAST':
@@ -284,13 +330,24 @@ export class MultiplayerClient {
 
       case 'ERROR':
         this.onErrorCallback?.(msg.message);
+        this.errorListeners.forEach(cb => cb(msg.message));
         break;
     }
   }
 
   private send(msg: ClientMessage) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+    if (msg.type === 'AUTH') {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify(msg));
+      }
+      return;
+    }
+
+    if (this.ws && this.ws.readyState === WebSocket.OPEN && this.sessionToken) {
       this.ws.send(JSON.stringify(msg));
+    } else {
+      // Buffer outgoing messages while connecting/authenticating
+      this.pendingMessages.push(msg);
     }
   }
 

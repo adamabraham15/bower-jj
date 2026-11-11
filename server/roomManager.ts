@@ -1364,8 +1364,17 @@ export class RoomManager {
     });
   }
 
-  public sendLeaderboard(userId: string) {
-    const entries = db.getLeaderboard(50);
+  public async sendLeaderboard(userId: string) {
+    let entries: LeaderboardEntry[] = [];
+    if (this.pgRepo) {
+      try {
+        entries = await this.pgRepo.getLeaderboard(50);
+      } catch (err) {
+        entries = db.getLeaderboard(50);
+      }
+    } else {
+      entries = db.getLeaderboard(50);
+    }
     const yourIdx = entries.findIndex(e => e.userId === userId);
     this.sendToUser(userId, {
       type: 'LEADERBOARD_DATA',

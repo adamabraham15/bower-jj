@@ -3,11 +3,12 @@
  * Prestigious ranking table showing Top 50 Euchre Masters.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Trophy, Medal, Flame, Shield, ArrowUpRight } from 'lucide-react';
 import { LeaderboardEntry } from '../../server/types';
 import { RankBadge } from './RankBadge';
 import { multiplayerClient } from '../services/multiplayerClient';
+import { authService } from '../services/supabaseClient';
 
 interface LeaderboardModalProps {
   isOpen: boolean;
@@ -24,9 +25,29 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   yourRank,
   currentUsername,
 }) => {
+  const [localEntries, setLocalEntries] = useState<LeaderboardEntry[]>(entries);
+  const [isLoading, setIsLoading] = useState<boolean>(entries.length === 0);
+
+  useEffect(() => {
+    if (entries.length > 0) {
+      setLocalEntries(entries);
+      setIsLoading(false);
+    }
+  }, [entries]);
+
   useEffect(() => {
     if (isOpen) {
       multiplayerClient.fetchLeaderboard();
+
+      // Query Supabase database directly for authoritative instant leaderboard
+      authService.getLeaderboard().then((dbEntries) => {
+        if (dbEntries && dbEntries.length > 0) {
+          setLocalEntries(dbEntries);
+          setIsLoading(false);
+        }
+      }).catch(() => {
+        setIsLoading(false);
+      });
     }
   }, [isOpen]);
 
@@ -68,12 +89,12 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 
         {/* Leaderboard Table Rows */}
         <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-1.5 divide-y divide-slate-800/40">
-          {entries.length === 0 ? (
+          {localEntries.length === 0 ? (
             <div className="text-center py-16 text-gray-400 text-sm">
-              Loading rankings...
+              {isLoading ? 'Loading rankings from Supabase...' : 'No rankings recorded yet for Season 1.'}
             </div>
           ) : (
-            entries.map((entry) => {
+            localEntries.map((entry) => {
               const isCurrentUser = entry.username === currentUsername;
               const isTop1 = entry.rankPosition === 1;
               const isTop2 = entry.rankPosition === 2;

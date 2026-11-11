@@ -2,7 +2,7 @@
  * BOWER JJ — Player Profile, Customization & Match History Modal
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Trophy,
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { RankBadge, RankTier } from './RankBadge';
 import { sounds } from '../audio/sound';
+import { authService } from '../services/supabaseClient';
 
 export interface MatchHistoryItem {
   id: string;
@@ -129,7 +130,34 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   const xpPercent = Math.min(100, Math.round((profile.xp / profile.nextLevelXp) * 100));
 
-  const matches: MatchHistoryItem[] = profile.recentMatches || [];
+  const [localMatches, setLocalMatches] = useState<MatchHistoryItem[]>(profile.recentMatches || []);
+
+  useEffect(() => {
+    if (profile.recentMatches && profile.recentMatches.length > 0) {
+      setLocalMatches(profile.recentMatches);
+    }
+  }, [profile.recentMatches]);
+
+  useEffect(() => {
+    if (isOpen && profile.playerId) {
+      authService.fetchMatchHistory(profile.playerId).then((history) => {
+        if (history && history.length > 0) {
+          const mapped: MatchHistoryItem[] = history.map((h: any) => ({
+            id: h.id,
+            date: new Date(h.created_at).getTime(),
+            mode: h.mode === 'ranked_solo' ? 'Ranked Solo' : h.mode === 'offline_ai' ? 'Casual AI' : h.mode,
+            won: Boolean(h.won),
+            score: h.score || '10 - 7',
+            lpChange: h.lp_change ?? (h.won ? 20 : -15),
+            opponentNames: Array.isArray(h.opponent_names) ? h.opponent_names : ['Opponents'],
+          }));
+          setLocalMatches(mapped);
+        }
+      });
+    }
+  }, [isOpen, profile.playerId]);
+
+  const matches: MatchHistoryItem[] = localMatches;
 
   const currentBannerTheme = BANNER_THEMES[selectedBanner] || BANNER_THEMES.default_navy;
 

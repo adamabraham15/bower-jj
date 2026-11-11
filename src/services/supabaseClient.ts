@@ -274,8 +274,137 @@ class AuthService {
         const next_level_xp = levelUp ? (xpRes.data.next_level_xp || 1000) + 1000 : (xpRes.data.next_level_xp || 1000);
         await supabase.from('player_xp').update({ xp: totalXp, level, next_level_xp, updated_at: new Date().toISOString() }).eq('user_id', userId);
       }
+
+      // Record entry in player_match_history
+      try {
+        const matchId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `match_${Date.now()}`;
+        const recordId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `hist_${Date.now()}`;
+        await supabase.from('player_match_history').insert({
+          id: recordId,
+          user_id: userId,
+          match_id: matchId,
+          won,
+          mode: 'offline_ai',
+          score: won ? '10 - 7' : '7 - 10',
+          lp_change: won ? 20 : -15,
+          mmr_change: won ? 15 : -10,
+          opponent_names: ['BowerAI North', 'BowerAI East', 'BowerAI West'],
+          created_at: new Date().toISOString(),
+        });
+      } catch (histErr) {
+        console.warn('Could not insert match history record:', histErr);
+      }
     } catch (err) {
       console.warn('Could not record match to Supabase:', err);
+    }
+  }
+
+  /**
+   * Fetch user's match history from PostgreSQL
+   */
+  public async fetchMatchHistory(userId: string, limit = 20): Promise<any[]> {
+    if (!supabase) return [];
+    try {
+      const { data, error } = await supabase
+        .from('player_match_history')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error || !data) return [];
+      return data;
+    } catch (err) {
+      console.warn('Could not fetch match history:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Fetch global leaderboard rankings directly from Supabase
+   */
+  public async getLeaderboard(limit = 50): Promise<any[]> {
+    if (!supabase) return [];
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          username,
+          avatar_icon,
+          player_ranks (
+            rank_tier,
+            rank_points,
+            mmr
+          ),
+          player_statistics (
+            wins,
+            losses,
+            total_games
+          )
+        `)
+        .eq('is_banned', false)
+        .limit(limit * 2);
+
+      if (error || !data) return [];
+
+      const tierWeights: Record<string, number> = {
+        BOWER_JJ: 6,
+        A: 5,
+        K: 4,
+        Q: 3,
+        '10': 2,
+        '9': 1,
+      };
+
+      const formatted = data.map((p: any) => {
+        const r = Array.isArray(p.player_ranks) ? p.player_ranks[0] : p.player_ranks;
+        const s = Array.isArray(p.player_statistics) ? p.player_statistics[0] : p.player_statistics;
+        const totalGames = s?.total_games || 0;
+        const wins = s?.wins || 0;
+        const losses = s?.losses || 0;
+        const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
+        const tier = r?.rank_tier || '9';
+        const points = r?.rank_points || 0;
+        const mmr = r?.mmr || 1200;
+
+        return {
+          userId: p.id,
+          username: p.username || 'Player',
+          avatarIcon: p.avatar_icon || '🤠',
+          rankTier: tier,
+          rankPoints: points,
+          mmr,
+          wins,
+          losses,
+          totalGames,
+          winRate,
+          tierWeight: tierWeights[tier] || 1,
+        };
+      });
+
+      formatted.sort((a, b) => {
+        if (b.tierWeight !== a.tierWeight) return b.tierWeight - a.tierWeight;
+        if (b.rankPoints !== a.rankPoints) return b.rankPoints - a.rankPoints;
+        return b.mmr - a.mmr;
+      });
+
+      return formatted.slice(0, limit).map((e, idx) => ({
+        rankPosition: idx + 1,
+        userId: e.userId,
+        username: e.username,
+        avatarIcon: e.avatarIcon,
+        rankTier: e.rankTier,
+        rankPoints: e.rankPoints,
+        mmr: e.mmr,
+        wins: e.wins,
+        losses: e.losses,
+        winRate: e.winRate,
+        totalGames: e.totalGames,
+      }));
+    } catch (err) {
+      console.warn('Could not query leaderboard from Supabase:', err);
+      return [];
     }
   }
 

@@ -146,7 +146,7 @@ export const App: React.FC = () => {
             setProfile(prev => ({
               ...prev,
               username: sync.profile?.username || session.user.user_metadata?.username || prev.username,
-              playerId: sync.profile?.player_id || prev.playerId,
+              playerId: sync.profile?.id || session.user.id || prev.playerId,
               avatarIcon: sync.profile?.avatar_icon || session.user.user_metadata?.avatar_icon || prev.avatarIcon,
               level: sync.xp?.level ?? 1,
               xp: sync.xp?.xp ?? 0,
@@ -163,6 +163,21 @@ export const App: React.FC = () => {
               currentStreak: sync.statistics?.current_streak ?? 0,
               bestStreak: sync.statistics?.best_streak ?? 0,
             }));
+          }
+        });
+
+        authService.fetchMatchHistory(session.user.id).then(history => {
+          if (history && history.length > 0) {
+            const mapped = history.map((h: any) => ({
+              id: h.id,
+              date: new Date(h.created_at).getTime(),
+              mode: h.mode === 'ranked_solo' ? 'Ranked Solo' : h.mode === 'offline_ai' ? 'Casual AI' : h.mode,
+              won: Boolean(h.won),
+              score: h.score || '10 - 7',
+              lpChange: h.lp_change ?? (h.won ? 20 : -15),
+              opponentNames: Array.isArray(h.opponent_names) ? h.opponent_names : ['Opponents'],
+            }));
+            setProfile(prev => ({ ...prev, recentMatches: mapped }));
           }
         });
 

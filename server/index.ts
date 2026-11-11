@@ -514,7 +514,7 @@ export async function createMultiplayerServer(
           }
 
           case 'GET_LEADERBOARD': {
-            activeRm.sendLeaderboard(uid);
+            await activeRm.sendLeaderboard(uid);
             break;
           }
 

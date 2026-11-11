@@ -60,9 +60,7 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    multiplayerClient.connect();
-
-    multiplayerClient.setCallbacks({
+    const unsubscribe = multiplayerClient.setCallbacks({
       onRoom: (room) => {
         setCurrentRoom(room);
         setErrorMessage(null);
@@ -74,6 +72,7 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
       onQueue: (data) => {
         setPlayersFound(data.playersFound);
         setSeconds(data.elapsedSeconds);
+        setErrorMessage(null);
       },
       onGameSync: () => {
         onMatchFound();
@@ -81,6 +80,13 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
       onError: (msg) => {
         setErrorMessage(msg);
       },
+    });
+
+    // Connect to server (queued requests like enterQueue automatically flush upon connection)
+    multiplayerClient.connect().then((connected) => {
+      if (connected) {
+        setErrorMessage(null);
+      }
     });
 
     if (queueType === 'private') {
@@ -91,6 +97,7 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
     }
 
     return () => {
+      unsubscribe();
       if (queueType !== 'private') {
         multiplayerClient.leaveQueue();
       }
@@ -153,8 +160,15 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
         </div>
 
         {errorMessage && (
-          <div className="p-2.5 rounded-xl bg-red-950/80 border border-red-500 text-red-200 text-xs font-bold animate-pulse">
-            {errorMessage}
+          <div
+            onClick={() => {
+              setErrorMessage(null);
+              multiplayerClient.connect();
+            }}
+            className="p-2.5 rounded-xl bg-red-950/80 border border-red-500 text-red-200 text-xs font-bold animate-pulse cursor-pointer hover:bg-red-900/80 transition-colors flex items-center justify-between"
+          >
+            <span>{errorMessage}</span>
+            <span className="text-[10px] underline ml-2">Click to Retry</span>
           </div>
         )}
 
