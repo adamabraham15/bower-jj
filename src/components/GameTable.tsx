@@ -63,7 +63,17 @@ interface GameTableProps {
   isMuted: boolean;
   onToggleMute: () => void;
   onExitGame: () => void;
-  onMatchComplete?: (won: boolean, myScore: number, oppScore: number) => void;
+  onMatchComplete?: (
+    won: boolean,
+    myScore: number,
+    oppScore: number,
+    stats?: {
+      tricksWon?: number;
+      euchres?: number;
+      marches?: number;
+      successfulLoners?: number;
+    }
+  ) => void;
 }
 
 export const GameTable: React.FC<GameTableProps> = ({
@@ -96,7 +106,12 @@ export const GameTable: React.FC<GameTableProps> = ({
         });
         sounds.playVictoryFanfare();
       }
-      onMatchComplete?.(userTeamWon, state.scores[0], state.scores[1]);
+      onMatchComplete?.(userTeamWon, state.scores[0], state.scores[1], {
+        tricksWon: state.tricksWon[0] || 0,
+        euchres: state.scores[0] >= 2 ? 1 : 0,
+        marches: state.scores[0] >= 2 ? 1 : 0,
+        successfulLoners: state.scores[0] >= 4 ? 1 : 0,
+      });
     }
   }, [state.phase, state.scores, state.rules.targetScore, matchReported, onMatchComplete]);
 
@@ -373,16 +388,16 @@ export const GameTable: React.FC<GameTableProps> = ({
           </div>
         </div>
 
-        {/* Trump Banner (Header version) */}
+        {/* Trump Banner (Header) */}
         {state.trumpSuit && (
-          <div className="flex items-center space-x-1 px-2.5 py-1 rounded-full bg-slate-950 border border-amber-400/80 shadow-md">
-            <span className="hidden sm:inline text-[10px] text-gray-400 uppercase font-black tracking-wide">TRUMP:</span>
-            <SuitIcon suit={state.trumpSuit} className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span className={`text-[11px] sm:text-xs font-black uppercase tracking-wider ${state.trumpSuit === 'hearts' || state.trumpSuit === 'diamonds' ? 'text-red-400' : 'text-slate-100'}`}>
+          <div className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-950 border border-amber-400 shadow-md">
+            <span className="text-[10px] text-amber-400 uppercase font-black tracking-wide">TRUMP:</span>
+            <SuitIcon suit={state.trumpSuit} className="w-4 h-4" />
+            <span className={`text-xs font-black uppercase tracking-wider ${state.trumpSuit === 'hearts' || state.trumpSuit === 'diamonds' ? 'text-red-400' : 'text-slate-100'}`}>
               {state.trumpSuit}
             </span>
             {state.isAlone && (
-              <span className="text-[8px] bg-red-600 text-white font-black px-1 rounded-sm ml-0.5">
+              <span className="text-[8px] bg-red-600 text-white font-black px-1.5 rounded-sm ml-0.5 animate-pulse">
                 ALONE
               </span>
             )}
@@ -428,26 +443,6 @@ export const GameTable: React.FC<GameTableProps> = ({
         <div className="absolute text-emerald-950/20 text-8xl sm:text-9xl font-black select-none pointer-events-none tracking-widest font-mono">
           BOWER JJ
         </div>
-
-        {/* Mobile-Friendly Prominent Floating Trump Badge on Felt */}
-        {state.trumpSuit && (
-          <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-20 flex items-center space-x-1.5 px-3 py-1.5 rounded-2xl bg-slate-900/90 border border-amber-400 text-white shadow-xl shadow-amber-500/10 backdrop-blur-sm pointer-events-none">
-            <div className="flex flex-col items-center">
-              <span className="text-[8px] font-black uppercase tracking-wider text-amber-400 leading-none mb-0.5">TRUMP</span>
-              <div className="flex items-center space-x-1">
-                <SuitIcon suit={state.trumpSuit} className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className={`text-xs sm:text-sm font-black uppercase tracking-wider ${state.trumpSuit === 'hearts' || state.trumpSuit === 'diamonds' ? 'text-red-400' : 'text-amber-100'}`}>
-                  {state.trumpSuit}
-                </span>
-              </div>
-              {state.isAlone && (
-                <span className="text-[8px] bg-red-600 text-white font-black px-1.5 rounded-sm mt-0.5 animate-pulse">
-                  ALONE 🚀
-                </span>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Player Pods */}
         {renderPlayerPod(2, 'top-2 sm:top-4')} {/* Partner (North) */}
@@ -748,70 +743,72 @@ export const GameTable: React.FC<GameTableProps> = ({
         )}
       </main>
 
-      {/* Bottom Player Hand Tray with Safe Area Inset for Home Indicator */}
-      <footer
-        className={`relative bg-slate-900/95 border-t border-slate-800 px-2 py-2 flex flex-col items-center z-50 flex-shrink-0 min-h-[145px] shadow-2xl transition-opacity duration-300 ${
-          state.phase === 'game_over' || state.phase === 'hand_scored' ? 'opacity-30 pointer-events-none' : 'opacity-100'
-        }`}
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
-      >
-        {/* Turn prompt indicator */}
-        <div className="text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-1.5 flex items-center space-x-1.5">
-          {state.phase === 'game_over' ? (
-            <span className="text-amber-400 font-bold">Match Completed</span>
-          ) : state.phase === 'hand_scored' ? (
-            <span className="text-amber-400 font-bold">Hand Scored — Ready for Next Deal</span>
-          ) : isHumanBenched ? (
-            <span className="text-gray-400">Partner is going alone. Your hand is sitting out.</span>
-          ) : isHumanTurn && (state.phase === 'bidding_round_1' || state.phase === 'bidding_round_2') ? (
-            <span className="text-amber-400 font-black animate-pulse flex items-center space-x-1">
-              <span>👉 Your Call: Choose Trump or Pass! Hand cards below 👇</span>
-            </span>
-          ) : isHumanTurn && state.phase === 'playing' ? (
-            <span className="text-amber-400 font-black animate-pulse flex items-center space-x-1">
-              <span>👉 Your turn!</span>
-              {leadSuit && (
-                <span>Must follow {leadSuit.toUpperCase()} if you have it!</span>
-              )}
-            </span>
-          ) : isDealerDiscardPhase ? (
-            <span className="text-amber-400 font-black animate-pulse">Tap a card to discard it to the kitty</span>
-          ) : (
-            <span className="text-gray-400">Waiting for {state.players[state.currentTurn].name}...</span>
-          )}
-        </div>
+      {/* Bottom Player Hand Tray with Safe Area Inset for Home Indicator (Hidden when match is completed to avoid screen clutter) */}
+      {state.phase !== 'game_over' && (
+        <footer
+          className={`relative bg-slate-900/95 border-t border-slate-800 px-2 py-2 flex flex-col items-center z-50 flex-shrink-0 min-h-[145px] shadow-2xl transition-opacity duration-300 ${
+            state.phase === 'hand_scored' ? 'opacity-30 pointer-events-none' : 'opacity-100'
+          }`}
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
+        >
+          {/* Turn prompt indicator */}
+          <div className="text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-1.5 flex items-center space-x-1.5">
+            {state.phase === 'hand_scored' ? (
+              <span className="text-amber-400 font-bold">Hand Scored — Ready for Next Deal</span>
+            ) : state.phase === 'trick_resolving' ? (
+              <span className="text-amber-400 font-bold animate-pulse">Resolving Trick...</span>
+            ) : isHumanBenched ? (
+              <span className="text-gray-400">Partner is going alone. Your hand is sitting out.</span>
+            ) : isHumanTurn && (state.phase === 'bidding_round_1' || state.phase === 'bidding_round_2') ? (
+              <span className="text-amber-400 font-black animate-pulse flex items-center space-x-1">
+                <span>👉 Your Call: Choose Trump or Pass! Hand cards below 👇</span>
+              </span>
+            ) : isHumanTurn && state.phase === 'playing' ? (
+              <span className="text-amber-400 font-black animate-pulse flex items-center space-x-1">
+                <span>👉 Your turn!</span>
+                {leadSuit && (
+                  <span>Must follow {leadSuit.toUpperCase()} if you have it!</span>
+                )}
+              </span>
+            ) : isDealerDiscardPhase ? (
+              <span className="text-amber-400 font-black animate-pulse">Tap a card to discard it to the kitty</span>
+            ) : (
+              <span className="text-gray-400">Waiting for {state.players[state.currentTurn]?.name || 'Opponent'}...</span>
+            )}
+          </div>
 
-        {/* Hand Cards */}
-        <div className="flex justify-center items-center -space-x-2 sm:-space-x-3 max-w-full overflow-x-auto px-4 py-2 min-h-[130px]">
-          {humanHand.map((card, idx) => {
-            const isLegal = state.phase === 'playing'
-              ? isCardPlayLegal(card, humanHand, state.currentTrick, state.trumpSuit)
-              : isDealerDiscardPhase;
+          {/* Hand Cards */}
+          <div className="flex justify-center items-center -space-x-2 sm:-space-x-3 max-w-full overflow-x-auto px-4 py-2 min-h-[130px]">
+            {humanHand.map((card, idx) => {
+              const isLegal = state.phase === 'playing'
+                ? isCardPlayLegal(card, humanHand, state.currentTrick, state.trumpSuit)
+                : isDealerDiscardPhase;
 
-            return (
-              <div
-                key={card.id}
-                className="transition-transform duration-150 hover:-translate-y-3 flex-shrink-0"
-                style={{ zIndex: idx }}
-              >
-                <CardView
-                  card={card}
-                  trumpSuit={state.trumpSuit}
-                  isPlayable={!isHumanBenched && isHumanTurn && isLegal}
-                  size="md"
-                  onClick={() => {
-                    if (isDealerDiscardPhase) {
-                      handleHumanDiscard(card);
-                    } else if (!isHumanBenched && isHumanTurn && isLegal) {
-                      handleHumanCardPlay(card);
-                    }
-                  }}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </footer>
+              return (
+                <div
+                  key={card.id}
+                  className="transition-transform duration-150 hover:-translate-y-3 flex-shrink-0"
+                  style={{ zIndex: idx }}
+                >
+                  <CardView
+                    card={card}
+                    trumpSuit={state.trumpSuit}
+                    isPlayable={!isHumanBenched && isHumanTurn && isLegal}
+                    size="md"
+                    onClick={() => {
+                      if (isDealerDiscardPhase) {
+                        handleHumanDiscard(card);
+                      } else if (!isHumanBenched && isHumanTurn && isLegal) {
+                        handleHumanCardPlay(card);
+                      }
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </footer>
+      )}
 
       {/* Inspect Public Profile Modal */}
       <PublicProfileModal

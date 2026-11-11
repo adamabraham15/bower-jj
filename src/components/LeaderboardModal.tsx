@@ -16,6 +16,7 @@ interface LeaderboardModalProps {
   entries: LeaderboardEntry[];
   yourRank?: number;
   currentUsername: string;
+  currentUserId?: string;
 }
 
 export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
@@ -24,6 +25,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   entries,
   yourRank,
   currentUsername,
+  currentUserId,
 }) => {
   const [localEntries, setLocalEntries] = useState<LeaderboardEntry[]>(entries);
   const [isLoading, setIsLoading] = useState<boolean>(entries.length === 0);
@@ -94,15 +96,18 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
               {isLoading ? 'Loading rankings from Supabase...' : 'No rankings recorded yet for Season 1.'}
             </div>
           ) : (
-            localEntries.map((entry) => {
-              const isCurrentUser = entry.username === currentUsername;
-              const isTop1 = entry.rankPosition === 1;
-              const isTop2 = entry.rankPosition === 2;
-              const isTop3 = entry.rankPosition === 3;
+            localEntries.map((entry, idx) => {
+              const isCurrentUser =
+                (Boolean(currentUsername) && entry.username.toLowerCase() === currentUsername.toLowerCase()) ||
+                (Boolean(currentUserId) && entry.userId === currentUserId);
+              const pos = entry.rankPosition ?? (entry as any).rank ?? (idx + 1);
+              const isTop1 = pos === 1;
+              const isTop2 = pos === 2;
+              const isTop3 = pos === 3;
 
               return (
                 <div
-                  key={entry.userId}
+                  key={entry.userId || `leaderboard_row_${idx}`}
                   className={`grid grid-cols-12 gap-2 items-center p-2.5 sm:p-3 rounded-2xl transition-all ${
                     isCurrentUser
                       ? 'bg-amber-500/20 border border-amber-400/60 ring-1 ring-amber-400/40'
@@ -126,7 +131,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                         🥉 3
                       </span>
                     ) : (
-                      <span className="text-sm text-gray-400">#{entry.rankPosition}</span>
+                      <span className="text-sm text-gray-400">#{pos}</span>
                     )}
                   </div>
 
@@ -177,7 +182,20 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
           <div className="flex items-center space-x-2">
             <Shield className="w-4 h-4 text-amber-400" />
             <span>
-              Your Standing: <strong className="text-white">#{yourRank || 'Unranked'}</strong>
+              Your Standing:{' '}
+              <strong className="text-white">
+                #{yourRank || (
+                  localEntries.findIndex(e =>
+                    (Boolean(currentUsername) && e.username.toLowerCase() === currentUsername.toLowerCase()) ||
+                    (Boolean(currentUserId) && e.userId === currentUserId)
+                  ) !== -1
+                    ? localEntries.findIndex(e =>
+                        (Boolean(currentUsername) && e.username.toLowerCase() === currentUsername.toLowerCase()) ||
+                        (Boolean(currentUserId) && e.userId === currentUserId)
+                      ) + 1
+                    : 'Unranked'
+                )}
+              </strong>
             </span>
           </div>
           <div className="flex items-center space-x-1 text-amber-400 font-bold">

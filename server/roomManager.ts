@@ -1402,7 +1402,11 @@ export class RoomManager {
     } else {
       entries = db.getLeaderboard(50);
     }
-    const yourIdx = entries.findIndex(e => e.userId === userId);
+    const conn = this.connections.get(userId);
+    const connUsername = conn?.username?.toLowerCase();
+    const yourIdx = entries.findIndex(
+      e => e.userId === userId || (connUsername && e.username.toLowerCase() === connUsername)
+    );
     this.sendToUser(userId, {
       type: 'LEADERBOARD_DATA',
       entries,

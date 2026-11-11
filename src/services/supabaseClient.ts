@@ -268,11 +268,23 @@ class AuthService {
   /**
    * Record match outcome for authenticated users
    */
-  public async recordOfflineMatch(userId: string, won: boolean): Promise<void> {
+  public async recordOfflineMatch(
+    userId: string,
+    won: boolean,
+    details?: {
+      tricksWon?: number;
+      euchres?: number;
+      marches?: number;
+      successfulLoners?: number;
+      score?: string;
+      mode?: string;
+      opponentNames?: string[];
+    }
+  ): Promise<void> {
     if (!supabase) return;
     try {
       const [statsRes, xpRes] = await Promise.all([
-        supabase.from('player_statistics').select('wins, losses, total_games').eq('user_id', userId).maybeSingle(),
+        supabase.from('player_statistics').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('player_xp').select('xp, level, next_level_xp').eq('user_id', userId).maybeSingle(),
       ]);
 
@@ -280,7 +292,25 @@ class AuthService {
         const wins = won ? (statsRes.data.wins || 0) + 1 : (statsRes.data.wins || 0);
         const losses = won ? (statsRes.data.losses || 0) : (statsRes.data.losses || 0) + 1;
         const total_games = (statsRes.data.total_games || 0) + 1;
-        await supabase.from('player_statistics').update({ wins, losses, total_games, updated_at: new Date().toISOString() }).eq('user_id', userId);
+        const tricks_won = (statsRes.data.tricks_won || 0) + (details?.tricksWon || 0);
+        const euchres = (statsRes.data.euchres || 0) + (details?.euchres || 0);
+        const marches = (statsRes.data.marches || 0) + (details?.marches || 0);
+        const successful_loners = (statsRes.data.successful_loners || 0) + (details?.successfulLoners || 0);
+        const current_streak = won ? (statsRes.data.current_streak || 0) + 1 : 0;
+        const best_streak = Math.max(statsRes.data.best_streak || 0, current_streak);
+
+        await supabase.from('player_statistics').update({
+          wins,
+          losses,
+          total_games,
+          tricks_won,
+          euchres,
+          marches,
+          successful_loners,
+          current_streak,
+          best_streak,
+          updated_at: new Date().toISOString(),
+        }).eq('user_id', userId);
       }
 
       if (xpRes.data) {
@@ -334,11 +364,11 @@ class AuthService {
           user_id: userId,
           match_id: null,
           won,
-          mode: 'offline_ai',
-          score: won ? '10 - 7' : '7 - 10',
+          mode: details?.mode || 'offline_ai',
+          score: details?.score || (won ? '10 - 7' : '7 - 10'),
           lp_change: won ? 20 : -15,
           mmr_change: won ? 15 : -10,
-          opponent_names: ['BowerAI North', 'BowerAI East', 'BowerAI West'],
+          opponent_names: details?.opponentNames || ['BowerAI North', 'BowerAI East', 'BowerAI West'],
           created_at: new Date().toISOString(),
         });
       } catch (histErr) {
@@ -394,6 +424,7 @@ class AuthService {
           )
         `)
         .eq('is_banned', false)
+        .not('username', 'like', 'Bench_%')
         .limit(limit * 2);
 
       if (error || !data) return [];

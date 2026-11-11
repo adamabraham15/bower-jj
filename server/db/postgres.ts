@@ -826,7 +826,7 @@ export class PostgresDatabaseRepository {
       FROM public.profiles p
       LEFT JOIN public.player_ranks r ON p.id = r.user_id
       LEFT JOIN public.player_statistics s ON p.id = s.user_id
-      WHERE p.is_banned = FALSE
+      WHERE p.is_banned = FALSE AND p.username NOT LIKE 'Bench_%'
       ORDER BY
         CASE r.rank_tier
           WHEN 'BOWER_JJ' THEN 6
@@ -847,7 +847,7 @@ export class PostgresDatabaseRepository {
       const tg = r.totalGames || 0;
       const winRate = tg > 0 ? Math.round((r.wins / tg) * 100) : 0;
       return {
-        rank: idx + 1,
+        rankPosition: idx + 1,
         userId: r.userId,
         username: r.username,
         avatarIcon: r.avatarIcon || '🤠',
@@ -856,6 +856,7 @@ export class PostgresDatabaseRepository {
         mmr: r.mmr || 1200,
         wins: r.wins,
         losses: r.losses,
+        totalGames: tg,
         winRate,
       };
     });

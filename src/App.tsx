@@ -133,53 +133,57 @@ export const App: React.FC = () => {
   // Active emotes on table: position -> emote
   const [activeEmotes, setActiveEmotes] = useState<Record<number, { text?: string; emoji?: string }>>({});
 
+  // Synchronize full authoritative profile, lifetime statistics, and match history
+  const syncAuthoritativeProfile = (userId: string) => {
+    authService.fetchFullProfile(userId).then(sync => {
+      if (sync) {
+        setProfile(prev => ({
+          ...prev,
+          username: sync.profile?.username || prev.username,
+          playerId: sync.profile?.id || userId,
+          avatarIcon: sync.profile?.avatar_icon || prev.avatarIcon,
+          level: sync.xp?.level ?? prev.level,
+          xp: sync.xp?.xp ?? prev.xp,
+          nextLevelXp: sync.xp?.next_level_xp ?? prev.nextLevelXp,
+          rankTier: (sync.rank?.rank_tier as RankTier) || prev.rankTier,
+          rankPoints: sync.rank?.rank_points ?? prev.rankPoints,
+          wins: sync.statistics?.wins ?? prev.wins,
+          losses: sync.statistics?.losses ?? prev.losses,
+          totalGames: sync.statistics?.total_games ?? prev.totalGames,
+          tricksWon: sync.statistics?.tricks_won ?? prev.tricksWon,
+          euchres: sync.statistics?.euchres ?? prev.euchres,
+          marches: sync.statistics?.marches ?? prev.marches,
+          successfulLoners: sync.statistics?.successful_loners ?? prev.successfulLoners,
+          currentStreak: sync.statistics?.current_streak ?? prev.currentStreak,
+          bestStreak: sync.statistics?.best_streak ?? prev.bestStreak,
+          favTrumpSuit: sync.statistics?.favorite_suit || prev.favTrumpSuit,
+        }));
+      }
+    });
+
+    authService.fetchMatchHistory(userId).then(history => {
+      if (history && history.length > 0) {
+        const mapped = history.map((h: any) => ({
+          id: h.id,
+          date: new Date(h.created_at).getTime(),
+          mode: h.mode === 'ranked_solo' ? 'Ranked Solo' : h.mode === 'offline_ai' ? 'Casual AI' : h.mode,
+          won: Boolean(h.won),
+          score: h.score || '10 - 7',
+          lpChange: h.lp_change ?? (h.won ? 20 : -15),
+          opponentNames: Array.isArray(h.opponent_names) ? h.opponent_names : ['Opponents'],
+        }));
+        setProfile(prev => ({ ...prev, recentMatches: mapped }));
+      }
+    });
+  };
+
   // 1. Restore Supabase Authentication Session & Listen to Auth Events
   useEffect(() => {
     authService.getSession().then((session) => {
       if (session?.user && session.access_token) {
         setAuthUser(session.user);
         setAuthToken(session.access_token);
-
-        // Synchronize full profile from permanent database
-        authService.fetchFullProfile(session.user.id).then(sync => {
-          if (sync) {
-            setProfile(prev => ({
-              ...prev,
-              username: sync.profile?.username || session.user.user_metadata?.username || prev.username,
-              playerId: sync.profile?.id || session.user.id || prev.playerId,
-              avatarIcon: sync.profile?.avatar_icon || session.user.user_metadata?.avatar_icon || prev.avatarIcon,
-              level: sync.xp?.level ?? 1,
-              xp: sync.xp?.xp ?? 0,
-              nextLevelXp: sync.xp?.next_level_xp ?? 1000,
-              rankTier: (sync.rank?.rank_tier as RankTier) || '9',
-              rankPoints: sync.rank?.rank_points ?? 0,
-              wins: sync.statistics?.wins ?? 0,
-              losses: sync.statistics?.losses ?? 0,
-              totalGames: sync.statistics?.total_games ?? 0,
-              tricksWon: sync.statistics?.tricks_won ?? 0,
-              euchres: sync.statistics?.euchres ?? 0,
-              marches: sync.statistics?.marches ?? 0,
-              successfulLoners: sync.statistics?.successful_loners ?? 0,
-              currentStreak: sync.statistics?.current_streak ?? 0,
-              bestStreak: sync.statistics?.best_streak ?? 0,
-            }));
-          }
-        });
-
-        authService.fetchMatchHistory(session.user.id).then(history => {
-          if (history && history.length > 0) {
-            const mapped = history.map((h: any) => ({
-              id: h.id,
-              date: new Date(h.created_at).getTime(),
-              mode: h.mode === 'ranked_solo' ? 'Ranked Solo' : h.mode === 'offline_ai' ? 'Casual AI' : h.mode,
-              won: Boolean(h.won),
-              score: h.score || '10 - 7',
-              lpChange: h.lp_change ?? (h.won ? 20 : -15),
-              opponentNames: Array.isArray(h.opponent_names) ? h.opponent_names : ['Opponents'],
-            }));
-            setProfile(prev => ({ ...prev, recentMatches: mapped }));
-          }
-        });
+        syncAuthoritativeProfile(session.user.id);
 
         // Reconnect/authenticate with verified access token
         multiplayerClient.connect(
@@ -206,6 +210,7 @@ export const App: React.FC = () => {
       if (session && user) {
         setAuthUser(user);
         setAuthToken(session.access_token);
+        syncAuthoritativeProfile(user.id);
         multiplayerClient.reauthenticate(
           session.access_token,
           user.user_metadata?.username || profile.username,
@@ -230,6 +235,9 @@ export const App: React.FC = () => {
       onAuth: (user) => {
         setProfile(prev => ({
           ...prev,
+          username: user.username || prev.username,
+          avatarIcon: user.avatarIcon || prev.avatarIcon,
+          playerId: user.id || prev.playerId,
           level: user.level,
           xp: user.xp,
           rankTier: user.rankTier as RankTier,
@@ -432,7 +440,12 @@ export const App: React.FC = () => {
   };
 
   // Handle AI Match Completion (Offline stats & progression)
-  const handleAIMatchComplete = (won: boolean, userScore: number, oppScore: number) => {
+  const handleAIMatchComplete = (
+    won: boolean,
+    userScore: number,
+    oppScore: number,
+    stats?: { tricksWon?: number; euchres?: number; marches?: number; successfulLoners?: number }
+  ) => {
     setProfile(prev => {
       const nextWins = won ? prev.wins + 1 : prev.wins;
       const nextLosses = won ? prev.losses : prev.losses + 1;
@@ -444,6 +457,10 @@ export const App: React.FC = () => {
       const nextLevelXp = levelUp ? prev.nextLevelXp + 1000 : prev.nextLevelXp;
       const currentStreak = won ? prev.currentStreak + 1 : 0;
       const bestStreak = Math.max(prev.bestStreak, currentStreak);
+      const tricksWon = prev.tricksWon + (stats?.tricksWon || 0);
+      const euchres = prev.euchres + (stats?.euchres || 0);
+      const marches = prev.marches + (stats?.marches || 0);
+      const successfulLoners = prev.successfulLoners + (stats?.successfulLoners || 0);
 
       return {
         ...prev,
@@ -455,39 +472,22 @@ export const App: React.FC = () => {
         nextLevelXp,
         currentStreak,
         bestStreak,
+        tricksWon,
+        euchres,
+        marches,
+        successfulLoners,
       };
     });
 
     if (authUser?.id) {
-      authService.recordOfflineMatch(authUser.id, won).then(() => {
-        authService.fetchFullProfile(authUser.id).then(fullProfile => {
-          if (fullProfile) {
-            setProfile(prev => ({
-              ...prev,
-              rankTier: (fullProfile.rank?.rank_tier as RankTier) || prev.rankTier,
-              rankPoints: fullProfile.rank?.rank_points ?? prev.rankPoints,
-              wins: fullProfile.statistics?.wins ?? prev.wins,
-              losses: fullProfile.statistics?.losses ?? prev.losses,
-              totalGames: fullProfile.statistics?.total_games ?? prev.totalGames,
-              level: fullProfile.xp?.level ?? prev.level,
-              xp: fullProfile.xp?.xp ?? prev.xp,
-            }));
-          }
-        });
-        authService.fetchMatchHistory(authUser.id).then(history => {
-          if (history && history.length > 0) {
-            const mapped = history.map((h: any) => ({
-              id: h.id,
-              date: new Date(h.created_at).getTime(),
-              mode: h.mode === 'ranked_solo' ? 'Ranked Solo' : h.mode === 'offline_ai' ? 'Casual AI' : h.mode,
-              won: Boolean(h.won),
-              score: h.score || '10 - 7',
-              lpChange: h.lp_change ?? (h.won ? 20 : -15),
-              opponentNames: Array.isArray(h.opponent_names) ? h.opponent_names : ['Opponents'],
-            }));
-            setProfile(prev => ({ ...prev, recentMatches: mapped }));
-          }
-        });
+      authService.recordOfflineMatch(authUser.id, won, {
+        tricksWon: stats?.tricksWon,
+        euchres: stats?.euchres,
+        marches: stats?.marches,
+        successfulLoners: stats?.successfulLoners,
+        score: `${userScore} - ${oppScore}`,
+      }).then(() => {
+        syncAuthoritativeProfile(authUser.id);
       });
     }
 
@@ -618,7 +618,10 @@ export const App: React.FC = () => {
           activeEmotes={activeEmotes}
           isMuted={isMuted}
           onToggleMute={handleToggleMute}
-          onExitGame={() => setCurrentView('menu')}
+          onExitGame={() => {
+            if (authUser?.id) syncAuthoritativeProfile(authUser.id);
+            setCurrentView('menu');
+          }}
           onMatchComplete={handleAIMatchComplete}
         />
       ) : currentView === 'multiplayer_game' && multiplayerState ? (
@@ -635,34 +638,7 @@ export const App: React.FC = () => {
             setMultiplayerState(null);
             setCurrentView('menu');
             if (authUser?.id) {
-              authService.fetchFullProfile(authUser.id).then(fullProfile => {
-                if (fullProfile) {
-                  setProfile(prev => ({
-                    ...prev,
-                    rankTier: (fullProfile.rank?.rank_tier as RankTier) || prev.rankTier,
-                    rankPoints: fullProfile.rank?.rank_points ?? prev.rankPoints,
-                    wins: fullProfile.statistics?.wins ?? prev.wins,
-                    losses: fullProfile.statistics?.losses ?? prev.losses,
-                    totalGames: fullProfile.statistics?.total_games ?? prev.totalGames,
-                    level: fullProfile.xp?.level ?? prev.level,
-                    xp: fullProfile.xp?.xp ?? prev.xp,
-                  }));
-                }
-              });
-              authService.fetchMatchHistory(authUser.id).then(history => {
-                if (history && history.length > 0) {
-                  const mapped = history.map((h: any) => ({
-                    id: h.id,
-                    date: new Date(h.created_at).getTime(),
-                    mode: h.mode === 'ranked_solo' ? 'Ranked Solo' : h.mode === 'offline_ai' ? 'Casual AI' : h.mode,
-                    won: Boolean(h.won),
-                    score: h.score || '10 - 7',
-                    lpChange: h.lp_change ?? (h.won ? 20 : -15),
-                    opponentNames: Array.isArray(h.opponent_names) ? h.opponent_names : ['Opponents'],
-                  }));
-                  setProfile(prev => ({ ...prev, recentMatches: mapped }));
-                }
-              });
+              syncAuthoritativeProfile(authUser.id);
             }
           }}
         />
@@ -673,9 +649,17 @@ export const App: React.FC = () => {
           onOpenMatchmaking={handleOpenMatchmaking}
           onOpenTutorial={() => setIsTutorialOpen(true)}
           onOpenRules={() => setIsRulesOpen(true)}
-          onOpenProfile={() => setIsProfileOpen(true)}
+          onOpenProfile={() => {
+            if (authUser?.id) syncAuthoritativeProfile(authUser.id);
+            setIsProfileOpen(true);
+          }}
           onOpenFriends={() => setIsFriendsOpen(true)}
-          onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+          onOpenLeaderboard={() => {
+            if (authUser?.id) syncAuthoritativeProfile(authUser.id);
+            authService.getLeaderboard().then(entries => setLeaderboardEntries(entries));
+            multiplayerClient.fetchLeaderboard();
+            setIsLeaderboardOpen(true);
+          }}
           onOpenBowerPass={() => setIsBowerPassOpen(true)}
           onOpenRivalryInvite={() => setIsRivalryInviteOpen(true)}
           onOpenAchievements={() => setIsAchievementsOpen(true)}
@@ -729,6 +713,7 @@ export const App: React.FC = () => {
         entries={leaderboardEntries}
         yourRank={userRankPosition}
         currentUsername={profile.username}
+        currentUserId={authUser?.id || profile.playerId}
       />
 
       <BowerPassModal
@@ -795,6 +780,7 @@ export const App: React.FC = () => {
         onAuthSuccess={(user, token) => {
           setAuthUser(user);
           if (token) setAuthToken(token);
+          if (user?.id) syncAuthoritativeProfile(user.id);
           handleAuthDismissOrContinue();
           showToast(`Signed in as ${user.user_metadata?.username || user.email}. Cloud sync active.`, 'Welcome Back!');
         }}

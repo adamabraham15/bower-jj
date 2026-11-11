@@ -77,7 +77,7 @@ export class TunnelSupervisor {
     logger.info(`[TUNNEL SUPERVISOR] Spawning fresh cloudflared tunnel using ${binPath}...`);
 
     try {
-      this.child = spawn(binPath, ['tunnel', '--url', 'http://localhost:3001'], {
+      this.child = spawn(binPath, ['tunnel', '--ha-connections', '4', '--url', 'http://localhost:3001'], {
         windowsHide: true,
         stdio: ['ignore', 'pipe', 'pipe'],
       });
@@ -162,8 +162,8 @@ export class TunnelSupervisor {
         this.syncUrlToDatabase(this.currentUrl!).catch(() => {});
       } else {
         this.consecutiveFailures++;
-        logger.warn(`[TUNNEL SUPERVISOR] Public health check returned HTTP ${res.statusCode} (Failures: ${this.consecutiveFailures}/2)`);
-        if (this.consecutiveFailures >= 2) {
+        logger.warn(`[TUNNEL SUPERVISOR] Public health check returned HTTP ${res.statusCode} (Failures: ${this.consecutiveFailures}/5)`);
+        if (this.consecutiveFailures >= 5) {
           this.restartTunnel();
         }
       }
@@ -171,8 +171,8 @@ export class TunnelSupervisor {
 
     req.on('error', (err) => {
       this.consecutiveFailures++;
-      logger.warn(`[TUNNEL SUPERVISOR] Public WAN ping failed: ${err.message} (Failures: ${this.consecutiveFailures}/2)`);
-      if (this.consecutiveFailures >= 2) {
+      logger.warn(`[TUNNEL SUPERVISOR] Public WAN ping failed: ${err.message} (Failures: ${this.consecutiveFailures}/5)`);
+      if (this.consecutiveFailures >= 5) {
         this.restartTunnel();
       }
     });

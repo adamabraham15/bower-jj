@@ -1,0 +1,476 @@
+{
+  "roomCode": "59090F",
+  "savedAt": 1794430078561,
+  "room": {
+    "code": "59090F",
+    "hostUserId": "dev_queue_human_1_1794429915325",
+    "status": "playing",
+    "rules": {
+      "targetScore": 10,
+      "stickTheDealer": true,
+      "allowAloneCalls": true,
+      "canCallTurnedDownSuit": false,
+      "partnerOrderUpGoesAlone": true,
+      "canadianLoner": true
+    },
+    "slots": [
+      {
+        "position": 0,
+        "isAI": true,
+        "userId": "dev_queue_human_1_1794429915325",
+        "username": "Queue_Human_1_1794429915325 (Bot)",
+        "avatarIcon": "🤖",
+        "rankTier": "9",
+        "connected": true,
+        "isReady": true,
+        "abandoned": true,
+        "aiDifficulty": "easy"
+      },
+      {
+        "position": 1,
+        "isAI": true,
+        "userId": "dev_queue_human_2_1794429915328",
+        "username": "Queue_Human_2_1794429915328 (Bot)",
+        "avatarIcon": "🤖",
+        "rankTier": "9",
+        "connected": true,
+        "isReady": true,
+        "abandoned": true,
+        "aiDifficulty": "easy"
+      },
+      {
+        "position": 2,
+        "isAI": true,
+        "userId": "dev_queue_human_3_1794429915332",
+        "username": "Queue_Human_3_1794429915332 (Bot)",
+        "avatarIcon": "🤖",
+        "rankTier": "9",
+        "connected": true,
+        "isReady": true,
+        "abandoned": true,
+        "aiDifficulty": "easy"
+      },
+      {
+        "position": 3,
+        "isAI": true,
+        "userId": "dev_queue_human_4_1794429915336",
+        "username": "Queue_Human_4_1794429915336 (Bot)",
+        "avatarIcon": "🤖",
+        "rankTier": "9",
+        "connected": true,
+        "isReady": true,
+        "abandoned": true,
+        "aiDifficulty": "easy"
+      }
+    ],
+    "isMatchmade": true,
+    "createdAt": 1794429916637,
+    "lastActionAt": 1794429916637,
+    "queueMode": "solo",
+    "abandonedUserIds": [
+      "dev_queue_human_1_1794429915325",
+      "dev_queue_human_2_1794429915328",
+      "dev_queue_human_3_1794429915332",
+      "dev_queue_human_4_1794429915336"
+    ]
+  },
+  "state": {
+    "players": [
+      {
+        "id": "dev_queue_human_1_1794429915325",
+        "name": "Queue_Human_1_1794429915325",
+        "position": 0,
+        "isAI": false,
+        "avatarId": "🤖",
+        "rankTier": "9"
+      },
+      {
+        "id": "dev_queue_human_2_1794429915328",
+        "name": "Queue_Human_2_1794429915328",
+        "position": 1,
+        "isAI": false,
+        "avatarId": "🤖",
+        "rankTier": "9"
+      },
+      {
+        "id": "dev_queue_human_3_1794429915332",
+        "name": "Queue_Human_3_1794429915332",
+        "position": 2,
+        "isAI": false,
+        "avatarId": "🤖",
+        "rankTier": "9"
+      },
+      {
+        "id": "dev_queue_human_4_1794429915336",
+        "name": "Queue_Human_4_1794429915336",
+        "position": 3,
+        "isAI": false,
+        "avatarId": "🤖",
+        "rankTier": "9"
+      }
+    ],
+    "dealer": 1,
+    "currentTurn": 1,
+    "phase": "playing",
+    "deck": [
+      {
+        "id": "hearts-9",
+        "suit": "hearts",
+        "rank": "9"
+      },
+      {
+        "id": "hearts-Q",
+        "suit": "hearts",
+        "rank": "Q"
+      },
+      {
+        "id": "diamonds-A",
+        "suit": "diamonds",
+        "rank": "A"
+      },
+      {
+        "id": "spades-10",
+        "suit": "spades",
+        "rank": "10"
+      },
+      {
+        "id": "diamonds-K",
+        "suit": "diamonds",
+        "rank": "K"
+      },
+      {
+        "id": "hearts-A",
+        "suit": "hearts",
+        "rank": "A"
+      },
+      {
+        "id": "diamonds-10",
+        "suit": "diamonds",
+        "rank": "10"
+      },
+      {
+        "id": "diamonds-9",
+        "suit": "diamonds",
+        "rank": "9"
+      },
+      {
+        "id": "clubs-9",
+        "suit": "clubs",
+        "rank": "9"
+      },
+      {
+        "id": "clubs-K",
+        "suit": "clubs",
+        "rank": "K"
+      },
+      {
+        "id": "clubs-A",
+        "suit": "clubs",
+        "rank": "A"
+      },
+      {
+        "id": "spades-K",
+        "suit": "spades",
+        "rank": "K"
+      },
+      {
+        "id": "spades-Q",
+        "suit": "spades",
+        "rank": "Q"
+      },
+      {
+        "id": "clubs-Q",
+        "suit": "clubs",
+        "rank": "Q"
+      },
+      {
+        "id": "spades-J",
+        "suit": "spades",
+        "rank": "J"
+      },
+      {
+        "id": "hearts-J",
+        "suit": "hearts",
+        "rank": "J"
+      },
+      {
+        "id": "hearts-K",
+        "suit": "hearts",
+        "rank": "K"
+      },
+      {
+        "id": "clubs-10",
+        "suit": "clubs",
+        "rank": "10"
+      },
+      {
+        "id": "diamonds-J",
+        "suit": "diamonds",
+        "rank": "J"
+      },
+      {
+        "id": "spades-A",
+        "suit": "spades",
+        "rank": "A"
+      },
+      {
+        "id": "hearts-10",
+        "suit": "hearts",
+        "rank": "10"
+      },
+      {
+        "id": "clubs-J",
+        "suit": "clubs",
+        "rank": "J"
+      },
+      {
+        "id": "diamonds-Q",
+        "suit": "diamonds",
+        "rank": "Q"
+      },
+      {
+        "id": "spades-9",
+        "suit": "spades",
+        "rank": "9"
+      }
+    ],
+    "kitty": [
+      {
+        "id": "hearts-10",
+        "suit": "hearts",
+        "rank": "10"
+      },
+      {
+        "id": "clubs-J",
+        "suit": "clubs",
+        "rank": "J"
+      },
+      {
+        "id": "diamonds-Q",
+        "suit": "diamonds",
+        "rank": "Q"
+      },
+      {
+        "id": "spades-9",
+        "suit": "spades",
+        "rank": "9"
+      }
+    ],
+    "hands": {
+      "0": [
+        {
+          "id": "diamonds-A",
+          "suit": "diamonds",
+          "rank": "A"
+        },
+        {
+          "id": "diamonds-10",
+          "suit": "diamonds",
+          "rank": "10"
+        },
+        {
+          "id": "spades-J",
+          "suit": "spades",
+          "rank": "J"
+        },
+        {
+          "id": "diamonds-J",
+          "suit": "diamonds",
+          "rank": "J"
+        }
+      ],
+      "1": [
+        {
+          "id": "spades-10",
+          "suit": "spades",
+          "rank": "10"
+        },
+        {
+          "id": "diamonds-9",
+          "suit": "diamonds",
+          "rank": "9"
+        },
+        {
+          "id": "spades-K",
+          "suit": "spades",
+          "rank": "K"
+        },
+        {
+          "id": "hearts-J",
+          "suit": "hearts",
+          "rank": "J"
+        },
+        {
+          "id": "spades-A",
+          "suit": "spades",
+          "rank": "A"
+        }
+      ],
+      "2": [
+        {
+          "id": "hearts-9",
+          "suit": "hearts",
+          "rank": "9"
+        },
+        {
+          "id": "diamonds-K",
+          "suit": "diamonds",
+          "rank": "K"
+        },
+        {
+          "id": "spades-Q",
+          "suit": "spades",
+          "rank": "Q"
+        },
+        {
+          "id": "hearts-K",
+          "suit": "hearts",
+          "rank": "K"
+        }
+      ],
+      "3": [
+        {
+          "id": "hearts-Q",
+          "suit": "hearts",
+          "rank": "Q"
+        },
+        {
+          "id": "hearts-A",
+          "suit": "hearts",
+          "rank": "A"
+        },
+        {
+          "id": "clubs-Q",
+          "suit": "clubs",
+          "rank": "Q"
+        },
+        {
+          "id": "clubs-10",
+          "suit": "clubs",
+          "rank": "10"
+        }
+      ]
+    },
+    "isAlone": false,
+    "currentTrick": {
+      "leadPlayer": 2,
+      "cards": [
+        {
+          "player": 2,
+          "card": {
+            "id": "clubs-9",
+            "suit": "clubs",
+            "rank": "9"
+          }
+        },
+        {
+          "player": 3,
+          "card": {
+            "id": "clubs-K",
+            "suit": "clubs",
+            "rank": "K"
+          }
+        },
+        {
+          "player": 0,
+          "card": {
+            "id": "clubs-A",
+            "suit": "clubs",
+            "rank": "A"
+          }
+        }
+      ],
+      "leadSuit": "clubs"
+    },
+    "completedTricks": [],
+    "tricksWon": [
+      0,
+      0
+    ],
+    "scores": [
+      2,
+      0
+    ],
+    "rules": {
+      "targetScore": 10,
+      "stickTheDealer": true,
+      "allowAloneCalls": true,
+      "canCallTurnedDownSuit": false,
+      "partnerOrderUpGoesAlone": true,
+      "canadianLoner": true
+    },
+    "history": [
+      "Game initialized.",
+      "--- Hand started. Dealer: Queue_Human_1_1794429915325 ---",
+      "Turned-up card is 10♣.",
+      "Queue_Human_2_1794429915328 passed.",
+      "Queue_Human_3_1794429915332 passed.",
+      "Queue_Human_4_1794429915336 passed.",
+      "Queue_Human_1_1794429915325 picked up the 10♣.",
+      "Queue_Human_1_1794429915325 discarded a card. Trick play begins.",
+      "Queue_Human_2_1794429915328 played K♠.",
+      "Queue_Human_3_1794429915332 played 9♠.",
+      "Queue_Human_4_1794429915336 played Q♠.",
+      "Queue_Human_1_1794429915325 played Q♣.",
+      "Trick won by Queue_Human_1_1794429915325 with Q♣.",
+      "Queue_Human_1_1794429915325 played 9♣.",
+      "Queue_Human_2_1794429915328 played A♠.",
+      "Queue_Human_3_1794429915332 played A♣.",
+      "Queue_Human_4_1794429915336 played J♥.",
+      "Trick won by Queue_Human_3_1794429915332 with A♣.",
+      "Queue_Human_3_1794429915332 played 10♠.",
+      "Queue_Human_4_1794429915336 played 9♦.",
+      "Queue_Human_1_1794429915325 played J♠ (Left Bower).",
+      "Queue_Human_2_1794429915328 played A♥.",
+      "Trick won by Queue_Human_1_1794429915325 with J♠ (Left Bower).",
+      "Queue_Human_1_1794429915325 played 10♣.",
+      "Queue_Human_2_1794429915328 played A♦.",
+      "Queue_Human_3_1794429915332 played J♦.",
+      "Queue_Human_4_1794429915336 played K♥.",
+      "Trick won by Queue_Human_1_1794429915325 with 10♣.",
+      "Queue_Human_1_1794429915325 played K♣.",
+      "Queue_Human_2_1794429915328 played Q♥.",
+      "Queue_Human_3_1794429915332 played Q♦.",
+      "Queue_Human_4_1794429915336 played K♦.",
+      "Trick won by Queue_Human_1_1794429915325 with K♣.",
+      "Team Blue won all 5 tricks (March) for 2 points!",
+      "Current score: Team Blue: 2 | Team Red: 0",
+      "--- Hand started. Dealer: Queue_Human_2_1794429915328 ---",
+      "Turned-up card is 10♥.",
+      "Queue_Human_3_1794429915332 passed.",
+      "Queue_Human_4_1794429915336 passed.",
+      "Queue_Human_1_1794429915325 passed.",
+      "Queue_Human_2_1794429915328 passed.",
+      "10♥ turned down. Round 2 bidding begins.",
+      "Queue_Human_3_1794429915332 passed.",
+      "Queue_Human_4_1794429915336 called CLUBS as trump.",
+      "Queue_Human_3_1794429915332 played 9♣.",
+      "Queue_Human_4_1794429915336 played K♣.",
+      "Queue_Human_1_1794429915325 played A♣."
+    ],
+    "upCard": {
+      "id": "hearts-10",
+      "suit": "hearts",
+      "rank": "10"
+    },
+    "trumpSuit": "clubs",
+    "callingPlayer": 3,
+    "callingTeam": 1,
+    "lastHandResult": {
+      "callingTeam": 0,
+      "calledAlone": false,
+      "trumpSuit": "clubs",
+      "tricksWon": [
+        5,
+        0
+      ],
+      "pointsAwarded": [
+        2,
+        0
+      ],
+      "isMarch": true,
+      "isEuchre": false,
+      "message": "Team Blue won all 5 tricks (March) for 2 points!"
+    }
+  }
+}

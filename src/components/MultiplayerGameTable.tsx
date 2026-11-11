@@ -251,16 +251,16 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
           </div>
         </div>
 
-        {/* Trump Banner (Header version) */}
+        {/* Trump Banner (Header) */}
         {serverState.trumpSuit && (
-          <div className="flex items-center space-x-1 px-2.5 py-1 rounded-full bg-slate-950 border border-amber-400/80 shadow-md">
-            <span className="hidden sm:inline text-[10px] text-gray-400 uppercase font-black tracking-wide">TRUMP:</span>
-            <SuitIcon suit={serverState.trumpSuit} className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span className={`text-[11px] sm:text-xs font-black uppercase tracking-wider ${serverState.trumpSuit === 'hearts' || serverState.trumpSuit === 'diamonds' ? 'text-red-400' : 'text-slate-100'}`}>
+          <div className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-950 border border-amber-400 shadow-md">
+            <span className="text-[10px] text-amber-400 uppercase font-black tracking-wide">TRUMP:</span>
+            <SuitIcon suit={serverState.trumpSuit} className="w-4 h-4" />
+            <span className={`text-xs font-black uppercase tracking-wider ${serverState.trumpSuit === 'hearts' || serverState.trumpSuit === 'diamonds' ? 'text-red-400' : 'text-slate-100'}`}>
               {serverState.trumpSuit}
             </span>
             {serverState.isAlone && (
-              <span className="text-[8px] bg-red-600 text-white font-black px-1 rounded-sm ml-0.5">
+              <span className="text-[8px] bg-red-600 text-white font-black px-1.5 rounded-sm ml-0.5 animate-pulse">
                 ALONE
               </span>
             )}
@@ -302,26 +302,6 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
       {/* Main Felt Arena */}
       <main className="relative flex-1 min-h-0 bg-gradient-to-b from-[#071920] via-[#052225] to-[#031317] flex items-center justify-center p-2 sm:p-6 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(16,185,129,0.09)_0%,_transparent_70%)] pointer-events-none" />
-
-        {/* Mobile-Friendly Prominent Floating Trump Badge on Felt */}
-        {serverState.trumpSuit && (
-          <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-20 flex items-center space-x-1.5 px-3 py-1.5 rounded-2xl bg-slate-900/90 border border-amber-400 text-white shadow-xl shadow-amber-500/10 backdrop-blur-sm pointer-events-none">
-            <div className="flex flex-col items-center">
-              <span className="text-[8px] font-black uppercase tracking-wider text-amber-400 leading-none mb-0.5">TRUMP</span>
-              <div className="flex items-center space-x-1">
-                <SuitIcon suit={serverState.trumpSuit} className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className={`text-xs sm:text-sm font-black uppercase tracking-wider ${serverState.trumpSuit === 'hearts' || serverState.trumpSuit === 'diamonds' ? 'text-red-400' : 'text-amber-100'}`}>
-                  {serverState.trumpSuit}
-                </span>
-              </div>
-              {serverState.isAlone && (
-                <span className="text-[8px] bg-red-600 text-white font-black px-1.5 rounded-sm mt-0.5 animate-pulse">
-                  ALONE 🚀
-                </span>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* 4 Seated Player Pods */}
         {[0, 1, 2, 3].map(pos => (
@@ -597,69 +577,71 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
         )}
       </main>
 
-      {/* Bottom Player Hand Tray with Safe Area Inset for Home Indicator */}
-      <footer
-        className={`relative bg-slate-900/95 border-t border-slate-800 px-2 py-2 flex flex-col items-center z-50 flex-shrink-0 min-h-[145px] shadow-2xl transition-opacity duration-300 ${serverState.phase === 'game_over' || serverState.phase === 'hand_scored' ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
-      >
-        {/* Turn prompt indicator */}
-        <div className="text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-1.5 flex items-center space-x-1.5">
-          {serverState.phase === 'game_over' ? (
-            <span className="text-amber-400 font-bold">Match Completed</span>
-          ) : serverState.phase === 'hand_scored' ? (
-            <span className="text-amber-400 font-bold">Hand Scored — Next Deal Starting in {autoDealCountdown}s...</span>
-          ) : isBenched ? (
-            <span className="text-gray-400">Partner is going alone. Your hand is sitting out.</span>
-          ) : isYourTurn && (serverState.phase === 'bidding_round_1' || serverState.phase === 'bidding_round_2') ? (
-            <span className="text-amber-400 font-black animate-pulse flex items-center space-x-1">
-              <span>👉 Your Call: Choose Trump or Pass! Hand cards below 👇</span>
-            </span>
-          ) : isYourTurn && serverState.phase === 'playing' ? (
-            <span className="text-amber-400 font-black animate-pulse flex items-center space-x-1">
-              <span>👉 Your turn!</span>
-              {leadSuit && (
-                <span>Must follow {leadSuit.toUpperCase()} if you have it!</span>
-              )}
-            </span>
-          ) : isDealerDiscardPhase ? (
-            <span className="text-amber-400 font-black animate-pulse">Tap a card to discard it to the kitty</span>
-          ) : (
-            <span className="text-gray-400">Waiting for other players...</span>
-          )}
-        </div>
+      {/* Bottom Player Hand Tray with Safe Area Inset for Home Indicator (Hidden when match is completed to avoid screen clutter) */}
+      {serverState.phase !== 'game_over' && (
+        <footer
+          className={`relative bg-slate-900/95 border-t border-slate-800 px-2 py-2 flex flex-col items-center z-50 flex-shrink-0 min-h-[145px] shadow-2xl transition-opacity duration-300 ${serverState.phase === 'hand_scored' ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
+        >
+          {/* Turn prompt indicator */}
+          <div className="text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-1.5 flex items-center space-x-1.5">
+            {serverState.phase === 'hand_scored' ? (
+              <span className="text-amber-400 font-bold">Hand Scored — Next Deal Starting in {autoDealCountdown}s...</span>
+            ) : serverState.phase === 'trick_resolving' ? (
+              <span className="text-amber-400 font-bold animate-pulse">Resolving Trick...</span>
+            ) : isBenched ? (
+              <span className="text-gray-400">Partner is going alone. Your hand is sitting out.</span>
+            ) : isYourTurn && (serverState.phase === 'bidding_round_1' || serverState.phase === 'bidding_round_2') ? (
+              <span className="text-amber-400 font-black animate-pulse flex items-center space-x-1">
+                <span>👉 Your Call: Choose Trump or Pass! Hand cards below 👇</span>
+              </span>
+            ) : isYourTurn && serverState.phase === 'playing' ? (
+              <span className="text-amber-400 font-black animate-pulse flex items-center space-x-1">
+                <span>👉 Your turn!</span>
+                {leadSuit && (
+                  <span>Must follow {leadSuit.toUpperCase()} if you have it!</span>
+                )}
+              </span>
+            ) : isDealerDiscardPhase ? (
+              <span className="text-amber-400 font-black animate-pulse">Tap a card to discard it to the kitty</span>
+            ) : (
+              <span className="text-gray-400">Waiting for other players...</span>
+            )}
+          </div>
 
-        {/* Hand Cards (Only Your Cards exist here!) */}
-        <div className="flex justify-center items-center -space-x-2 sm:-space-x-3 max-w-full overflow-x-auto px-4 py-2 min-h-[130px]">
-          {serverState.yourHand.map((card, idx) => {
-            const isLegal = serverState.phase === 'playing'
-              ? isCardPlayLegal(card, serverState.yourHand, serverState.currentTrick, serverState.trumpSuit)
-              : isDealerDiscardPhase;
+          {/* Hand Cards (Only Your Cards exist here!) */}
+          <div className="flex justify-center items-center -space-x-2 sm:-space-x-3 max-w-full overflow-x-auto px-4 py-2 min-h-[130px]">
+            {serverState.yourHand.map((card, idx) => {
+              const isLegal = serverState.phase === 'playing'
+                ? isCardPlayLegal(card, serverState.yourHand, serverState.currentTrick, serverState.trumpSuit)
+                : isDealerDiscardPhase;
 
-            return (
-              <div
-                key={card.id}
-                className="transition-transform duration-150 hover:-translate-y-3 flex-shrink-0"
-                style={{ zIndex: idx }}
-              >
-                <CardView
-                  card={card}
-                  trumpSuit={serverState.trumpSuit}
-                  isPlayable={!isBenched && isYourTurn && isLegal}
-                  size="md"
-                  onClick={() => {
-                    sounds.playCardSnap();
-                    if (isDealerDiscardPhase) {
-                      multiplayerClient.discard(card.id);
-                    } else if (!isBenched && isYourTurn && isLegal) {
-                      multiplayerClient.playCard(card.id);
-                    }
-                  }}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </footer>
+              return (
+                <div
+                  key={card.id}
+                  className="transition-transform duration-150 hover:-translate-y-3 flex-shrink-0"
+                  style={{ zIndex: idx }}
+                >
+                  <CardView
+                    card={card}
+                    trumpSuit={serverState.trumpSuit}
+                    isPlayable={!isBenched && isYourTurn && isLegal}
+                    size="md"
+                    onClick={() => {
+                      sounds.playCardSnap();
+                      if (isDealerDiscardPhase) {
+                        multiplayerClient.discard(card.id);
+                      } else if (!isBenched && isYourTurn && isLegal) {
+                        multiplayerClient.playCard(card.id);
+                      }
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </footer>
+      )}
 
       {/* Inspect Public Player Profile Modal */}
       <PublicProfileModal

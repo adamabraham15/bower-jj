@@ -27,6 +27,9 @@ export class MultiplayerClient {
   private avatarIcon: string = '🤠';
   private serverUrl: string = '';
   private isConnecting: boolean = false;
+  private reconnectTimer: any = null;
+  private reconnectAttempts: number = 0;
+  private readonly maxReconnectAttempts: number = 8;
 
   private cachedResolvedUrl: string | null = null;
 
@@ -56,9 +59,12 @@ export class MultiplayerClient {
 
     // 2. Primary Source of Truth: Dynamic lookup from Supabase server_registry table!
     // The self-healing tunnel supervisor keeps this updated with the active live WAN tunnel URL.
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        const livePublicUrl = await authService.getLiveServerUrl();
+        const livePublicUrl = await Promise.race([
+          authService.getLiveServerUrl(),
+          new Promise<null>((r) => setTimeout(() => r(null), 3000)),
+        ]);
         if (livePublicUrl) {
           const clean = livePublicUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '');
           this.cachedResolvedUrl = `wss://${clean}/ws`;
@@ -67,7 +73,7 @@ export class MultiplayerClient {
         }
       } catch (err) {
         console.warn(`[MultiplayerClient] Attempt ${attempt} could not query server registry from Supabase:`, err);
-        if (attempt < 2) {
+        if (attempt < 3) {
           await new Promise((r) => setTimeout(r, 400));
         }
       }
@@ -87,7 +93,7 @@ export class MultiplayerClient {
     }
 
     // 4. Default WAN fallback
-    return 'wss://plan-butler-apollo-includes.trycloudflare.com/ws';
+    return 'wss://occasionally-conflicts-pad-exercises.trycloudflare.com/ws';
   }
 
   // Event Listeners
@@ -241,6 +247,11 @@ export class MultiplayerClient {
 
         this.ws.onopen = () => {
           this.isConnecting = false;
+          this.reconnectAttempts = 0;
+          if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer);
+            this.reconnectTimer = null;
+          }
           // Authenticate immediately with authoritative token if available
           this.send({
             type: 'AUTH',
@@ -273,13 +284,30 @@ export class MultiplayerClient {
           this.isConnecting = false;
           this.ws = null;
           this.cachedResolvedUrl = null;
+          this.scheduleAutoReconnect();
         };
       } catch (err) {
         this.isConnecting = false;
         this.cachedResolvedUrl = null;
+        this.scheduleAutoReconnect();
         resolve(false);
       }
     });
+  }
+
+  private scheduleAutoReconnect() {
+    if (this.reconnectTimer) return;
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.warn('[MultiplayerClient] Max auto-reconnect attempts reached.');
+      return;
+    }
+    const delay = Math.min(1000 * Math.pow(1.5, this.reconnectAttempts), 6000);
+    this.reconnectAttempts++;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      console.log(`[MultiplayerClient] Attempting background auto-reconnect #${this.reconnectAttempts}...`);
+      this.connect(this.username, this.avatarIcon, this.accessToken || undefined, true);
+    }, delay);
   }
 
   public reauthenticate(accessToken?: string, username?: string, avatarIcon?: string) {

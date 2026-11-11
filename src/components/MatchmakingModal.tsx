@@ -83,11 +83,15 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
     });
 
     // Connect to server (queued requests like enterQueue automatically flush upon connection)
-    multiplayerClient.connect().then((connected) => {
-      if (connected) {
-        setErrorMessage(null);
-      }
-    });
+    if (multiplayerClient.isConnected()) {
+      setErrorMessage(null);
+    } else {
+      multiplayerClient.connect().then((connected) => {
+        if (connected) {
+          setErrorMessage(null);
+        }
+      });
+    }
 
     if (queueType === 'private') {
       multiplayerClient.createRoom();
