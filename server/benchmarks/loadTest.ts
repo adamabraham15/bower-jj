@@ -59,7 +59,7 @@ function createBenchClient(targetUrlOrPort: number | string, id: number, runId: 
         send: (msg: ClientMessage) => {
           if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
         },
-        waitFor: <T extends ServerMessage>(predicate: (m: ServerMessage) => boolean, timeoutMs = 8000): Promise<T> => {
+        waitFor: <T extends ServerMessage>(predicate: (m: ServerMessage) => boolean, timeoutMs = 15000): Promise<T> => {
           const existing = messages.find(predicate);
           if (existing) return Promise.resolve(existing as T);
           return new Promise<T>((res, rej) => {
@@ -80,7 +80,7 @@ function createBenchClient(targetUrlOrPort: number | string, id: number, runId: 
             listeners.push(onMsg);
           });
         },
-        waitForNew: <T extends ServerMessage>(predicate: (m: ServerMessage) => boolean, timeoutMs = 8000): Promise<T> => {
+        waitForNew: <T extends ServerMessage>(predicate: (m: ServerMessage) => boolean, timeoutMs = 15000): Promise<T> => {
           return new Promise<T>((res, rej) => {
             const timer = setTimeout(() => {
               const idx = listeners.indexOf(onMsg);

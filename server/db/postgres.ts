@@ -76,9 +76,9 @@ export class PostgresDatabaseRepository {
 
       this.pool = new Pool({
         connectionString,
-        max: config.max || 20,
+        max: config.max || parseInt(process.env.PG_POOL_MAX || '35', 10),
         idleTimeoutMillis: config.idleTimeoutMillis || 30000,
-        connectionTimeoutMillis: config.connectionTimeoutMillis || 5000,
+        connectionTimeoutMillis: config.connectionTimeoutMillis || 10000,
         ssl,
       });
 
