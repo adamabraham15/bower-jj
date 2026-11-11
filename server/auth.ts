@@ -52,38 +52,43 @@ export class TokenVerifier {
     fallbackUsername?: string,
     fallbackAvatar?: string
   ): Promise<VerifiedIdentity | null> {
-    // 1. Production Mode: Verify with Supabase Auth
-    if (supabaseAdmin && token && token.length > 20) {
+    const isSupabaseJwt = Boolean(
+      token &&
+      typeof token === 'string' &&
+      token.startsWith('ey') &&
+      token.split('.').length === 3
+    );
+
+    // 1. Production Mode: Verify with Supabase Auth when a JWT is provided
+    if (supabaseAdmin && isSupabaseJwt) {
       try {
         const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-        if (error || !user) {
-          console.warn('[AUTH SECURITY] Invalid or expired token rejected:', error?.message);
-          return null;
+        if (!error && user) {
+          // Fetch verified profile from database
+          const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('id, username, avatar_icon, is_admin, is_banned, is_suspended')
+            .eq('id', user.id)
+            .single();
+
+          if (profile?.is_banned) {
+            console.warn(`[AUTH SECURITY] Banned user ${user.id} rejected`);
+            return null;
+          }
+
+          return {
+            userId: user.id,
+            email: user.email,
+            username: profile?.username || user.user_metadata?.username || `Player_${user.id.slice(0, 5)}`,
+            avatarIcon: profile?.avatar_icon || user.user_metadata?.avatar_icon || '🤠',
+            isAdmin: profile?.is_admin || false,
+            isGuest: false,
+          };
+        } else {
+          console.warn('[AUTH SECURITY] Expired or invalid Supabase JWT:', error?.message);
         }
-
-        // Fetch verified profile from database
-        const { data: profile } = await supabaseAdmin
-          .from('profiles')
-          .select('id, username, avatar_icon, is_admin, is_banned, is_suspended')
-          .eq('id', user.id)
-          .single();
-
-        if (profile?.is_banned) {
-          console.warn(`[AUTH SECURITY] Banned user ${user.id} rejected`);
-          return null;
-        }
-
-        return {
-          userId: user.id,
-          email: user.email,
-          username: profile?.username || user.user_metadata?.username || `Player_${user.id.slice(0, 5)}`,
-          avatarIcon: profile?.avatar_icon || user.user_metadata?.avatar_icon || '🤠',
-          isAdmin: profile?.is_admin || false,
-          isGuest: false,
-        };
       } catch (err) {
         console.error('[AUTH SECURITY] Supabase token verification failed:', err);
-        return null;
       }
     }
 

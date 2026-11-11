@@ -540,10 +540,19 @@ export class PostgresDatabaseRepository {
         const lpChange = won ? 24 : -16;
         const mmrChange = won ? 18 : -14;
 
-        // Calculate Rank Tier & Points
-        let newPoints = p.rankPoints + lpChange;
-        let newTier = p.rankTier;
-        const currentTierIdx = TIER_ORDER.indexOf(p.rankTier);
+        // Authoritative read of player's current rank tier, points, and MMR from PostgreSQL
+        const rankRow = await client.query(
+          `SELECT rank_tier, rank_points, mmr FROM public.player_ranks WHERE user_id = $1 LIMIT 1`,
+          [p.userId]
+        );
+        const currentTier = (rankRow.rows[0]?.rank_tier || p.rankTier || '9') as RankTier;
+        const currentPoints = rankRow.rows[0]?.rank_points ?? p.rankPoints ?? 0;
+        const currentMmr = rankRow.rows[0]?.mmr ?? p.mmr ?? 1200;
+
+        // Calculate Rank Tier & Points with promotion / demotion rules
+        let newPoints = currentPoints + lpChange;
+        let newTier = currentTier;
+        const currentTierIdx = TIER_ORDER.indexOf(currentTier);
 
         if (newPoints >= 100) {
           if (currentTierIdx < TIER_ORDER.length - 1) {
@@ -561,7 +570,7 @@ export class PostgresDatabaseRepository {
           }
         }
 
-        const newMmr = Math.max(800, p.mmr + mmrChange);
+        const newMmr = Math.max(800, currentMmr + mmrChange);
 
         // Update player_ranks
         await client.query(
@@ -643,9 +652,9 @@ export class PostgresDatabaseRepository {
         playerResults.push({
           userId: p.userId,
           won,
-          oldTier: p.rankTier,
+          oldTier: currentTier,
           newTier,
-          oldPoints: p.rankPoints,
+          oldPoints: currentPoints,
           newPoints,
           lpChange,
           mmrChange,

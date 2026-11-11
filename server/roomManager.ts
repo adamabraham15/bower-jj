@@ -1183,6 +1183,20 @@ export class RoomManager {
         finalScore,
         humanPlayers,
         idempotencyKey: `match_${room.id}`,
+      }).then(res => {
+        if (res && res.playerResults) {
+          for (const pr of res.playerResults) {
+            this.sendToUser(pr.userId, {
+              type: 'RANK_UPDATE',
+              oldTier: pr.oldTier,
+              newTier: pr.newTier,
+              oldPoints: pr.oldPoints,
+              newPoints: pr.newPoints,
+              lpChange: pr.lpChange,
+              didRankUp: pr.oldTier !== pr.newTier,
+            });
+          }
+        }
       }).catch(err => {
         console.error(`[MATCH RECORD PG] Failed recording match result for room ${room.code}:`, err);
       });

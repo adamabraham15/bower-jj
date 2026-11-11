@@ -187,6 +187,23 @@ class AuthService {
   }
 
   /**
+   * Get fresh authoritative access token, refreshing if needed
+   */
+  public async getFreshAccessToken(): Promise<string | null> {
+    if (!supabase) return null;
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.access_token) {
+        return data.session.access_token;
+      }
+      const { data: refreshData } = await supabase.auth.refreshSession();
+      return refreshData.session?.access_token || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Get current session and access token
    */
   public async getSession(): Promise<Session | null> {
@@ -275,14 +292,47 @@ class AuthService {
         await supabase.from('player_xp').update({ xp: totalXp, level, next_level_xp, updated_at: new Date().toISOString() }).eq('user_id', userId);
       }
 
+      // Record rank progression for competitive ranking
+      const rankRes = await supabase.from('player_ranks').select('rank_tier, rank_points, mmr').eq('user_id', userId).maybeSingle();
+      if (rankRes.data) {
+        const lpDelta = won ? 20 : -15;
+        const TIER_ORDER = ['9', '10', 'Q', 'K', 'A', 'BOWER_JJ'];
+        let newPoints = (rankRes.data.rank_points || 0) + lpDelta;
+        let newTier = rankRes.data.rank_tier || '9';
+        const currentTierIdx = TIER_ORDER.indexOf(newTier);
+
+        if (newPoints >= 100) {
+          if (currentTierIdx < TIER_ORDER.length - 1) {
+            newTier = TIER_ORDER[currentTierIdx + 1];
+            newPoints = newPoints - 100;
+          } else {
+            newPoints = 100;
+          }
+        } else if (newPoints < 0) {
+          if (currentTierIdx > 0) {
+            newTier = TIER_ORDER[currentTierIdx - 1];
+            newPoints = 75;
+          } else {
+            newPoints = 0;
+          }
+        }
+
+        const newMmr = Math.max(800, (rankRes.data.mmr || 1200) + (won ? 15 : -10));
+        await supabase.from('player_ranks').update({
+          rank_tier: newTier,
+          rank_points: newPoints,
+          mmr: newMmr,
+          updated_at: new Date().toISOString(),
+        }).eq('user_id', userId);
+      }
+
       // Record entry in player_match_history
       try {
-        const matchId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `match_${Date.now()}`;
         const recordId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `hist_${Date.now()}`;
         await supabase.from('player_match_history').insert({
           id: recordId,
           user_id: userId,
-          match_id: matchId,
+          match_id: null,
           won,
           mode: 'offline_ai',
           score: won ? '10 - 7' : '7 - 10',

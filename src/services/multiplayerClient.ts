@@ -210,6 +210,13 @@ export class MultiplayerClient {
     if (avatarIcon) this.avatarIcon = avatarIcon;
     if (accessToken) this.accessToken = accessToken;
 
+    if (!this.accessToken) {
+      try {
+        const freshToken = await authService.getFreshAccessToken();
+        if (freshToken) this.accessToken = freshToken;
+      } catch {}
+    }
+
     if (!forceFresh && this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       if (accessToken && accessToken !== this.accessToken) {
         this.reauthenticate(accessToken, username, avatarIcon);

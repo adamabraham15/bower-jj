@@ -459,7 +459,36 @@ export const App: React.FC = () => {
     });
 
     if (authUser?.id) {
-      authService.recordOfflineMatch(authUser.id, won);
+      authService.recordOfflineMatch(authUser.id, won).then(() => {
+        authService.fetchFullProfile(authUser.id).then(fullProfile => {
+          if (fullProfile) {
+            setProfile(prev => ({
+              ...prev,
+              rankTier: (fullProfile.rank?.rank_tier as RankTier) || prev.rankTier,
+              rankPoints: fullProfile.rank?.rank_points ?? prev.rankPoints,
+              wins: fullProfile.statistics?.wins ?? prev.wins,
+              losses: fullProfile.statistics?.losses ?? prev.losses,
+              totalGames: fullProfile.statistics?.total_games ?? prev.totalGames,
+              level: fullProfile.xp?.level ?? prev.level,
+              xp: fullProfile.xp?.xp ?? prev.xp,
+            }));
+          }
+        });
+        authService.fetchMatchHistory(authUser.id).then(history => {
+          if (history && history.length > 0) {
+            const mapped = history.map((h: any) => ({
+              id: h.id,
+              date: new Date(h.created_at).getTime(),
+              mode: h.mode === 'ranked_solo' ? 'Ranked Solo' : h.mode === 'offline_ai' ? 'Casual AI' : h.mode,
+              won: Boolean(h.won),
+              score: h.score || '10 - 7',
+              lpChange: h.lp_change ?? (h.won ? 20 : -15),
+              opponentNames: Array.isArray(h.opponent_names) ? h.opponent_names : ['Opponents'],
+            }));
+            setProfile(prev => ({ ...prev, recentMatches: mapped }));
+          }
+        });
+      });
     }
 
     showToast(
@@ -605,6 +634,36 @@ export const App: React.FC = () => {
             multiplayerClient.leaveQueue();
             setMultiplayerState(null);
             setCurrentView('menu');
+            if (authUser?.id) {
+              authService.fetchFullProfile(authUser.id).then(fullProfile => {
+                if (fullProfile) {
+                  setProfile(prev => ({
+                    ...prev,
+                    rankTier: (fullProfile.rank?.rank_tier as RankTier) || prev.rankTier,
+                    rankPoints: fullProfile.rank?.rank_points ?? prev.rankPoints,
+                    wins: fullProfile.statistics?.wins ?? prev.wins,
+                    losses: fullProfile.statistics?.losses ?? prev.losses,
+                    totalGames: fullProfile.statistics?.total_games ?? prev.totalGames,
+                    level: fullProfile.xp?.level ?? prev.level,
+                    xp: fullProfile.xp?.xp ?? prev.xp,
+                  }));
+                }
+              });
+              authService.fetchMatchHistory(authUser.id).then(history => {
+                if (history && history.length > 0) {
+                  const mapped = history.map((h: any) => ({
+                    id: h.id,
+                    date: new Date(h.created_at).getTime(),
+                    mode: h.mode === 'ranked_solo' ? 'Ranked Solo' : h.mode === 'offline_ai' ? 'Casual AI' : h.mode,
+                    won: Boolean(h.won),
+                    score: h.score || '10 - 7',
+                    lpChange: h.lp_change ?? (h.won ? 20 : -15),
+                    opponentNames: Array.isArray(h.opponent_names) ? h.opponent_names : ['Opponents'],
+                  }));
+                  setProfile(prev => ({ ...prev, recentMatches: mapped }));
+                }
+              });
+            }
           }}
         />
       ) : (
