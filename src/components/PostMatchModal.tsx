@@ -121,7 +121,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
   const xpProgressPercent = Math.min(100, Math.round((playerXp / nextLevelXp) * 100));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/90 backdrop-blur-lg animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-black/90 backdrop-blur-lg animate-in zoom-in-95 duration-200">
       <div className="relative w-full max-w-lg bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border-2 border-amber-500/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
         {/* Banner Glow */}
         <div

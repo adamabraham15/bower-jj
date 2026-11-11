@@ -335,60 +335,68 @@ export const GameTable: React.FC<GameTableProps> = ({
     <div className="relative w-full h-[100dvh] bg-slate-950 text-white flex flex-col overflow-hidden select-none">
       {/* Top Header: Scoreboard & Trump Banner */}
       <header
-        className="px-3 py-2 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between z-30"
+        className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-slate-900/95 border-b border-slate-800 flex items-center justify-between z-30 flex-shrink-0"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.4rem)' }}
       >
-        <div className="flex items-center space-x-2 sm:space-x-3">
+        <div className="flex items-center space-x-1.5 sm:space-x-3">
           <button
             onClick={() => {
               sounds.playUiClick();
               onExitGame();
             }}
-            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-gray-300"
+            className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-gray-300"
           >
             ← Exit
           </button>
 
           {/* Team Scores Pill */}
-          <div className="flex items-center space-x-2 bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-800 shadow-inner">
-            <div className="flex items-center space-x-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
-              <span className="text-xs font-black text-cyan-300">BLUE: {state.scores[0]}</span>
-              <span className="text-[10px] text-gray-400 font-mono">({state.tricksWon[0]} trk)</span>
+          <div className="flex items-center space-x-1.5 sm:space-x-2 bg-slate-950 px-2 sm:px-2.5 py-1 rounded-xl border border-slate-800 shadow-inner text-xs">
+            <div className="flex items-center space-x-1 sm:space-x-1.5">
+              <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyan-400" />
+              <span className="font-black text-cyan-300">
+                <span className="hidden sm:inline">BLUE: </span>
+                <span className="sm:hidden">B: </span>
+                {state.scores[0]}
+              </span>
+              <span className="hidden md:inline text-[10px] text-gray-400 font-mono">({state.tricksWon[0]} trk)</span>
             </div>
-            <span className="text-gray-600 font-bold text-xs">vs</span>
+            <span className="text-gray-600 font-bold text-xs">-</span>
             <div className="flex items-center space-x-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
-              <span className="text-xs font-black text-red-300">RED: {state.scores[1]}</span>
-              <span className="text-[10px] text-gray-400 font-mono">({state.tricksWon[1]} trk)</span>
+              <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-red-400" />
+              <span className="font-black text-red-300">
+                <span className="hidden sm:inline">RED: </span>
+                <span className="sm:hidden">R: </span>
+                {state.scores[1]}
+              </span>
+              <span className="hidden md:inline text-[10px] text-gray-400 font-mono">({state.tricksWon[1]} trk)</span>
             </div>
           </div>
         </div>
 
-        {/* Trump Banner (Highly Obvious & Prominent) */}
+        {/* Trump Banner (Header version) */}
         {state.trumpSuit && (
-          <div className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-950 border-2 border-amber-400/80 shadow-lg shadow-amber-400/20">
-            <span className="text-[10px] text-gray-400 uppercase font-black tracking-wide">TRUMP:</span>
-            <SuitIcon suit={state.trumpSuit} className="w-4 h-4" />
-            <span className={`text-xs font-black uppercase tracking-wider ${state.trumpSuit === 'hearts' || state.trumpSuit === 'diamonds' ? 'text-red-400' : 'text-slate-100'}`}>
+          <div className="flex items-center space-x-1 px-2.5 py-1 rounded-full bg-slate-950 border border-amber-400/80 shadow-md">
+            <span className="hidden sm:inline text-[10px] text-gray-400 uppercase font-black tracking-wide">TRUMP:</span>
+            <SuitIcon suit={state.trumpSuit} className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className={`text-[11px] sm:text-xs font-black uppercase tracking-wider ${state.trumpSuit === 'hearts' || state.trumpSuit === 'diamonds' ? 'text-red-400' : 'text-slate-100'}`}>
               {state.trumpSuit}
             </span>
             {state.isAlone && (
-              <span className="text-[9px] bg-red-600 text-white font-black px-1.5 py-0.2 rounded-sm ml-1">
-                ALONE 🚀
+              <span className="text-[8px] bg-red-600 text-white font-black px-1 rounded-sm ml-0.5">
+                ALONE
               </span>
             )}
           </div>
         )}
 
         {/* Action Controls */}
-        <div className="flex items-center space-x-1.5">
+        <div className="flex items-center space-x-1 sm:space-x-1.5">
           <button
             onClick={onOpenEmotes}
             title="Emotes & Quick Chat"
-            className="p-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300"
+            className="p-1 sm:p-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300"
           >
-            <MessageSquare className="w-4 h-4" />
+            <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
           <button
             onClick={() => {
@@ -396,9 +404,9 @@ export const GameTable: React.FC<GameTableProps> = ({
               onToggleMute();
             }}
             title="Toggle Audio"
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-gray-300"
+            className="p-1 sm:p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-gray-300"
           >
-            {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4" />}
+            {isMuted ? <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" /> : <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
           </button>
           <button
             onClick={() => {
@@ -406,9 +414,9 @@ export const GameTable: React.FC<GameTableProps> = ({
               onOpenRules();
             }}
             title="Rules Compendium"
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-gray-300"
+            className="p-1 sm:p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-gray-300"
           >
-            <HelpCircle className="w-4 h-4" />
+            <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
         </div>
       </header>
@@ -420,6 +428,26 @@ export const GameTable: React.FC<GameTableProps> = ({
         <div className="absolute text-emerald-950/20 text-8xl sm:text-9xl font-black select-none pointer-events-none tracking-widest font-mono">
           BOWER JJ
         </div>
+
+        {/* Mobile-Friendly Prominent Floating Trump Badge on Felt */}
+        {state.trumpSuit && (
+          <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-20 flex items-center space-x-1.5 px-3 py-1.5 rounded-2xl bg-slate-900/90 border border-amber-400 text-white shadow-xl shadow-amber-500/10 backdrop-blur-sm pointer-events-none">
+            <div className="flex flex-col items-center">
+              <span className="text-[8px] font-black uppercase tracking-wider text-amber-400 leading-none mb-0.5">TRUMP</span>
+              <div className="flex items-center space-x-1">
+                <SuitIcon suit={state.trumpSuit} className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className={`text-xs sm:text-sm font-black uppercase tracking-wider ${state.trumpSuit === 'hearts' || state.trumpSuit === 'diamonds' ? 'text-red-400' : 'text-amber-100'}`}>
+                  {state.trumpSuit}
+                </span>
+              </div>
+              {state.isAlone && (
+                <span className="text-[8px] bg-red-600 text-white font-black px-1.5 rounded-sm mt-0.5 animate-pulse">
+                  ALONE 🚀
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Player Pods */}
         {renderPlayerPod(2, 'top-2 sm:top-4')} {/* Partner (North) */}
@@ -640,9 +668,9 @@ export const GameTable: React.FC<GameTableProps> = ({
           </div>
         )}
 
-        {/* Hand Scored Overlay */}
+        {/* Hand Scored Fullscreen Overlay */}
         {state.phase === 'hand_scored' && state.lastHandResult && (
-          <div className="absolute inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div className="bg-slate-900 border-2 border-amber-500 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl space-y-4">
               <div className="text-4xl">
                 {state.lastHandResult.isMarch ? '🏆' : state.lastHandResult.isEuchre ? '🔥' : '✨'}
@@ -722,12 +750,18 @@ export const GameTable: React.FC<GameTableProps> = ({
 
       {/* Bottom Player Hand Tray with Safe Area Inset for Home Indicator */}
       <footer
-        className="relative bg-slate-900/95 border-t border-slate-800 px-2 py-2 flex flex-col items-center z-50 flex-shrink-0 min-h-[145px] shadow-2xl"
+        className={`relative bg-slate-900/95 border-t border-slate-800 px-2 py-2 flex flex-col items-center z-50 flex-shrink-0 min-h-[145px] shadow-2xl transition-opacity duration-300 ${
+          state.phase === 'game_over' || state.phase === 'hand_scored' ? 'opacity-30 pointer-events-none' : 'opacity-100'
+        }`}
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
       >
         {/* Turn prompt indicator */}
         <div className="text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-1.5 flex items-center space-x-1.5">
-          {isHumanBenched ? (
+          {state.phase === 'game_over' ? (
+            <span className="text-amber-400 font-bold">Match Completed</span>
+          ) : state.phase === 'hand_scored' ? (
+            <span className="text-amber-400 font-bold">Hand Scored — Ready for Next Deal</span>
+          ) : isHumanBenched ? (
             <span className="text-gray-400">Partner is going alone. Your hand is sitting out.</span>
           ) : isHumanTurn && (state.phase === 'bidding_round_1' || state.phase === 'bidding_round_2') ? (
             <span className="text-amber-400 font-black animate-pulse flex items-center space-x-1">

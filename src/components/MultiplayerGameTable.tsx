@@ -3,7 +3,7 @@
  * Powered by real-time WebSockets with Hand Privacy Anti-Cheat.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SanitizedGameState, PlayerSlot } from '../../server/types';
 import { Card, Suit, PlayerPosition, getPlayerTeam } from '../engine/types';
 import { isCardPlayLegal, formatCardName, ALL_SUITS } from '../engine/cards';
@@ -48,6 +48,27 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
   const [aloneToggle, setAloneToggle] = useState(false);
   const [inspectedPlayer, setInspectedPlayer] = useState<PublicPlayerData | null>(null);
   const [mutedUsernames, setMutedUsernames] = useState<Set<string>>(new Set());
+  const [autoDealCountdown, setAutoDealCountdown] = useState<number>(6);
+
+  useEffect(() => {
+    if (serverState.phase !== 'hand_scored') {
+      setAutoDealCountdown(6);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setAutoDealCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          multiplayerClient.nextHand();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [serverState.phase]);
 
   const yourPos = serverState.yourPosition;
   const isYourTurn = serverState.currentTurn === yourPos;
@@ -191,79 +212,89 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
   return (
     <div className="relative w-full h-[100dvh] bg-slate-950 text-white flex flex-col overflow-hidden select-none">
       {/* Top Header */}
-      <header
-        className="px-3 py-2 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between z-30"
+            <header
+        className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-slate-900/95 border-b border-slate-800 flex items-center justify-between z-30 flex-shrink-0"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.4rem)' }}
       >
-        <div className="flex items-center space-x-2 sm:space-x-3">
+        <div className="flex items-center space-x-1.5 sm:space-x-3">
           <button
             onClick={() => {
               sounds.playUiClick();
               onExitGame();
             }}
-            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-gray-300"
+            className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-gray-300"
           >
             ← Exit
           </button>
 
           {/* Scores */}
-          <div className="flex items-center space-x-2 bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-800 shadow-inner">
-            <div className="flex items-center space-x-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
-              <span className="text-xs font-black text-cyan-300">BLUE: {serverState.scores[0]}</span>
-              <span className="text-[10px] text-gray-400 font-mono">({serverState.tricksWon[0]} trk)</span>
+          <div className="flex items-center space-x-1.5 sm:space-x-2 bg-slate-950 px-2 sm:px-2.5 py-1 rounded-xl border border-slate-800 shadow-inner text-xs">
+            <div className="flex items-center space-x-1 sm:space-x-1.5">
+              <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyan-400" />
+              <span className="font-black text-cyan-300">
+                <span className="hidden sm:inline">BLUE: </span>
+                <span className="sm:hidden">B: </span>
+                {serverState.scores[0]}
+              </span>
+              <span className="hidden md:inline text-[10px] text-gray-400 font-mono">({serverState.tricksWon[0]} trk)</span>
             </div>
-            <span className="text-gray-600 font-bold text-xs">vs</span>
+            <span className="text-gray-600 font-bold text-xs">-</span>
             <div className="flex items-center space-x-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
-              <span className="text-xs font-black text-red-300">RED: {serverState.scores[1]}</span>
-              <span className="text-[10px] text-gray-400 font-mono">({serverState.tricksWon[1]} trk)</span>
+              <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-red-400" />
+              <span className="font-black text-red-300">
+                <span className="hidden sm:inline">RED: </span>
+                <span className="sm:hidden">R: </span>
+                {serverState.scores[1]}
+              </span>
+              <span className="hidden md:inline text-[10px] text-gray-400 font-mono">({serverState.tricksWon[1]} trk)</span>
             </div>
           </div>
         </div>
 
-        {/* Trump Banner */}
+        {/* Trump Banner (Header version) */}
         {serverState.trumpSuit && (
-          <div className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-950 border-2 border-amber-400/80 shadow-lg shadow-amber-400/20">
-            <span className="text-[10px] text-gray-400 uppercase font-black tracking-wide">TRUMP:</span>
-            <SuitIcon suit={serverState.trumpSuit} className="w-4 h-4" />
-            <span className={`text-xs font-black uppercase tracking-wider ${serverState.trumpSuit === 'hearts' || serverState.trumpSuit === 'diamonds' ? 'text-red-400' : 'text-slate-100'}`}>
+          <div className="flex items-center space-x-1 px-2.5 py-1 rounded-full bg-slate-950 border border-amber-400/80 shadow-md">
+            <span className="hidden sm:inline text-[10px] text-gray-400 uppercase font-black tracking-wide">TRUMP:</span>
+            <SuitIcon suit={serverState.trumpSuit} className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className={`text-[11px] sm:text-xs font-black uppercase tracking-wider ${serverState.trumpSuit === 'hearts' || serverState.trumpSuit === 'diamonds' ? 'text-red-400' : 'text-slate-100'}`}>
               {serverState.trumpSuit}
             </span>
             {serverState.isAlone && (
-              <span className="text-[9px] bg-red-600 text-white font-black px-1.5 py-0.2 rounded-sm ml-1">
-                ALONE 🚀
+              <span className="text-[8px] bg-red-600 text-white font-black px-1 rounded-sm ml-0.5">
+                ALONE
               </span>
             )}
           </div>
         )}
 
         {/* Controls */}
-        <div className="flex items-center space-x-1.5">
+        <div className="flex items-center space-x-1 sm:space-x-1.5">
           <button
             onClick={onOpenEmotes}
-            title="Emotes & Quick Chat"
-            className="p-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300"
+            title="Emotes"
+            className="p-1 sm:p-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300"
           >
-            <MessageSquare className="w-4 h-4" />
+            <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
           <button
             onClick={() => {
               sounds.playUiClick();
               onToggleMute();
             }}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-gray-300"
+            title="Toggle Audio"
+            className="p-1 sm:p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-gray-300"
           >
-            {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4" />}
+            {isMuted ? <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" /> : <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
           </button>
           <button
             onClick={() => {
               sounds.playUiClick();
               onOpenRules();
             }}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-gray-300"
+            title="Rules Compendium"
+            className="p-1 sm:p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-gray-300"
           >
-            <HelpCircle className="w-4 h-4" />
+            <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
         </div>
       </header>
@@ -271,6 +302,26 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
       {/* Main Felt Arena */}
       <main className="relative flex-1 min-h-0 bg-gradient-to-b from-[#071920] via-[#052225] to-[#031317] flex items-center justify-center p-2 sm:p-6 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(16,185,129,0.09)_0%,_transparent_70%)] pointer-events-none" />
+
+        {/* Mobile-Friendly Prominent Floating Trump Badge on Felt */}
+        {serverState.trumpSuit && (
+          <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-20 flex items-center space-x-1.5 px-3 py-1.5 rounded-2xl bg-slate-900/90 border border-amber-400 text-white shadow-xl shadow-amber-500/10 backdrop-blur-sm pointer-events-none">
+            <div className="flex flex-col items-center">
+              <span className="text-[8px] font-black uppercase tracking-wider text-amber-400 leading-none mb-0.5">TRUMP</span>
+              <div className="flex items-center space-x-1">
+                <SuitIcon suit={serverState.trumpSuit} className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className={`text-xs sm:text-sm font-black uppercase tracking-wider ${serverState.trumpSuit === 'hearts' || serverState.trumpSuit === 'diamonds' ? 'text-red-400' : 'text-amber-100'}`}>
+                  {serverState.trumpSuit}
+                </span>
+              </div>
+              {serverState.isAlone && (
+                <span className="text-[8px] bg-red-600 text-white font-black px-1.5 rounded-sm mt-0.5 animate-pulse">
+                  ALONE 🚀
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 4 Seated Player Pods */}
         {[0, 1, 2, 3].map(pos => (
@@ -466,7 +517,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
 
         {/* Hand Scored Overlay */}
         {serverState.phase === 'hand_scored' && serverState.lastHandResult && (
-          <div className="absolute inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div className="bg-slate-900 border-2 border-amber-500 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl space-y-4">
               <div className="text-4xl">
                 {serverState.lastHandResult.isMarch ? '🏆' : serverState.lastHandResult.isEuchre ? '🔥' : '✨'}
@@ -504,7 +555,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 }}
                 className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-black text-sm shadow-xl shadow-amber-500/30 transition-all active:scale-95"
               >
-                Deal Next Hand →
+                Deal Next Hand (Auto in {autoDealCountdown}s) →
               </button>
             </div>
           </div>
@@ -548,12 +599,16 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
 
       {/* Bottom Player Hand Tray with Safe Area Inset for Home Indicator */}
       <footer
-        className="relative bg-slate-900/95 border-t border-slate-800 px-2 py-2 flex flex-col items-center z-50 flex-shrink-0 min-h-[145px] shadow-2xl"
+        className={`relative bg-slate-900/95 border-t border-slate-800 px-2 py-2 flex flex-col items-center z-50 flex-shrink-0 min-h-[145px] shadow-2xl transition-opacity duration-300 ${serverState.phase === 'game_over' || serverState.phase === 'hand_scored' ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
       >
         {/* Turn prompt indicator */}
         <div className="text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-1.5 flex items-center space-x-1.5">
-          {isBenched ? (
+          {serverState.phase === 'game_over' ? (
+            <span className="text-amber-400 font-bold">Match Completed</span>
+          ) : serverState.phase === 'hand_scored' ? (
+            <span className="text-amber-400 font-bold">Hand Scored — Next Deal Starting in {autoDealCountdown}s...</span>
+          ) : isBenched ? (
             <span className="text-gray-400">Partner is going alone. Your hand is sitting out.</span>
           ) : isYourTurn && (serverState.phase === 'bidding_round_1' || serverState.phase === 'bidding_round_2') ? (
             <span className="text-amber-400 font-black animate-pulse flex items-center space-x-1">

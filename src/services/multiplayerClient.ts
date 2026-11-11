@@ -30,12 +30,52 @@ export class MultiplayerClient {
 
   private cachedResolvedUrl: string | null = null;
 
-  public async resolveServerUrl(): Promise<string> {
-    if (this.cachedResolvedUrl) return this.cachedResolvedUrl;
+  public clearCachedServerUrl(): void {
+    this.cachedResolvedUrl = null;
+  }
 
-    // 1. Explicit Vite environment variable
+  public async resolveServerUrl(forceFresh: boolean = false): Promise<string> {
+    if (!forceFresh && this.cachedResolvedUrl) return this.cachedResolvedUrl;
+
+    // 1. Dynamic browser location for local development or direct tunnel browsing
+    if (typeof window !== 'undefined' && window.location) {
+      const host = window.location.hostname;
+
+      // Local development default (backend runs on 3001)
+      if (host === 'localhost' || host === '127.0.0.1') {
+        this.cachedResolvedUrl = `ws://${host}:3001/ws`;
+        return this.cachedResolvedUrl;
+      }
+
+      // If app is being browsed directly through the Cloudflare tunnel domain
+      if (host.endsWith('trycloudflare.com')) {
+        this.cachedResolvedUrl = `wss://${window.location.host}/ws`;
+        return this.cachedResolvedUrl;
+      }
+    }
+
+    // 2. Primary Source of Truth: Dynamic lookup from Supabase server_registry table!
+    // The self-healing tunnel supervisor keeps this updated with the active live WAN tunnel URL.
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const livePublicUrl = await authService.getLiveServerUrl();
+        if (livePublicUrl) {
+          const clean = livePublicUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+          this.cachedResolvedUrl = `wss://${clean}/ws`;
+          console.log(`[MultiplayerClient] Connected to authoritative live edge tunnel: ${this.cachedResolvedUrl}`);
+          return this.cachedResolvedUrl;
+        }
+      } catch (err) {
+        console.warn(`[MultiplayerClient] Attempt ${attempt} could not query server registry from Supabase:`, err);
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 400));
+        }
+      }
+    }
+
+    // 3. Environment variable fallback (Only if a dedicated custom non-ephemeral domain is provided)
     const envWs = import.meta.env?.VITE_WS_URL;
-    if (envWs && !envWs.includes('api.bowerjj.com')) {
+    if (envWs && !envWs.includes('trycloudflare.com')) {
       if (envWs.startsWith('ws://') || envWs.startsWith('wss://')) {
         this.cachedResolvedUrl = envWs.endsWith('/ws') ? envWs : `${envWs}/ws`;
         return this.cachedResolvedUrl;
@@ -46,37 +86,8 @@ export class MultiplayerClient {
       return this.cachedResolvedUrl;
     }
 
-    // 2. Dynamic browser location
-    if (typeof window !== 'undefined' && window.location) {
-      const host = window.location.hostname;
-
-      // Local development default (backend runs on 3001)
-      if (host === 'localhost' || host === '127.0.0.1') {
-        this.cachedResolvedUrl = `ws://${host}:3001/ws`;
-        return this.cachedResolvedUrl;
-      }
-
-      // If already connected through the Cloudflare tunnel domain
-      if (host.endsWith('trycloudflare.com')) {
-        this.cachedResolvedUrl = `wss://${window.location.host}/ws`;
-        return this.cachedResolvedUrl;
-      }
-    }
-
-    // 3. Dynamic lookup from Supabase server_registry table!
-    try {
-      const livePublicUrl = await authService.getLiveServerUrl();
-      if (livePublicUrl) {
-        const clean = livePublicUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '');
-        this.cachedResolvedUrl = `wss://${clean}/ws`;
-        return this.cachedResolvedUrl;
-      }
-    } catch (err) {
-      console.warn('Could not fetch server registry from Supabase:', err);
-    }
-
-    // 4. Fallback to latest verified public tunnel
-    return 'wss://rome-assembled-true-patient.trycloudflare.com/ws';
+    // 4. Default WAN fallback
+    return 'wss://plan-butler-apollo-includes.trycloudflare.com/ws';
   }
 
   // Event Listeners
@@ -170,27 +181,51 @@ export class MultiplayerClient {
     }
 
     return () => {
-      if (callbacks.onRoom) this.roomListeners.delete(callbacks.onRoom);
-      if (callbacks.onGameSync) this.gameSyncListeners.delete(callbacks.onGameSync);
-      if (callbacks.onQueue) this.queueListeners.delete(callbacks.onQueue);
-      if (callbacks.onError) this.errorListeners.delete(callbacks.onError);
+      if (callbacks.onRoom) {
+        this.roomListeners.delete(callbacks.onRoom);
+        if (this.onRoomCallback === callbacks.onRoom) this.onRoomCallback = undefined;
+      }
+      if (callbacks.onGameSync) {
+        this.gameSyncListeners.delete(callbacks.onGameSync);
+        if (this.onGameSyncCallback === callbacks.onGameSync) this.onGameSyncCallback = undefined;
+      }
+      if (callbacks.onQueue) {
+        this.queueListeners.delete(callbacks.onQueue);
+        if (this.onQueueCallback === callbacks.onQueue) this.onQueueCallback = undefined;
+      }
+      if (callbacks.onError) {
+        this.errorListeners.delete(callbacks.onError);
+        if (this.onErrorCallback === callbacks.onError) this.onErrorCallback = undefined;
+      }
     };
   }
 
-  public async connect(username?: string, avatarIcon?: string, accessToken?: string): Promise<boolean> {
+  public async connect(
+    username?: string,
+    avatarIcon?: string,
+    accessToken?: string,
+    forceFresh: boolean = false
+  ): Promise<boolean> {
     if (username) this.username = username;
     if (avatarIcon) this.avatarIcon = avatarIcon;
     if (accessToken) this.accessToken = accessToken;
 
-    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+    if (!forceFresh && this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       if (accessToken && accessToken !== this.accessToken) {
         this.reauthenticate(accessToken, username, avatarIcon);
       }
       return true;
     }
 
+    if (forceFresh && this.ws) {
+      try {
+        this.ws.close();
+      } catch {}
+      this.ws = null;
+    }
+
     this.isConnecting = true;
-    const resolvedUrl = await this.resolveServerUrl();
+    const resolvedUrl = await this.resolveServerUrl(forceFresh);
     this.serverUrl = resolvedUrl;
 
     return new Promise((resolve) => {
@@ -230,9 +265,11 @@ export class MultiplayerClient {
         this.ws.onclose = () => {
           this.isConnecting = false;
           this.ws = null;
+          this.cachedResolvedUrl = null;
         };
       } catch (err) {
         this.isConnecting = false;
+        this.cachedResolvedUrl = null;
         resolve(false);
       }
     });
@@ -278,18 +315,24 @@ export class MultiplayerClient {
         break;
 
       case 'ROOM_UPDATE':
-        this.onRoomCallback?.(msg.room, msg.yourPosition);
-        this.roomListeners.forEach(cb => cb(msg.room, msg.yourPosition));
+        if (this.onRoomCallback) this.onRoomCallback(msg.room, msg.yourPosition);
+        this.roomListeners.forEach(cb => {
+          if (cb !== this.onRoomCallback) cb(msg.room, msg.yourPosition);
+        });
         break;
 
       case 'GAME_SYNC':
-        this.onGameSyncCallback?.(msg.state);
-        this.gameSyncListeners.forEach(cb => cb(msg.state));
+        if (this.onGameSyncCallback) this.onGameSyncCallback(msg.state);
+        this.gameSyncListeners.forEach(cb => {
+          if (cb !== this.onGameSyncCallback) cb(msg.state);
+        });
         break;
 
       case 'QUEUE_UPDATE':
-        this.onQueueCallback?.(msg);
-        this.queueListeners.forEach(cb => cb(msg));
+        if (this.onQueueCallback) this.onQueueCallback(msg);
+        this.queueListeners.forEach(cb => {
+          if (cb !== this.onQueueCallback) cb(msg);
+        });
         break;
 
       case 'EMOTE_BROADCAST':

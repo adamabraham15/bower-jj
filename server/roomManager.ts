@@ -1056,6 +1056,19 @@ export class RoomManager {
 
     if (nextState.phase === 'playing') {
       this.triggerAITurn(roomCode);
+    } else if (nextState.phase === 'hand_scored') {
+      // Auto-advance hand after 8 seconds if no client requests nextHand
+      const autoTimer = setTimeout(() => {
+        const cur = this.gameStates.get(roomCode);
+        if (cur && cur.phase === 'hand_scored') {
+          const advanced = startNextHand(cur);
+          this.gameStates.set(roomCode, advanced);
+          this.persistActiveMatch(roomCode);
+          this.broadcastGameSync(roomCode);
+          this.triggerAITurn(roomCode);
+        }
+      }, 8000);
+      if (typeof autoTimer.unref === 'function') autoTimer.unref();
     }
   }
 

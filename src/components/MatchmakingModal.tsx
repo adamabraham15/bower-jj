@@ -163,7 +163,17 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
           <div
             onClick={() => {
               setErrorMessage(null);
-              multiplayerClient.connect();
+              multiplayerClient.connect(undefined, undefined, undefined, true).then((connected) => {
+                if (connected) {
+                  setErrorMessage(null);
+                  if (queueType === 'private') {
+                    multiplayerClient.createRoom();
+                  } else {
+                    const mode = (queueType === 'ranked_rivals' || queueType === 'ranked_duo') ? 'rivals' : 'solo';
+                    multiplayerClient.enterQueue(mode);
+                  }
+                }
+              });
             }}
             className="p-2.5 rounded-xl bg-red-950/80 border border-red-500 text-red-200 text-xs font-bold animate-pulse cursor-pointer hover:bg-red-900/80 transition-colors flex items-center justify-between"
           >
