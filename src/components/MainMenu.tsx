@@ -78,33 +78,36 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_top,_rgba(245,158,11,0.12)_0%,_transparent_60%)] pointer-events-none" />
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_bottom_right,_rgba(56,189,248,0.08)_0%,_transparent_60%)] pointer-events-none" />
 
-      {/* Top Navigation Bar */}
-      <header className="relative z-20 px-4 py-3 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between">
+      {/* Top Navigation Bar with Mobile Safe Area Support */}
+      <header
+        className="relative z-20 px-3 sm:px-4 py-2 sm:py-3 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 flex items-center justify-between gap-1.5 sm:gap-3"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.65rem)' }}
+      >
         {/* Brand Logo */}
-        <div className="flex items-center space-x-2">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 p-0.5 shadow-lg shadow-amber-500/30 flex items-center justify-center">
-            <span className="font-black text-slate-950 text-base">JJ</span>
+        <div className="flex items-center space-x-2 min-w-0 flex-shrink">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 p-0.5 shadow-lg shadow-amber-500/30 flex items-center justify-center flex-shrink-0">
+            <span className="font-black text-slate-950 text-sm sm:text-base">JJ</span>
           </div>
-          <div>
-            <div className="text-base sm:text-lg font-black tracking-tight leading-none text-white flex items-center space-x-1.5">
+          <div className="min-w-0">
+            <div className="text-sm sm:text-lg font-black tracking-tight leading-none text-white flex items-center space-x-1.5">
               <span>BOWER JJ</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-slate-950 font-black">
+              <span className="text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded bg-amber-500 text-slate-950 font-black">
                 EUCHRE
               </span>
             </div>
-            <span className="text-[10px] text-gray-400 font-medium">Competitive Online Card Arena</span>
+            <span className="hidden md:inline text-[10px] text-gray-400 font-medium truncate">Competitive Online Card Arena</span>
           </div>
         </div>
 
         {/* Social, Leaderboard & User Status */}
-        <div className="flex items-center space-x-2 sm:space-x-3">
+        <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
           {/* Friends Modal Button */}
           <button
             onClick={() => {
               sounds.playUiClick();
               onOpenFriends();
             }}
-            className="relative p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 transition-all active:scale-95 flex items-center space-x-1"
+            className="relative p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 transition-all active:scale-95 flex items-center space-x-1"
             title="Friends & Social Squad"
           >
             <Users className="w-4 h-4" />
@@ -122,7 +125,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               sounds.playUiClick();
               onOpenLeaderboard();
             }}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 transition-all active:scale-95 flex items-center space-x-1"
+            className="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 transition-all active:scale-95 flex items-center space-x-1"
             title="World Rankings"
           >
             <Trophy className="w-4 h-4" />
@@ -135,23 +138,23 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               sounds.playUiClick();
               onToggleMute();
             }}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-gray-300"
+            className="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-gray-300"
           >
             {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4" />}
           </button>
 
           {/* Account Authentication Button */}
           {isAuthenticated ? (
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center space-x-1 sm:space-x-1.5">
               <button
                 onClick={() => {
                   sounds.playUiClick();
                   onOpenProfile();
                 }}
-                className="px-2.5 py-1.5 rounded-xl bg-emerald-950/70 hover:bg-emerald-900/70 border border-emerald-500/50 text-emerald-300 text-[11px] font-bold flex items-center space-x-1 shadow-sm transition-all"
+                className="px-2 sm:px-2.5 py-1.5 rounded-xl bg-emerald-950/70 hover:bg-emerald-900/70 border border-emerald-500/50 text-emerald-300 text-[10px] sm:text-[11px] font-bold flex items-center space-x-1 shadow-sm transition-all"
                 title="Account is backed up to Cloud Database"
               >
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
                 <span className="hidden md:inline">Cloud Saved</span>
               </button>
               <button
@@ -171,10 +174,10 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 sounds.playUiClick();
                 onOpenAuth?.();
               }}
-              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 text-[11px] font-black flex items-center space-x-1.5 shadow-md shadow-amber-500/25 transition-all active:scale-95"
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 text-[10px] sm:text-[11px] font-black flex items-center space-x-1 sm:space-x-1.5 shadow-md shadow-amber-500/25 transition-all active:scale-95"
               title="Sign In / Register to Save Rank & Progress"
             >
-              <ShieldCheck className="w-3.5 h-3.5" />
+              <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
               <span>Sign In</span>
             </button>
           )}
@@ -185,13 +188,13 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               sounds.playUiClick();
               onOpenProfile();
             }}
-            className="flex items-center space-x-2 px-3 py-1.5 rounded-2xl bg-slate-800 hover:bg-slate-750 border border-slate-700 shadow-md transition-all active:scale-95 group"
+            className="flex items-center space-x-1.5 sm:space-x-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-2xl bg-slate-800 hover:bg-slate-750 border border-slate-700 shadow-md transition-all active:scale-95 group"
           >
-            <div className="w-8 h-8 rounded-xl bg-slate-700 flex items-center justify-center text-lg">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-slate-700 flex items-center justify-center text-base sm:text-lg flex-shrink-0">
               {profile.avatarIcon}
             </div>
             <div className="text-left hidden sm:block">
-              <div className="text-xs font-bold text-white group-hover:text-amber-300">
+              <div className="text-xs font-bold text-white group-hover:text-amber-300 truncate max-w-[90px]">
                 {profile.username}
               </div>
               <div className="text-[10px] text-amber-400 font-mono font-bold">
@@ -203,32 +206,42 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       </header>
 
       {/* Main Container */}
-      <main className="relative z-10 flex-1 max-w-5xl mx-auto w-full p-4 sm:p-6 space-y-6">
+      <main
+        className="relative z-10 flex-1 max-w-5xl mx-auto w-full p-3 sm:p-6 space-y-4 sm:space-y-6"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2.5rem)' }}
+      >
         {/* Banner: Current Rank & Daily Progress */}
-        <section className="p-4 sm:p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950/70 to-slate-900 border-2 border-amber-500/40 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center space-x-4">
-            <RankBadge tier={profile.rankTier} points={profile.rankPoints} size="lg" />
-            <div>
-              <div className="text-xs uppercase font-black tracking-wider text-amber-400 flex items-center space-x-1">
-                <Crown className="w-3.5 h-3.5" />
+        <section className="p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950/70 to-slate-900 border-2 border-amber-500/40 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center space-x-3 sm:space-x-4 w-full sm:w-auto">
+            {/* Mobile Badge */}
+            <div className="sm:hidden flex-shrink-0">
+              <RankBadge tier={profile.rankTier} points={profile.rankPoints} size="md" />
+            </div>
+            {/* Desktop Badge */}
+            <div className="hidden sm:block flex-shrink-0">
+              <RankBadge tier={profile.rankTier} points={profile.rankPoints} size="lg" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] sm:text-xs uppercase font-black tracking-wider text-amber-400 flex items-center space-x-1">
+                <Crown className="w-3 sm:w-3.5 h-3 sm:h-3.5 flex-shrink-0" />
                 <span>Season 1: Bower Sovereign</span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-white">
+              <h2 className="text-lg sm:text-2xl font-black text-white leading-tight">
                 Competitive Division
               </h2>
-              <p className="text-xs text-gray-300 mt-0.5">
-                {100 - profile.rankPoints} points until tier promotion! Matchmaking balances opponents via hidden MMR.
+              <p className="text-[11px] sm:text-xs text-gray-300 mt-0.5 leading-normal">
+                {100 - profile.rankPoints} points until promotion! Opponents balanced via hidden MMR.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto flex-shrink-0">
             <button
               onClick={() => {
                 sounds.playUiClick();
                 onOpenMatchmaking('ranked_solo');
               }}
-              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 text-slate-950 font-black text-xs sm:text-sm shadow-xl shadow-amber-500/30 flex items-center justify-center space-x-2 transition-all active:scale-95"
+              className="w-full sm:w-auto px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 text-slate-950 font-black text-xs sm:text-sm shadow-xl shadow-amber-500/30 flex items-center justify-center space-x-2 transition-all active:scale-95"
             >
               <Zap className="w-4 h-4 fill-slate-950" />
               <span>Ranked Solo Queue</span>
@@ -238,7 +251,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 sounds.playUiClick();
                 onOpenRivalryInvite();
               }}
-              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-750 text-cyan-300 font-bold text-xs sm:text-sm border border-cyan-500/40 transition-all active:scale-95 flex items-center justify-center space-x-2"
+              className="w-full sm:w-auto px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl bg-slate-800 hover:bg-slate-750 text-cyan-300 font-bold text-xs sm:text-sm border border-cyan-500/40 transition-all active:scale-95 flex items-center justify-center space-x-2"
               title="Challenge a friend to a head-to-head match on opposing teams"
             >
               <Swords className="w-4 h-4 text-cyan-400" />

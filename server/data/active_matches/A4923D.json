@@ -1,0 +1,483 @@
+{
+  "roomCode": "A4923D",
+  "savedAt": 1794365147946,
+  "room": {
+    "code": "A4923D",
+    "hostUserId": "dev_beta_p1",
+    "status": "playing",
+    "rules": {
+      "targetScore": 10,
+      "stickTheDealer": true,
+      "allowAloneCalls": true,
+      "canCallTurnedDownSuit": false,
+      "partnerOrderUpGoesAlone": true,
+      "canadianLoner": true
+    },
+    "slots": [
+      {
+        "position": 0,
+        "isAI": true,
+        "userId": "dev_beta_p1",
+        "username": "Beta_P1 (Bot)",
+        "avatarIcon": "🐉",
+        "rankTier": "9",
+        "connected": false,
+        "isReady": true,
+        "abandoned": true,
+        "aiDifficulty": "easy"
+      },
+      {
+        "position": 1,
+        "isAI": true,
+        "userId": "dev_beta_p2",
+        "username": "Beta_P2 (Bot)",
+        "avatarIcon": "🐉",
+        "rankTier": "9",
+        "connected": false,
+        "isReady": true,
+        "abandoned": true,
+        "aiDifficulty": "easy"
+      },
+      {
+        "position": 2,
+        "isAI": true,
+        "userId": "dev_beta_p3",
+        "username": "Beta_P3 (Bot)",
+        "avatarIcon": "🐉",
+        "rankTier": "9",
+        "connected": false,
+        "isReady": true,
+        "abandoned": true,
+        "aiDifficulty": "easy"
+      },
+      {
+        "position": 3,
+        "isAI": true,
+        "userId": "dev_beta_p4",
+        "username": "Beta_P4 (Bot)",
+        "avatarIcon": "🐉",
+        "rankTier": "9",
+        "connected": false,
+        "isReady": true,
+        "abandoned": true,
+        "aiDifficulty": "easy"
+      }
+    ],
+    "isMatchmade": false,
+    "createdAt": 1794365065010,
+    "lastActionAt": 1794365065010,
+    "abandonedUserIds": [
+      "dev_beta_p1",
+      "dev_beta_p2",
+      "dev_beta_p3",
+      "dev_beta_p4"
+    ]
+  },
+  "state": {
+    "players": [
+      {
+        "id": "dev_beta_p1",
+        "name": "Beta_P1",
+        "position": 0,
+        "isAI": false,
+        "avatarId": "🐉",
+        "rankTier": "9"
+      },
+      {
+        "id": "dev_beta_p2",
+        "name": "Beta_P2",
+        "position": 1,
+        "isAI": false,
+        "avatarId": "🐉",
+        "rankTier": "9"
+      },
+      {
+        "id": "dev_beta_p3",
+        "name": "Beta_P3",
+        "position": 2,
+        "isAI": false,
+        "avatarId": "🐉",
+        "rankTier": "9"
+      },
+      {
+        "id": "dev_beta_p4",
+        "name": "Beta_P4",
+        "position": 3,
+        "isAI": false,
+        "avatarId": "🐉",
+        "rankTier": "9"
+      }
+    ],
+    "dealer": 0,
+    "currentTurn": 0,
+    "phase": "playing",
+    "deck": [
+      {
+        "id": "spades-J",
+        "suit": "spades",
+        "rank": "J"
+      },
+      {
+        "id": "diamonds-9",
+        "suit": "diamonds",
+        "rank": "9"
+      },
+      {
+        "id": "hearts-9",
+        "suit": "hearts",
+        "rank": "9"
+      },
+      {
+        "id": "hearts-Q",
+        "suit": "hearts",
+        "rank": "Q"
+      },
+      {
+        "id": "clubs-9",
+        "suit": "clubs",
+        "rank": "9"
+      },
+      {
+        "id": "hearts-10",
+        "suit": "hearts",
+        "rank": "10"
+      },
+      {
+        "id": "clubs-K",
+        "suit": "clubs",
+        "rank": "K"
+      },
+      {
+        "id": "diamonds-A",
+        "suit": "diamonds",
+        "rank": "A"
+      },
+      {
+        "id": "spades-Q",
+        "suit": "spades",
+        "rank": "Q"
+      },
+      {
+        "id": "diamonds-K",
+        "suit": "diamonds",
+        "rank": "K"
+      },
+      {
+        "id": "spades-A",
+        "suit": "spades",
+        "rank": "A"
+      },
+      {
+        "id": "hearts-J",
+        "suit": "hearts",
+        "rank": "J"
+      },
+      {
+        "id": "diamonds-Q",
+        "suit": "diamonds",
+        "rank": "Q"
+      },
+      {
+        "id": "hearts-A",
+        "suit": "hearts",
+        "rank": "A"
+      },
+      {
+        "id": "spades-10",
+        "suit": "spades",
+        "rank": "10"
+      },
+      {
+        "id": "spades-9",
+        "suit": "spades",
+        "rank": "9"
+      },
+      {
+        "id": "clubs-J",
+        "suit": "clubs",
+        "rank": "J"
+      },
+      {
+        "id": "clubs-Q",
+        "suit": "clubs",
+        "rank": "Q"
+      },
+      {
+        "id": "clubs-10",
+        "suit": "clubs",
+        "rank": "10"
+      },
+      {
+        "id": "diamonds-10",
+        "suit": "diamonds",
+        "rank": "10"
+      },
+      {
+        "id": "diamonds-J",
+        "suit": "diamonds",
+        "rank": "J"
+      },
+      {
+        "id": "clubs-A",
+        "suit": "clubs",
+        "rank": "A"
+      },
+      {
+        "id": "hearts-K",
+        "suit": "hearts",
+        "rank": "K"
+      },
+      {
+        "id": "spades-K",
+        "suit": "spades",
+        "rank": "K"
+      }
+    ],
+    "kitty": [
+      {
+        "id": "diamonds-J",
+        "suit": "diamonds",
+        "rank": "J"
+      },
+      {
+        "id": "clubs-A",
+        "suit": "clubs",
+        "rank": "A"
+      },
+      {
+        "id": "hearts-K",
+        "suit": "hearts",
+        "rank": "K"
+      },
+      {
+        "id": "spades-K",
+        "suit": "spades",
+        "rank": "K"
+      }
+    ],
+    "hands": {
+      "0": [
+        {
+          "id": "hearts-Q",
+          "suit": "hearts",
+          "rank": "Q"
+        },
+        {
+          "id": "diamonds-A",
+          "suit": "diamonds",
+          "rank": "A"
+        },
+        {
+          "id": "diamonds-10",
+          "suit": "diamonds",
+          "rank": "10"
+        }
+      ],
+      "1": [
+        {
+          "id": "spades-Q",
+          "suit": "spades",
+          "rank": "Q"
+        },
+        {
+          "id": "clubs-J",
+          "suit": "clubs",
+          "rank": "J"
+        }
+      ],
+      "2": [
+        {
+          "id": "diamonds-9",
+          "suit": "diamonds",
+          "rank": "9"
+        },
+        {
+          "id": "hearts-A",
+          "suit": "hearts",
+          "rank": "A"
+        }
+      ],
+      "3": [
+        {
+          "id": "spades-10",
+          "suit": "spades",
+          "rank": "10"
+        },
+        {
+          "id": "clubs-10",
+          "suit": "clubs",
+          "rank": "10"
+        }
+      ]
+    },
+    "isAlone": false,
+    "currentTrick": {
+      "leadPlayer": 1,
+      "cards": [
+        {
+          "player": 1,
+          "card": {
+            "id": "diamonds-Q",
+            "suit": "diamonds",
+            "rank": "Q"
+          }
+        },
+        {
+          "player": 2,
+          "card": {
+            "id": "diamonds-K",
+            "suit": "diamonds",
+            "rank": "K"
+          }
+        },
+        {
+          "player": 3,
+          "card": {
+            "id": "spades-A",
+            "suit": "spades",
+            "rank": "A"
+          }
+        }
+      ],
+      "leadSuit": "diamonds"
+    },
+    "completedTricks": [
+      {
+        "leadPlayer": 1,
+        "cards": [
+          {
+            "player": 1,
+            "card": {
+              "id": "clubs-9",
+              "suit": "clubs",
+              "rank": "9"
+            }
+          },
+          {
+            "player": 2,
+            "card": {
+              "id": "clubs-Q",
+              "suit": "clubs",
+              "rank": "Q"
+            }
+          },
+          {
+            "player": 3,
+            "card": {
+              "id": "clubs-K",
+              "suit": "clubs",
+              "rank": "K"
+            }
+          },
+          {
+            "player": 0,
+            "card": {
+              "id": "spades-9",
+              "suit": "spades",
+              "rank": "9"
+            }
+          }
+        ],
+        "leadSuit": "clubs",
+        "winner": 0,
+        "winningCard": {
+          "id": "spades-9",
+          "suit": "spades",
+          "rank": "9"
+        }
+      },
+      {
+        "leadPlayer": 0,
+        "cards": [
+          {
+            "player": 0,
+            "card": {
+              "id": "hearts-J",
+              "suit": "hearts",
+              "rank": "J"
+            }
+          },
+          {
+            "player": 1,
+            "card": {
+              "id": "spades-J",
+              "suit": "spades",
+              "rank": "J"
+            }
+          },
+          {
+            "player": 2,
+            "card": {
+              "id": "hearts-10",
+              "suit": "hearts",
+              "rank": "10"
+            }
+          },
+          {
+            "player": 3,
+            "card": {
+              "id": "hearts-9",
+              "suit": "hearts",
+              "rank": "9"
+            }
+          }
+        ],
+        "leadSuit": "hearts",
+        "winner": 1,
+        "winningCard": {
+          "id": "spades-J",
+          "suit": "spades",
+          "rank": "J"
+        }
+      }
+    ],
+    "tricksWon": [
+      1,
+      1
+    ],
+    "scores": [
+      0,
+      0
+    ],
+    "rules": {
+      "targetScore": 10,
+      "stickTheDealer": true,
+      "allowAloneCalls": true,
+      "canCallTurnedDownSuit": false,
+      "partnerOrderUpGoesAlone": true,
+      "canadianLoner": true
+    },
+    "history": [
+      "Game initialized.",
+      "--- Hand started. Dealer: Beta_P1 ---",
+      "Turned-up card is J♦.",
+      "Beta_P2 passed.",
+      "Beta_P3 passed.",
+      "Beta_P4 passed.",
+      "Beta_P1 passed.",
+      "J♦ turned down. Round 2 bidding begins.",
+      "Beta_P2 called SPADES as trump.",
+      "Beta_P2 played 9♣.",
+      "Beta_P3 played Q♣.",
+      "Beta_P4 played K♣.",
+      "Beta_P1 played 9♠.",
+      "Trick won by Beta_P1 with 9♠.",
+      "Beta_P1 played J♥.",
+      "Beta_P2 played J♠ (Right Bower).",
+      "Beta_P3 played 10♥.",
+      "Beta_P4 played 9♥.",
+      "Trick won by Beta_P2 with J♠ (Right Bower).",
+      "Beta_P2 played Q♦.",
+      "Beta_P3 played K♦.",
+      "Beta_P4 played A♠."
+    ],
+    "upCard": {
+      "id": "diamonds-J",
+      "suit": "diamonds",
+      "rank": "J"
+    },
+    "trumpSuit": "spades",
+    "callingPlayer": 1,
+    "callingTeam": 1
+  }
+}

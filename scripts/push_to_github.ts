@@ -37,6 +37,8 @@ function getFilesToCommit(dir: string, baseDir: string = dir): string[] {
       relPath.startsWith('dist') ||
       relPath.startsWith('.git') ||
       relPath === '.env' ||
+      relPath.endsWith('.bat') ||
+      relPath.endsWith('.exe') ||
       relPath.includes('db.json.backup') ||
       relPath.endsWith('.tmp')
     ) {

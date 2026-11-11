@@ -93,7 +93,7 @@ export class TokenVerifier {
       const cleanName = (fallbackUsername || 'Guest').trim();
       const guestId = token?.startsWith('usr_') || token?.startsWith('tok_')
         ? token.replace('tok_', 'usr_')
-        : `guest_${cleanName.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Math.random().toString(36).slice(2, 6)}`;
+        : `dev_${cleanName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
 
       return {
         userId: guestId,

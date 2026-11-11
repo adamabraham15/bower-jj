@@ -329,7 +329,10 @@ export const GameTable: React.FC<GameTableProps> = ({
   return (
     <div className="relative w-full h-[100dvh] bg-slate-950 text-white flex flex-col overflow-hidden select-none">
       {/* Top Header: Scoreboard & Trump Banner */}
-      <header className="px-3 py-2 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between z-30">
+      <header
+        className="px-3 py-2 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between z-30"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.4rem)' }}
+      >
         <div className="flex items-center space-x-2 sm:space-x-3">
           <button
             onClick={() => {
@@ -712,8 +715,11 @@ export const GameTable: React.FC<GameTableProps> = ({
         )}
       </main>
 
-      {/* Bottom Player Hand Tray */}
-      <footer className="relative bg-slate-900/95 border-t border-slate-800 px-2 py-2 flex flex-col items-center z-50 flex-shrink-0 min-h-[145px] shadow-2xl">
+      {/* Bottom Player Hand Tray with Safe Area Inset for Home Indicator */}
+      <footer
+        className="relative bg-slate-900/95 border-t border-slate-800 px-2 py-2 flex flex-col items-center z-50 flex-shrink-0 min-h-[145px] shadow-2xl"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
+      >
         {/* Turn prompt indicator */}
         <div className="text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-1.5 flex items-center space-x-1.5">
           {isHumanBenched ? (

@@ -429,7 +429,10 @@ export const App: React.FC = () => {
     <div className="relative w-full min-h-[100dvh] bg-slate-950 font-sans">
       {/* Toast Notice */}
       {notice && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-4 py-2.5 rounded-2xl bg-amber-500 text-slate-950 font-black text-xs shadow-2xl animate-in slide-in-from-top-4 flex items-center space-x-2">
+        <div
+          className="fixed left-1/2 -translate-x-1/2 z-[100] px-4 py-2.5 rounded-2xl bg-amber-500 text-slate-950 font-black text-xs shadow-2xl animate-in slide-in-from-top-4 flex items-center space-x-2"
+          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}
+        >
           <span>✨</span>
           <span>{notice.message}</span>
         </div>
