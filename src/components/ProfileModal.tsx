@@ -142,11 +142,25 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             lpChange: h.lp_change ?? (h.won ? 20 : -15),
             opponentNames: Array.isArray(h.opponent_names) ? h.opponent_names : ['Opponents'],
           }));
-          setLocalMatches(mapped);
+
+          const combined = [...mapped];
+          const seenIds = new Set(mapped.map(m => m.id));
+          if (profile.recentMatches) {
+            for (const rm of profile.recentMatches) {
+              if (!seenIds.has(rm.id)) {
+                combined.push(rm);
+                seenIds.add(rm.id);
+              }
+            }
+          }
+          combined.sort((a, b) => b.date - a.date);
+          setLocalMatches(combined);
+        } else if (profile.recentMatches && profile.recentMatches.length > 0) {
+          setLocalMatches(profile.recentMatches);
         }
       });
     }
-  }, [isOpen, profile.playerId]);
+  }, [isOpen, profile.playerId, profile.recentMatches]);
 
   if (!isOpen) return null;
 

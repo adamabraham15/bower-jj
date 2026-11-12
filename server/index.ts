@@ -13,7 +13,7 @@ import { db } from './db';
 import { PostgresDatabaseRepository } from './db/postgres';
 import { roomManager, ClientConnection, RoomManager } from './roomManager';
 import { ClientMessage, ServerMessage } from './types';
-import { tokenVerifier } from './auth';
+import { tokenVerifier, supabaseAdmin } from './auth';
 import { telemetry, logger } from './telemetry';
 import { serverConfig } from './config';
 import { TunnelSupervisor } from './tunnelSupervisor';
@@ -309,6 +309,8 @@ export async function createMultiplayerServer(
   wss.on('connection', (ws: WebSocket) => {
     telemetry.onConnectionOpened();
     let authenticatedUserId: string | null = null;
+    let isAuthenticating = false;
+    const preAuthQueue: ClientMessage[] = [];
     (ws as any).isAlive = true;
 
     ws.on('pong', () => {
@@ -339,11 +341,13 @@ export async function createMultiplayerServer(
 
         // 1. Authoritative Token Verification & Authentication
         if (msg.type === 'AUTH') {
+          isAuthenticating = true;
           const authStart = Date.now();
           const token = msg.accessToken || msg.sessionToken;
           const identity = await tokenVerifier.verifyToken(token, msg.username, msg.avatarIcon);
 
           if (!identity) {
+            isAuthenticating = false;
             telemetry.authFailuresBlocked++;
             sendError(ws, 'Authentication rejected: Invalid, expired, or missing credentials.');
             return;
@@ -355,7 +359,49 @@ export async function createMultiplayerServer(
             msg.sessionToken,
             identity.userId
           );
+
+          // If verified Supabase player, synchronize authoritative lifetime stats and rank progression
+          if (!identity.isGuest && supabaseAdmin) {
+            try {
+              const [rankRes, statsRes, xpRes] = await Promise.all([
+                supabaseAdmin.from('player_ranks').select('*').eq('user_id', identity.userId).maybeSingle(),
+                supabaseAdmin.from('player_statistics').select('*').eq('user_id', identity.userId).maybeSingle(),
+                supabaseAdmin.from('player_xp').select('*').eq('user_id', identity.userId).maybeSingle(),
+              ]);
+
+              const updates: Partial<typeof user> = {};
+              if (rankRes?.data) {
+                if (rankRes.data.rank_tier) updates.rankTier = rankRes.data.rank_tier;
+                if (typeof rankRes.data.rank_points === 'number') updates.rankPoints = rankRes.data.rank_points;
+                if (typeof rankRes.data.mmr === 'number') updates.eloMmr = rankRes.data.mmr;
+              }
+              if (statsRes?.data) {
+                if (typeof statsRes.data.wins === 'number') updates.wins = statsRes.data.wins;
+                if (typeof statsRes.data.losses === 'number') updates.losses = statsRes.data.losses;
+                if (typeof statsRes.data.total_games === 'number') updates.totalGames = statsRes.data.total_games;
+                if (typeof statsRes.data.tricks_won === 'number') updates.tricksWon = statsRes.data.tricks_won;
+                if (typeof statsRes.data.euchres === 'number') updates.euchres = statsRes.data.euchres;
+                if (typeof statsRes.data.marches === 'number') updates.marches = statsRes.data.marches;
+                if (typeof statsRes.data.successful_loners === 'number') updates.successfulLoners = statsRes.data.successful_loners;
+                if (typeof statsRes.data.current_streak === 'number') updates.winStreak = statsRes.data.current_streak;
+                if (typeof statsRes.data.best_streak === 'number') updates.bestWinStreak = statsRes.data.best_streak;
+              }
+              if (xpRes?.data) {
+                if (typeof xpRes.data.level === 'number') updates.level = xpRes.data.level;
+                if (typeof xpRes.data.xp === 'number') updates.xp = xpRes.data.xp;
+              }
+
+              if (Object.keys(updates).length > 0) {
+                activeDb.updateUser(user.id, updates);
+                Object.assign(user, updates);
+              }
+            } catch (syncErr) {
+              logger.warn(`[AUTH] Could not fetch authoritative stats from Supabase: ${syncErr}`);
+            }
+          }
+
           authenticatedUserId = user.id;
+          isAuthenticating = false;
 
           const conn: ClientConnection = {
             ws,
@@ -378,11 +424,21 @@ export async function createMultiplayerServer(
           // Send initial social and battle pass data
           await activeRm.sendFriendListUpdate(user.id);
           activeRm.sendBattlePass(user.id);
+
+          // Drain any messages pipelined while AUTH was in flight
+          while (preAuthQueue.length > 0) {
+            const queuedMsg = preAuthQueue.shift()!;
+            ws.emit('message', JSON.stringify(queuedMsg));
+          }
           return;
         }
 
         // Must be authenticated for subsequent actions
         if (!authenticatedUserId) {
+          if (isAuthenticating) {
+            preAuthQueue.push(msg);
+            return;
+          }
           sendError(ws, 'Not authenticated. Send AUTH message first.');
           return;
         }
@@ -415,6 +471,23 @@ export async function createMultiplayerServer(
             break;
           }
 
+          case 'ROOM_LEAVE': {
+            activeRm.leaveRoom(uid);
+            break;
+          }
+
+          case 'ROOM_SWITCH_SEAT': {
+            const room = activeRm.switchSeat(uid, msg.targetPosition);
+            const pos = room.slots.findIndex(s => s && s.userId === uid);
+            const response: ServerMessage = {
+              type: 'ROOM_UPDATE',
+              room,
+              yourPosition: pos !== -1 ? (pos as any) : undefined,
+            };
+            ws.send(JSON.stringify(response));
+            break;
+          }
+
           case 'ROOM_FILL_AI': {
             activeRm.fillWithAI(uid, msg.difficulty);
             break;
@@ -428,6 +501,11 @@ export async function createMultiplayerServer(
 
           case 'ROOM_UPDATE_RULES': {
             activeRm.updateRoomRules(uid, msg.rules);
+            break;
+          }
+
+          case 'ROOM_UPDATE_MODE': {
+            activeRm.updateRoomMode(uid, msg.mode);
             break;
           }
 
@@ -473,12 +551,17 @@ export async function createMultiplayerServer(
 
           // Social / Friends
           case 'FRIEND_REQUEST_SEND': {
-            const res = await activeDb.sendFriendRequest(uid, msg.targetUsername);
+            const res = (activeDb as any).sendFriendRequestAsync
+              ? await (activeDb as any).sendFriendRequestAsync(uid, msg.targetUsername)
+              : await activeDb.sendFriendRequest(uid, msg.targetUsername);
             if (!res.success) {
               sendError(ws, res.error || 'Failed to send friend request');
             } else {
               ws.send(JSON.stringify({ type: 'NOTICE', message: `Friend request sent to ${msg.targetUsername}!` }));
-              const target = await activeDb.getUserByUsername(msg.targetUsername);
+              await activeRm.sendFriendListUpdate(uid);
+              const target = await ((activeDb as any).getUserByUsernameAsync
+                ? (activeDb as any).getUserByUsernameAsync(msg.targetUsername)
+                : activeDb.getUserByUsername(msg.targetUsername));
               if (target) {
                 await activeRm.sendFriendListUpdate(target.id);
                 // Real-time banner to recipient
@@ -552,7 +635,7 @@ export async function createMultiplayerServer(
           }
 
           case 'PARTY_INVITE_SEND': {
-            activeRm.inviteFriendToParty(uid, msg.friendUserId);
+            activeRm.inviteFriendToParty(uid, msg.friendUserId, msg.mode);
             break;
           }
 

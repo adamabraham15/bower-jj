@@ -85,9 +85,7 @@ class AuthService {
     }
 
     try {
-      const redirectUrl = typeof window !== 'undefined'
-        ? window.location.origin
-        : 'https://bower-jj.vercel.app';
+      const redirectUrl = this.getPublicAppUrl();
 
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -164,6 +162,24 @@ class AuthService {
   }
 
   /**
+   * Resolve public application origin for email confirmation & redirects.
+   * Ensures emails never link to localhost, avoiding 'connection refused' errors.
+   */
+  public getPublicAppUrl(): string {
+    const envUrl = (import.meta.env?.VITE_APP_URL as string | undefined)?.trim();
+    if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+      return envUrl.replace(/\/$/, '');
+    }
+    if (typeof window !== 'undefined') {
+      const origin = window.location.origin;
+      if (!origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+        return origin.replace(/\/$/, '');
+      }
+    }
+    return 'https://bower-jj.vercel.app';
+  }
+
+  /**
    * Send password reset email
    */
   public async resetPassword(email: string): Promise<{ success: boolean; error: string | null }> {
@@ -173,7 +189,7 @@ class AuthService {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/#reset-password`,
+        redirectTo: `${this.getPublicAppUrl()}/#reset-password`,
       });
 
       if (error) {
@@ -236,6 +252,8 @@ class AuthService {
    */
   public async fetchFullProfile(userId: string) {
     if (!supabase) return null;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    if (!isUuid) return null;
 
     try {
       const [profileRes, rankRes, xpRes, statsRes, settingsRes, cosmeticsRes, passRes] = await Promise.all([
@@ -384,6 +402,8 @@ class AuthService {
    */
   public async fetchMatchHistory(userId: string, limit = 20): Promise<any[]> {
     if (!supabase) return [];
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    if (!isUuid) return [];
     try {
       const { data, error } = await supabase
         .from('player_match_history')

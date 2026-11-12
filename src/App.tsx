@@ -3,19 +3,19 @@
  * Supports Offline AI Games & Live Authoritative WebSockets Multiplayer.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MainMenu } from './components/MainMenu';
 import { GameTable } from './components/GameTable';
 import { MultiplayerGameTable } from './components/MultiplayerGameTable';
 import { TutorialModal } from './components/TutorialModal';
 import { RulesCompendium } from './components/RulesCompendium';
-import { ProfileModal, PlayerProfileData } from './components/ProfileModal';
+import { ProfileModal, PlayerProfileData, MatchHistoryItem } from './components/ProfileModal';
 import { MatchmakingModal, QueueType } from './components/MatchmakingModal';
 import { FriendsModal } from './components/FriendsModal';
 import { LeaderboardModal } from './components/LeaderboardModal';
 import { BowerPassModal } from './components/BowerPassModal';
 import { RankUpModal } from './components/RankUpModal';
-import { RivalryInviteModal } from './components/RivalryInviteModal';
+import { GameLobbyModal, LobbyGameMode } from './components/GameLobbyModal';
 import { AchievementsModal } from './components/AchievementsModal';
 import { AuthModal } from './components/AuthModal';
 import { EmoteWheel } from './components/EmoteWheel';
@@ -63,6 +63,50 @@ const DEFAULT_PROFILE: PlayerProfileData = {
   favTrumpSuit: 'hearts',
 };
 
+export function extractInviteCodeFromUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    // 1. Search parameters (?join=ABC123 or ?room=ABC123)
+    const searchParams = new URLSearchParams(window.location.search);
+    const codeFromSearch = searchParams.get('join') || searchParams.get('room');
+    if (codeFromSearch && /^[A-Za-z0-9]{6}$/.test(codeFromSearch.trim())) {
+      return codeFromSearch.trim().toUpperCase();
+    }
+
+    // 2. Hash query parameters (#/?join=ABC123, #join=ABC123, or #room=ABC123)
+    if (window.location.hash) {
+      const hashStr = window.location.hash.replace(/^#\/?/, '');
+      const queryIdx = hashStr.indexOf('?');
+      if (queryIdx !== -1) {
+        const hashParams = new URLSearchParams(hashStr.substring(queryIdx));
+        const code = hashParams.get('join') || hashParams.get('room');
+        if (code && /^[A-Za-z0-9]{6}$/.test(code.trim())) {
+          return code.trim().toUpperCase();
+        }
+      }
+      const hashParams = new URLSearchParams(hashStr);
+      const codeFromHash = hashParams.get('join') || hashParams.get('room');
+      if (codeFromHash && /^[A-Za-z0-9]{6}$/.test(codeFromHash.trim())) {
+        return codeFromHash.trim().toUpperCase();
+      }
+      if (/^[A-Za-z0-9]{6}$/.test(hashStr.trim())) {
+        return hashStr.trim().toUpperCase();
+      }
+    }
+
+    // 3. Fallback regex match across whole href
+    const match = window.location.href.match(/[\?&#](?:join|room)=([A-Za-z0-9]{6})/i);
+    if (match && match[1]) {
+      return match[1].toUpperCase();
+    }
+  } catch (e) {
+    console.warn('Failed parsing invite code from URL:', e);
+  }
+
+  return null;
+}
+
 export const App: React.FC = () => {
   const [profile, setProfile] = useState<PlayerProfileData>(() => {
     try {
@@ -84,9 +128,10 @@ export const App: React.FC = () => {
   const [isFriendsOpen, setIsFriendsOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isBowerPassOpen, setIsBowerPassOpen] = useState(false);
-  const [isRivalryInviteOpen, setIsRivalryInviteOpen] = useState(false);
   const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
   const [matchmakingQueue, setMatchmakingQueue] = useState<QueueType | null>(null);
+  const [isLobbyOpen, setIsLobbyOpen] = useState(false);
+  const [lobbyInitialMode, setLobbyInitialMode] = useState<LobbyGameMode>('custom');
   const [isEmoteWheelOpen, setIsEmoteWheelOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -102,6 +147,7 @@ export const App: React.FC = () => {
   const [userRankPosition, setUserRankPosition] = useState<number | undefined>();
   const [battlePassState, setBattlePassState] = useState<BattlePassState | undefined>();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const lastRecordedGameOverRoomRef = useRef<string | null>(null);
 
   // Rank Promotion Fanfare Modal
   const [rankUpData, setRankUpData] = useState<{
@@ -128,6 +174,7 @@ export const App: React.FC = () => {
     fromUsername: string;
     fromAvatar: string;
     roomCode: string;
+    mode?: string;
   } | null>(null);
 
   // Active emotes on table: position -> emote
@@ -192,10 +239,11 @@ export const App: React.FC = () => {
           session.access_token
         );
       } else {
-        // Unauthenticated visitor: prompt new players to register or sign in
+        // Unauthenticated visitor: prompt new players to register or sign in (skip if joining via direct invite)
         try {
           const hasPrompted = localStorage.getItem('bower_jj_auth_prompted');
-          if (!hasPrompted) {
+          const isDirectInvite = Boolean(extractInviteCodeFromUrl());
+          if (!hasPrompted && !isDirectInvite) {
             setTimeout(() => {
               setAuthModalInitialTab('register');
               setAuthModalReason('Create a free account or sign in to track your competitive rank, battle pass, and match history!');
@@ -210,6 +258,10 @@ export const App: React.FC = () => {
       if (session && user) {
         setAuthUser(user);
         setAuthToken(session.access_token);
+        try {
+          localStorage.setItem('bower_jj_tutorial_seen', 'true');
+        } catch {}
+        setIsTutorialOpen(false);
         syncAuthoritativeProfile(user.id);
         multiplayerClient.reauthenticate(
           session.access_token,
@@ -233,32 +285,105 @@ export const App: React.FC = () => {
 
     multiplayerClient.setCallbacks({
       onAuth: (user) => {
-        setProfile(prev => ({
-          ...prev,
-          username: user.username || prev.username,
-          avatarIcon: user.avatarIcon || prev.avatarIcon,
-          playerId: user.id || prev.playerId,
-          level: user.level,
-          xp: user.xp,
-          rankTier: user.rankTier as RankTier,
-          rankPoints: user.rankPoints,
-          wins: user.wins,
-          losses: user.losses,
-          totalGames: user.totalGames,
-          tricksWon: user.tricksWon,
-          euchres: user.euchres,
-          marches: user.marches,
-          successfulLoners: user.successfulLoners,
-          currentStreak: user.winStreak,
-          bestStreak: user.bestWinStreak,
-        }));
+        setProfile(prev => {
+          const resolvedPlayerId = authUser?.id || user.id || prev.playerId;
+          const resolvedRankTier = (authUser?.id && prev.rankTier !== '9')
+            ? prev.rankTier
+            : ((user.rankTier as RankTier) || prev.rankTier);
+          const resolvedRankPoints = (authUser?.id && prev.rankPoints > 0 && user.rankPoints === 0)
+            ? prev.rankPoints
+            : (typeof user.rankPoints === 'number' ? user.rankPoints : prev.rankPoints);
+          const resolvedWins = (authUser?.id && prev.wins > 0 && user.wins === 0)
+            ? prev.wins
+            : (typeof user.wins === 'number' ? user.wins : prev.wins);
+          const resolvedLosses = (authUser?.id && prev.losses > 0 && user.losses === 0)
+            ? prev.losses
+            : (typeof user.losses === 'number' ? user.losses : prev.losses);
+          const resolvedTotalGames = (authUser?.id && prev.totalGames > 0 && user.totalGames === 0)
+            ? prev.totalGames
+            : (typeof user.totalGames === 'number' ? user.totalGames : prev.totalGames);
+
+          return {
+            ...prev,
+            username: user.username || prev.username,
+            avatarIcon: user.avatarIcon || prev.avatarIcon,
+            playerId: resolvedPlayerId,
+            level: (authUser?.id && prev.level > user.level) ? prev.level : (user.level || prev.level),
+            xp: (authUser?.id && prev.xp > user.xp) ? prev.xp : (typeof user.xp === 'number' ? user.xp : prev.xp),
+            rankTier: resolvedRankTier,
+            rankPoints: resolvedRankPoints,
+            wins: resolvedWins,
+            losses: resolvedLosses,
+            totalGames: resolvedTotalGames,
+            tricksWon: typeof user.tricksWon === 'number' && user.tricksWon > 0 ? user.tricksWon : prev.tricksWon,
+            euchres: typeof user.euchres === 'number' && user.euchres > 0 ? user.euchres : prev.euchres,
+            marches: typeof user.marches === 'number' && user.marches > 0 ? user.marches : prev.marches,
+            successfulLoners: typeof user.successfulLoners === 'number' && user.successfulLoners > 0 ? user.successfulLoners : prev.successfulLoners,
+            currentStreak: typeof user.winStreak === 'number' ? user.winStreak : prev.currentStreak,
+            bestStreak: typeof user.bestWinStreak === 'number' ? user.bestWinStreak : prev.bestStreak,
+          };
+        });
         if (user.battlePass) setBattlePassState(user.battlePass);
         if (user.challenges) setChallenges(user.challenges);
+      },
+      onRoom: (room) => {
+        // When receiving a room update while on menu, bring player into the unified lobby!
+        if (room.status === 'lobby') {
+          setLobbyInitialMode(room.queueMode === 'rivals' ? 'rivals' : 'custom');
+          setIsLobbyOpen(true);
+          setMatchmakingQueue(null);
+        }
       },
       onGameSync: (serverGameState) => {
         setMultiplayerState(serverGameState);
         setCurrentView('multiplayer_game');
+        setIsLobbyOpen(false);
         setMatchmakingQueue(null);
+
+        // Record multiplayer match outcome upon game over (idempotent per room)
+        if (serverGameState.phase === 'game_over' && serverGameState.roomId) {
+          if (lastRecordedGameOverRoomRef.current !== serverGameState.roomId) {
+            lastRecordedGameOverRoomRef.current = serverGameState.roomId;
+
+            const myTeam = serverGameState.yourPosition % 2;
+            const oppTeam = (serverGameState.yourPosition + 1) % 2;
+            const myScore = serverGameState.scores[myTeam] || 0;
+            const oppScore = serverGameState.scores[oppTeam] || 0;
+            const won = myScore >= 10;
+            const oppSlots = serverGameState.slots.filter(s => s.position % 2 !== myTeam);
+            const oppNames = oppSlots.map(s => s.username || `Player ${s.position}`);
+            const modeLabel = serverGameState.queueMode === 'rivals' ? 'Rivals' : 'Ranked Solo';
+
+            const mpMatchItem: MatchHistoryItem = {
+              id: `match_${serverGameState.roomId}_${Date.now()}`,
+              date: Date.now(),
+              mode: modeLabel,
+              won,
+              score: `${myScore} - ${oppScore}`,
+              lpChange: won ? 25 : -16,
+              opponentNames: oppNames.length > 0 ? oppNames : ['Opponents'],
+            };
+
+            setProfile(prev => ({
+              ...prev,
+              wins: won ? prev.wins + 1 : prev.wins,
+              losses: won ? prev.losses : prev.losses + 1,
+              totalGames: prev.totalGames + 1,
+              recentMatches: [mpMatchItem, ...(prev.recentMatches || [])].slice(0, 30),
+            }));
+
+            if (authUser?.id) {
+              authService.recordOfflineMatch(authUser.id, won, {
+                tricksWon: serverGameState.tricksWon[myTeam],
+                score: `${myScore} - ${oppScore}`,
+                mode: serverGameState.queueMode === 'rivals' ? 'ranked_rivals' : 'ranked_solo',
+                opponentNames: oppNames,
+              }).then(() => {
+                syncAuthoritativeProfile(authUser.id);
+              });
+            }
+          }
+        }
       },
       onEmote: (fromPos, text, emoji) => {
         setActiveEmotes(prev => ({
@@ -322,32 +447,39 @@ export const App: React.FC = () => {
     }
   }, [profile]);
 
-  // Handle URL invitation auto-join (e.g. ?join=AB12CD)
+  // Handle URL invitation auto-join (e.g. ?join=AB12CD, #join=AB12CD, #/AB12CD)
+  const handledJoinCodeRef = React.useRef<string | null>(null);
+
   useEffect(() => {
+    const code = extractInviteCodeFromUrl();
+    if (!code || handledJoinCodeRef.current === code) return;
+    handledJoinCodeRef.current = code;
+
+    // Immediately clean URL parameters so back button and page refresh stay clean
     try {
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get('join') || params.get('room');
-      if (code && code.trim().length === 6) {
-        setTimeout(() => {
-          multiplayerClient.connect(profile.username, profile.avatarIcon).then(() => {
-            multiplayerClient.joinRoom(code.trim().toUpperCase());
-            setMatchmakingQueue('private');
-            window.history.replaceState({}, document.title, window.location.pathname);
-          });
-        }, 350);
-      }
+      const cleanUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
     } catch {}
-  }, [profile.username, profile.avatarIcon]);
+
+    // Open Game Lobby modal immediately
+    setLobbyInitialMode('custom');
+    setIsLobbyOpen(true);
+    setMatchmakingQueue(null);
+
+    // Connect and queue room join
+    multiplayerClient.connect(profile.username, profile.avatarIcon);
+    multiplayerClient.joinRoom(code);
+  }, []);
 
   // Handle first time tutorial trigger
   useEffect(() => {
     const hasSeenTutorial = localStorage.getItem('bower_jj_tutorial_seen');
     const hasPromptedAuth = localStorage.getItem('bower_jj_auth_prompted');
-    // If auth modal is about to prompt a brand new user, let auth finish first
-    if (!hasSeenTutorial && hasPromptedAuth) {
+    // If auth modal is about to prompt a brand new user, let auth finish first; NEVER prompt logged in users
+    if (!hasSeenTutorial && hasPromptedAuth && !authUser) {
       setIsTutorialOpen(true);
     }
-  }, []);
+  }, [authUser]);
 
   const handleTutorialComplete = () => {
     localStorage.setItem('bower_jj_tutorial_seen', 'true');
@@ -359,6 +491,13 @@ export const App: React.FC = () => {
     try {
       localStorage.setItem('bower_jj_auth_prompted', 'true');
     } catch {}
+    // If logged in, do not prompt tutorial
+    if (authUser) {
+      try {
+        localStorage.setItem('bower_jj_tutorial_seen', 'true');
+      } catch {}
+      return;
+    }
     const hasSeenTutorial = localStorage.getItem('bower_jj_tutorial_seen');
     if (!hasSeenTutorial) {
       setTimeout(() => setIsTutorialOpen(true), 350);
@@ -366,6 +505,11 @@ export const App: React.FC = () => {
   };
 
   const handleOpenMatchmaking = (queue: QueueType) => {
+    if (queue === 'private') {
+      setLobbyInitialMode('custom');
+      setIsLobbyOpen(true);
+      return;
+    }
     if (!authUser && (queue === 'ranked_solo' || queue === 'ranked_duo')) {
       const hasPromptedRanked = sessionStorage.getItem('bower_jj_ranked_prompted');
       if (!hasPromptedRanked) {
@@ -462,6 +606,16 @@ export const App: React.FC = () => {
       const marches = prev.marches + (stats?.marches || 0);
       const successfulLoners = prev.successfulLoners + (stats?.successfulLoners || 0);
 
+      const aiMatchItem: MatchHistoryItem = {
+        id: `match_ai_${Date.now()}`,
+        date: Date.now(),
+        mode: 'Casual AI',
+        won,
+        score: `${userScore} - ${oppScore}`,
+        lpChange: won ? 20 : -15,
+        opponentNames: ['BowerAI North', 'BowerAI East', 'BowerAI West'],
+      };
+
       return {
         ...prev,
         wins: nextWins,
@@ -476,6 +630,7 @@ export const App: React.FC = () => {
         euchres,
         marches,
         successfulLoners,
+        recentMatches: [aiMatchItem, ...(prev.recentMatches || [])].slice(0, 30),
       };
     });
 
@@ -591,7 +746,11 @@ export const App: React.FC = () => {
           <div className="flex space-x-2 pt-1">
             <button
               onClick={() => {
-                multiplayerClient.acceptPartyInvite(partyInvite.roomCode);
+                const code = partyInvite.roomCode;
+                const mode: LobbyGameMode = partyInvite.mode === 'rivals' ? 'rivals' : 'custom';
+                setLobbyInitialMode(mode);
+                multiplayerClient.acceptPartyInvite(code);
+                setIsLobbyOpen(true);
                 setPartyInvite(null);
               }}
               className="flex-1 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs shadow-md"
@@ -627,6 +786,7 @@ export const App: React.FC = () => {
       ) : currentView === 'multiplayer_game' && multiplayerState ? (
         <MultiplayerGameTable
           serverState={multiplayerState}
+          profile={profile}
           onOpenRules={() => setIsRulesOpen(true)}
           onOpenTutorial={() => setIsTutorialOpen(true)}
           onOpenEmotes={() => setIsEmoteWheelOpen(true)}
@@ -653,7 +813,10 @@ export const App: React.FC = () => {
             if (authUser?.id) syncAuthoritativeProfile(authUser.id);
             setIsProfileOpen(true);
           }}
-          onOpenFriends={() => setIsFriendsOpen(true)}
+          onOpenFriends={() => {
+            multiplayerClient.fetchFriends();
+            setIsFriendsOpen(true);
+          }}
           onOpenLeaderboard={() => {
             if (authUser?.id) syncAuthoritativeProfile(authUser.id);
             authService.getLeaderboard().then(entries => setLeaderboardEntries(entries));
@@ -661,7 +824,10 @@ export const App: React.FC = () => {
             setIsLeaderboardOpen(true);
           }}
           onOpenBowerPass={() => setIsBowerPassOpen(true)}
-          onOpenRivalryInvite={() => setIsRivalryInviteOpen(true)}
+          onOpenRivalryInvite={() => {
+            setLobbyInitialMode('rivals');
+            setIsLobbyOpen(true);
+          }}
           onOpenAchievements={() => setIsAchievementsOpen(true)}
           pendingRequestsCount={incomingFriendRequests.length}
           isMuted={isMuted}
@@ -704,6 +870,8 @@ export const App: React.FC = () => {
         incomingRequests={incomingFriendRequests}
         onInviteToParty={() => {
           showToast('Invited friend to party!');
+          setLobbyInitialMode('rivals');
+          setIsLobbyOpen(true);
         }}
       />
 
@@ -723,13 +891,15 @@ export const App: React.FC = () => {
         challenges={challenges}
       />
 
-      <RivalryInviteModal
-        isOpen={isRivalryInviteOpen}
-        onClose={() => setIsRivalryInviteOpen(false)}
+      <GameLobbyModal
+        isOpen={isLobbyOpen}
+        onClose={() => setIsLobbyOpen(false)}
         friends={friendsList}
         userRank={profile.rankTier}
+        userPoints={profile.rankPoints}
+        initialMode={lobbyInitialMode}
         onMatchFound={() => {
-          setIsRivalryInviteOpen(false);
+          setIsLobbyOpen(false);
         }}
       />
 
@@ -752,7 +922,7 @@ export const App: React.FC = () => {
           friends={friendsList}
           onClose={() => setMatchmakingQueue(null)}
           onMatchFound={() => {
-            // Handled via onGameSync
+            setMatchmakingQueue(null);
           }}
         />
       )}

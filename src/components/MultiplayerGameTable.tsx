@@ -10,6 +10,7 @@ import { isCardPlayLegal, formatCardName, ALL_SUITS } from '../engine/cards';
 import { CardView, SuitIcon } from './CardView';
 import { PostMatchModal } from './PostMatchModal';
 import { PublicProfileModal, PublicPlayerData } from './PublicProfileModal';
+import { PlayerProfileData } from './ProfileModal';
 import { sounds } from '../audio/sound';
 import { multiplayerClient } from '../services/multiplayerClient';
 import confetti from 'canvas-confetti';
@@ -26,6 +27,7 @@ import {
 
 interface MultiplayerGameTableProps {
   serverState: SanitizedGameState;
+  profile?: PlayerProfileData;
   onOpenRules: () => void;
   onOpenTutorial: () => void;
   onOpenEmotes: () => void;
@@ -37,6 +39,7 @@ interface MultiplayerGameTableProps {
 
 export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
   serverState,
+  profile,
   onOpenRules,
   onOpenTutorial,
   onOpenEmotes,
@@ -552,13 +555,13 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             euchres={serverState.scores[serverState.yourPosition % 2] >= 2 ? 1 : 0}
             loners={serverState.scores[serverState.yourPosition % 2] >= 4 ? 1 : 0}
             lpDelta={serverState.scores[serverState.yourPosition % 2] >= 10 ? 25 : -16}
-            oldTier={serverState.slots[serverState.yourPosition]?.rankTier || '9'}
-            newTier={serverState.slots[serverState.yourPosition]?.rankTier || '9'}
-            currentPoints={60}
+            oldTier={(profile?.rankTier as any) || serverState.slots[serverState.yourPosition]?.rankTier || '9'}
+            newTier={(profile?.rankTier as any) || serverState.slots[serverState.yourPosition]?.rankTier || '9'}
+            currentPoints={profile?.rankPoints ?? 60}
             xpEarned={serverState.scores[serverState.yourPosition % 2] >= 10 ? 475 : 250}
-            playerLevel={1}
-            playerXp={475}
-            nextLevelXp={1000}
+            playerLevel={profile?.level ?? 1}
+            playerXp={profile?.xp ?? 475}
+            nextLevelXp={profile?.nextLevelXp ?? 1000}
             players={serverState.slots.map(s => ({
               id: s.userId || `slot_${s.position}`,
               name: s.username,

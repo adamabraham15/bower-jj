@@ -16,6 +16,7 @@ import {
   PublicPlayerData,
   MatchmakingStats,
 } from './types';
+import { supabaseAdmin } from './auth';
 
 const DB_DIR = path.resolve(process.cwd(), 'server', 'data');
 const DB_FILE = path.join(DB_DIR, 'db.json');
@@ -187,6 +188,29 @@ class Database {
     for (const u of Object.values(this.data.users)) {
       if (u.username.trim().toLowerCase() === clean) {
         return u;
+      }
+    }
+    return null;
+  }
+
+  public async getUserByUsernameAsync(username: string): Promise<UserAccount | null> {
+    const existing = this.getUserByUsername(username);
+    if (existing) return existing;
+
+    if (supabaseAdmin) {
+      try {
+        const { data: profile } = await supabaseAdmin
+          .from('profiles')
+          .select('id, username, avatar_icon')
+          .ilike('username', username.trim())
+          .maybeSingle();
+
+        if (profile) {
+          const { user } = this.getOrCreateUser(profile.username, profile.avatar_icon, undefined, profile.id);
+          return user;
+        }
+      } catch (err) {
+        // Supabase lookup fallback ignored
       }
     }
     return null;
@@ -630,6 +654,11 @@ class Database {
     if (!target) return { success: false, error: `Player "${targetUsername}" not found` };
     if (target.id === fromUserId) return { success: false, error: 'You cannot add yourself as a friend' };
 
+    if (!sender.friends) sender.friends = [];
+    if (!sender.friendRequests) sender.friendRequests = [];
+    if (!target.friends) target.friends = [];
+    if (!target.friendRequests) target.friendRequests = [];
+
     if (sender.friends.includes(target.id)) {
       return { success: false, error: 'Already friends' };
     }
@@ -650,10 +679,23 @@ class Database {
     return { success: true };
   }
 
+  public async sendFriendRequestAsync(fromUserId: string, targetUsername: string): Promise<{ success: boolean; error?: string }> {
+    let target = this.getUserByUsername(targetUsername);
+    if (!target) {
+      await this.getUserByUsernameAsync(targetUsername);
+    }
+    return this.sendFriendRequest(fromUserId, targetUsername);
+  }
+
   public acceptFriendRequest(userId: string, fromUserId: string): { success: boolean; error?: string } {
     const user = this.data.users[userId];
     const friend = this.data.users[fromUserId];
     if (!user || !friend) return { success: false, error: 'User not found' };
+
+    if (!user.friends) user.friends = [];
+    if (!user.friendRequests) user.friendRequests = [];
+    if (!friend.friends) friend.friends = [];
+    if (!friend.friendRequests) friend.friendRequests = [];
 
     // Remove request
     user.friendRequests = user.friendRequests.filter(r => r.fromUserId !== fromUserId);
@@ -672,6 +714,7 @@ class Database {
   public declineFriendRequest(userId: string, fromUserId: string): { success: boolean } {
     const user = this.data.users[userId];
     if (user) {
+      if (!user.friendRequests) user.friendRequests = [];
       user.friendRequests = user.friendRequests.filter(r => r.fromUserId !== fromUserId);
       this.save();
     }
@@ -681,10 +724,10 @@ class Database {
   public removeFriend(userId: string, friendUserId: string): { success: boolean } {
     const user = this.data.users[userId];
     const friend = this.data.users[friendUserId];
-    if (user) {
+    if (user && user.friends) {
       user.friends = user.friends.filter(id => id !== friendUserId);
     }
-    if (friend) {
+    if (friend && friend.friends) {
       friend.friends = friend.friends.filter(id => id !== userId);
     }
     this.save();
@@ -693,7 +736,7 @@ class Database {
 
   public getFriendsSummary(userId: string, activeConnections: Map<string, any>): FriendSummary[] {
     const user = this.data.users[userId];
-    if (!user) return [];
+    if (!user || !user.friends) return [];
 
     return user.friends.map(fId => {
       const f = this.data.users[fId];

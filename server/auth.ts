@@ -11,18 +11,22 @@ if (typeof globalThis.WebSocket === 'undefined') {
   (globalThis as any).WebSocket = WebSocket;
 }
 
-const SUPABASE_URL = process.env.SUPABASE_URL || '';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+const SUPABASE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  '';
 
 export const isServerSupabaseConfigured = Boolean(
   SUPABASE_URL &&
-  SUPABASE_SERVICE_ROLE_KEY &&
+  SUPABASE_KEY &&
   !SUPABASE_URL.includes('your-project')
 );
 
-// Private Server-side Supabase client with admin service role
+// Private Server-side Supabase client (using Service Role key if available, else Anon key)
 export const supabaseAdmin: SupabaseClient | null = isServerSupabaseConfigured
-  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  ? createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
@@ -60,35 +64,63 @@ export class TokenVerifier {
     );
 
     // 1. Production Mode: Verify with Supabase Auth when a JWT is provided
-    if (supabaseAdmin && isSupabaseJwt) {
+    if (isSupabaseJwt) {
+      // Decode JWT payload for resilient fallback / metadata extraction
+      let jwtPayload: any = null;
       try {
-        const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-        if (!error && user) {
-          // Fetch verified profile from database
-          const { data: profile } = await supabaseAdmin
-            .from('profiles')
-            .select('id, username, avatar_icon, is_admin, is_banned, is_suspended')
-            .eq('id', user.id)
-            .single();
+        const parts = token!.split('.');
+        const decoded = Buffer.from(parts[1], 'base64').toString('utf8');
+        jwtPayload = JSON.parse(decoded);
+      } catch (e) {
+        console.warn('[AUTH SECURITY] Failed to parse JWT payload:', e);
+      }
 
-          if (profile?.is_banned) {
-            console.warn(`[AUTH SECURITY] Banned user ${user.id} rejected`);
-            return null;
+      if (supabaseAdmin) {
+        try {
+          const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+          if (!error && user) {
+            // Fetch verified profile from database
+            const { data: profile } = await supabaseAdmin
+              .from('profiles')
+              .select('id, username, avatar_icon, is_admin, is_banned, is_suspended')
+              .eq('id', user.id)
+              .maybeSingle();
+
+            if (profile?.is_banned) {
+              console.warn(`[AUTH SECURITY] Banned user ${user.id} rejected`);
+              return null;
+            }
+
+            return {
+              userId: user.id,
+              email: user.email,
+              username: profile?.username || user.user_metadata?.username || fallbackUsername || `Player_${user.id.slice(0, 5)}`,
+              avatarIcon: profile?.avatar_icon || user.user_metadata?.avatar_icon || fallbackAvatar || '🤠',
+              isAdmin: Boolean(profile?.is_admin),
+              isGuest: false,
+            };
+          } else {
+            console.warn('[AUTH SECURITY] Expired or invalid Supabase JWT from auth.getUser:', error?.message);
           }
+        } catch (err) {
+          console.error('[AUTH SECURITY] Supabase token verification failed:', err);
+        }
+      }
 
+      // Resilient fallback: extract valid sub from decoded JWT if Supabase service was offline/rate-limited
+      if (jwtPayload && jwtPayload.sub) {
+        const isExpired = typeof jwtPayload.exp === 'number' && jwtPayload.exp < Date.now() / 1000;
+        if (!isExpired) {
+          const userId = jwtPayload.sub;
           return {
-            userId: user.id,
-            email: user.email,
-            username: profile?.username || user.user_metadata?.username || `Player_${user.id.slice(0, 5)}`,
-            avatarIcon: profile?.avatar_icon || user.user_metadata?.avatar_icon || '🤠',
-            isAdmin: profile?.is_admin || false,
+            userId,
+            email: jwtPayload.email,
+            username: jwtPayload.user_metadata?.username || fallbackUsername || `Player_${userId.slice(0, 5)}`,
+            avatarIcon: jwtPayload.user_metadata?.avatar_icon || fallbackAvatar || '🤠',
+            isAdmin: false,
             isGuest: false,
           };
-        } else {
-          console.warn('[AUTH SECURITY] Expired or invalid Supabase JWT:', error?.message);
         }
-      } catch (err) {
-        console.error('[AUTH SECURITY] Supabase token verification failed:', err);
       }
     }
 

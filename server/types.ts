@@ -182,6 +182,9 @@ export interface SanitizedGameState {
   lastHandResult?: HandScoreResult;
   history: string[];
   slots: PlayerSlot[];
+  roomId?: string;
+  roomCode?: string;
+  queueMode?: 'solo' | 'rivals' | 'duo' | 'casual';
 }
 
 export interface LeaderboardEntry {
@@ -217,7 +220,7 @@ export interface PublicPlayerData {
 // Client -> Server Messages
 export type ClientMessage =
   | { type: 'AUTH'; sessionToken?: string; username?: string; avatarIcon?: string; accessToken?: string }
-  | { type: 'ROOM_CREATE'; rules?: Partial<EuchreHouseRules>; queueMode?: 'rivals' | 'solo' | 'casual' }
+  | { type: 'ROOM_CREATE'; rules?: Partial<EuchreHouseRules>; queueMode?: 'rivals' | 'solo' | 'casual' | 'custom' }
   | { type: 'ROOM_JOIN'; roomCode: string }
   | { type: 'ROOM_FILL_AI'; difficulty?: AIDifficulty }
   | { type: 'ROOM_START' }
@@ -243,7 +246,9 @@ export type ClientMessage =
   | { type: 'GET_PROFILE'; targetUserId?: string; targetUsername?: string }
   | { type: 'REPORT_PLAYER'; targetUserId?: string; targetUsername?: string; reason: string }
   | { type: 'ROOM_UPDATE_RULES'; rules: Partial<EuchreHouseRules> }
+  | { type: 'ROOM_UPDATE_MODE'; mode: 'rivals' | 'custom' | 'solo' | 'duo' | 'casual' }
   | { type: 'ROOM_KICK'; position: PlayerPosition }
+  | { type: 'ROOM_SWITCH_SEAT'; targetPosition: PlayerPosition }
   | { type: 'GET_MATCHMAKING_STATS' };
 
 // Server -> Client Messages
@@ -258,7 +263,7 @@ export type ServerMessage =
   | { type: 'LEADERBOARD_DATA'; entries: LeaderboardEntry[]; yourRank?: number }
   | { type: 'BATTLE_PASS_UPDATE'; battlePass: BattlePassState; challenges: Challenge[] }
   | { type: 'RANK_UPDATE'; oldTier: RankTier; newTier: RankTier; oldPoints: number; newPoints: number; lpChange: number; didRankUp: boolean }
-  | { type: 'PARTY_INVITE_RECEIVED'; fromUsername: string; fromAvatar: string; roomCode: string }
+  | { type: 'PARTY_INVITE_RECEIVED'; fromUsername: string; fromAvatar: string; roomCode: string; mode?: string }
   | { type: 'PROFILE_DATA'; profile: PublicPlayerData }
   | { type: 'MATCHMAKING_STATS'; stats: MatchmakingStats }
   | { type: 'NOTICE'; message: string; title?: string }

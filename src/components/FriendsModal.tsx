@@ -3,7 +3,7 @@
  * Brawl Stars / Fortnite inspired tactical social experience.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Users,
@@ -39,6 +39,12 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
   const [searchUsername, setSearchUsername] = useState('');
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; isError?: boolean } | null>(null);
 
+  useEffect(() => {
+    if (isOpen) {
+      multiplayerClient.fetchFriends();
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleSendRequest = (e: React.FormEvent) => {
@@ -48,20 +54,30 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
     multiplayerClient.sendFriendRequest(searchUsername.trim());
     setFeedbackMsg({ text: `Friend request sent to ${searchUsername.trim()}!` });
     setSearchUsername('');
-    setTimeout(() => setFeedbackMsg(null), 3500);
+    setTimeout(() => {
+      multiplayerClient.fetchFriends();
+      setFeedbackMsg(null);
+    }, 2500);
   };
 
   const handleAccept = (fromUserId: string) => {
     multiplayerClient.acceptFriendRequest(fromUserId);
+    setFeedbackMsg({ text: 'Accepted friend request!' });
+    setTimeout(() => {
+      multiplayerClient.fetchFriends();
+      setFeedbackMsg(null);
+    }, 500);
   };
 
   const handleDecline = (fromUserId: string) => {
     multiplayerClient.declineFriendRequest(fromUserId);
+    setTimeout(() => multiplayerClient.fetchFriends(), 500);
   };
 
   const handleRemove = (friendUserId: string) => {
     if (confirm('Are you sure you want to remove this friend?')) {
       multiplayerClient.removeFriend(friendUserId);
+      setTimeout(() => multiplayerClient.fetchFriends(), 500);
     }
   };
 

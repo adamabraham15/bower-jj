@@ -44,6 +44,7 @@ import {
 import { db, TIER_ORDER } from './db';
 import { PostgresDatabaseRepository } from './db/postgres';
 import { logger } from './telemetry';
+import { supabaseAdmin } from './auth';
 
 export const RANKED_BOT_FALLBACK_MS = process.env.RANKED_BOT_WAIT_MS
   ? parseInt(process.env.RANKED_BOT_WAIT_MS, 10)
@@ -631,6 +632,50 @@ export class RoomManager {
     return room;
   }
 
+  public switchSeat(userId: string, targetPosition: PlayerPosition): Room {
+    const conn = this.connections.get(userId);
+    if (!conn || !conn.roomCode) throw new Error('Not connected to a room');
+
+    const room = this.rooms.get(conn.roomCode);
+    if (!room) throw new Error('Room not found');
+    if (room.status !== 'lobby') throw new Error('Cannot change seats once the match has started');
+
+    const currentPos = room.slots.findIndex(s => s && s.userId === userId);
+    if (currentPos === -1) throw new Error('Player not seated in this room');
+    if (currentPos === targetPosition) return room;
+
+    if (targetPosition < 0 || targetPosition > 3) throw new Error('Invalid seat position');
+
+    const currentSlot = room.slots[currentPos]!;
+    const targetSlot = room.slots[targetPosition];
+
+    if (!targetSlot) {
+      // Target seat is empty: move directly into it
+      room.slots[targetPosition] = {
+        ...currentSlot,
+        position: targetPosition as PlayerPosition,
+      };
+      room.slots[currentPos] = null;
+    } else {
+      // Target seat is occupied: swap seats (supports swapping with bots or other players)
+      room.slots[targetPosition] = {
+        ...currentSlot,
+        position: targetPosition as PlayerPosition,
+      };
+      room.slots[currentPos] = {
+        ...targetSlot,
+        position: currentPos as PlayerPosition,
+      };
+    }
+
+    this.broadcastRoom(room.code, {
+      type: 'ROOM_UPDATE',
+      room,
+    });
+
+    return room;
+  }
+
   public startGame(userId: string): Room {
     const conn = this.connections.get(userId);
     if (!conn || !conn.roomCode) throw new Error('Not in a room');
@@ -639,9 +684,15 @@ export class RoomManager {
     if (!room) throw new Error('Room not found');
     if (room.hostUserId !== userId && !room.isMatchmade) throw new Error('Only host can start the game');
 
-    const occupiedCount = room.slots.filter(s => s !== null).length;
+    let occupiedCount = room.slots.filter(s => s !== null).length;
     if (occupiedCount !== 4) {
-      throw new Error('Game requires exactly 4 players. Fill empty seats with AI or invite friends.');
+      if (room.queueMode === 'rivals' || room.queueMode === 'custom') {
+        this.fillWithAI(userId);
+        occupiedCount = room.slots.filter(s => s !== null).length;
+      }
+      if (occupiedCount !== 4) {
+        throw new Error('Game requires exactly 4 players. Fill empty seats with AI or invite friends.');
+      }
     }
 
     const players: Player[] = room.slots.map((s, idx) => ({
@@ -683,6 +734,25 @@ export class RoomManager {
     if (room.status !== 'lobby') throw new Error('Rules cannot be changed once game has started');
 
     room.rules = { ...room.rules, ...rules };
+
+    this.broadcastRoom(room.code, {
+      type: 'ROOM_UPDATE',
+      room,
+    });
+
+    return room;
+  }
+
+  public updateRoomMode(userId: string, mode: 'rivals' | 'custom' | 'solo' | 'duo' | 'casual'): Room {
+    const conn = this.connections.get(userId);
+    if (!conn || !conn.roomCode) throw new Error('Not in a room');
+
+    const room = this.rooms.get(conn.roomCode);
+    if (!room) throw new Error('Room not found');
+    if (room.hostUserId !== userId) throw new Error('Only the room host can update game mode');
+    if (room.status !== 'lobby') throw new Error('Mode cannot be changed once game has started');
+
+    room.queueMode = mode;
 
     this.broadcastRoom(room.code, {
       type: 'ROOM_UPDATE',
@@ -1150,6 +1220,43 @@ export class RoomManager {
             });
           }
         }
+
+        // Synchronize updated rank and stats to Supabase for authenticated players
+        if (supabaseAdmin && slot.userId && !slot.userId.startsWith('usr_') && !slot.userId.startsWith('dev_')) {
+          try {
+            if (updatedUser) {
+              supabaseAdmin.from('player_statistics').update({
+                wins: updatedUser.wins,
+                losses: updatedUser.losses,
+                total_games: updatedUser.totalGames,
+                tricks_won: updatedUser.tricksWon,
+                euchres: updatedUser.euchres,
+                marches: updatedUser.marches,
+                successful_loners: updatedUser.successfulLoners,
+                current_streak: updatedUser.winStreak,
+                best_streak: updatedUser.bestWinStreak,
+                updated_at: new Date().toISOString(),
+              }).eq('user_id', slot.userId).catch(() => {});
+
+              supabaseAdmin.from('player_xp').update({
+                xp: updatedUser.xp,
+                level: updatedUser.level,
+                next_level_xp: updatedUser.level * 1000,
+                updated_at: new Date().toISOString(),
+              }).eq('user_id', slot.userId).catch(() => {});
+            }
+
+            if (rankResult) {
+              supabaseAdmin.from('player_ranks').update({
+                rank_tier: rankResult.newTier,
+                rank_points: rankResult.newPoints,
+                updated_at: new Date().toISOString(),
+              }).eq('user_id', slot.userId).catch(() => {});
+            }
+          } catch (syncErr) {
+            logger.warn(`[SYNC] Could not sync match result to Supabase: ${syncErr}`);
+          }
+        }
       }
     });
 
@@ -1291,7 +1398,8 @@ export class RoomManager {
   public getSanitizedStateForPlayer(
     state: EuchreGameState,
     slots: (PlayerSlot | null)[],
-    yourPos: PlayerPosition
+    yourPos: PlayerPosition,
+    room?: Room
   ): SanitizedGameState {
     const handCounts: Record<PlayerPosition, number> = {
       0: state.hands[0]?.length || 0,
@@ -1328,6 +1436,9 @@ export class RoomManager {
         connected: false,
         isReady: false,
       }),
+      roomId: room?.id,
+      roomCode: room?.code,
+      queueMode: room?.queueMode,
     };
   }
 
@@ -1338,7 +1449,7 @@ export class RoomManager {
 
     room.slots.forEach(slot => {
       if (slot && slot.userId && !slot.isAI) {
-        const sanitized = this.getSanitizedStateForPlayer(state, room.slots, slot.position);
+        const sanitized = this.getSanitizedStateForPlayer(state, room.slots, slot.position, room);
         this.sendToUser(slot.userId, {
           type: 'GAME_SYNC',
           state: sanitized,
@@ -1354,7 +1465,7 @@ export class RoomManager {
 
     const slot = room.slots[pos];
     if (slot && slot.userId && !slot.isAI) {
-      const sanitized = this.getSanitizedStateForPlayer(state, room.slots, pos);
+      const sanitized = this.getSanitizedStateForPlayer(state, room.slots, pos, room);
       this.sendToUser(slot.userId, {
         type: 'GAME_SYNC',
         state: sanitized,
