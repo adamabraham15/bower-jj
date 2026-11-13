@@ -34,6 +34,7 @@ import {
   playCard,
   completeTrick,
   startNextHand,
+  getWinningTeam,
 } from '../src/engine/game';
 import {
   decideRound1Bid,
@@ -1251,7 +1252,7 @@ export class RoomManager {
     if (!room.id) room.id = crypto.randomUUID();
     this.clearActiveMatchSnapshot(room.code);
 
-    const winningTeam = state.scores[0] >= state.rules.targetScore ? 0 : 1;
+    const winningTeam = getWinningTeam(state.scores, state.rules.targetScore);
     const finalScore = `${state.scores[0]} - ${state.scores[1]}`;
     const isRanked =
       room.isMatchmade ||
@@ -1550,6 +1551,8 @@ export class RoomManager {
       roomId: room?.id,
       roomCode: room?.code,
       queueMode: room?.queueMode,
+      rules: state.rules,
+      winningTeam: state.phase === 'game_over' ? getWinningTeam(state.scores, state.rules.targetScore) : undefined,
     };
   }
 

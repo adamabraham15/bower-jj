@@ -28,7 +28,7 @@ import {
   EuchreHouseRules,
   DEFAULT_RULES,
 } from './engine/types';
-import { initializeGame } from './engine/game';
+import { initializeGame, getWinningTeam } from './engine/game';
 import { sounds } from './audio/sound';
 import { multiplayerClient } from './services/multiplayerClient';
 import {
@@ -439,7 +439,9 @@ export const App: React.FC = () => {
             const oppTeam = (serverGameState.yourPosition + 1) % 2;
             const myScore = serverGameState.scores[myTeam] || 0;
             const oppScore = serverGameState.scores[oppTeam] || 0;
-            const won = myScore >= 10;
+            const targetScore = serverGameState.rules?.targetScore ?? 10;
+            const winningTeam = serverGameState.winningTeam ?? getWinningTeam(serverGameState.scores, targetScore);
+            const won = winningTeam === myTeam;
             const isRanked = serverGameState.queueMode !== 'custom' && serverGameState.queueMode !== 'casual';
             const oppSlots = serverGameState.slots.filter(s => s.position % 2 !== myTeam);
             const oppNames = oppSlots.map(s => s.username || `Player ${s.position}`);

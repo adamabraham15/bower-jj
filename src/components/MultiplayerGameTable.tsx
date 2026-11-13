@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { SanitizedGameState, PlayerSlot, RankTier } from '../../server/types';
 import { Card, Suit, PlayerPosition, getPlayerTeam } from '../engine/types';
+import { getWinningTeam } from '../engine/game';
 import { isCardPlayLegal, formatCardName, ALL_SUITS } from '../engine/cards';
 import { CardView, SuitIcon } from './CardView';
 import { PostMatchModal } from './PostMatchModal';
@@ -82,6 +83,10 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
   }, [serverState.phase]);
 
   const yourPos = serverState.yourPosition;
+  const yourTeam = yourPos % 2;
+  const targetScore = serverState.rules?.targetScore ?? 10;
+  const winningTeam = serverState.winningTeam ?? getWinningTeam(serverState.scores, targetScore);
+  const isVictory = winningTeam === yourTeam;
   const isYourTurn = serverState.currentTurn === yourPos;
   const isDealer = serverState.dealer === yourPos;
   const isDealerDiscardPhase = serverState.phase === 'dealer_discard' && isDealer;
@@ -556,21 +561,21 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
         {serverState.phase === 'game_over' && (
           <PostMatchModal
             isOpen={true}
-            isVictory={serverState.scores[serverState.yourPosition % 2] >= 10}
+            isVictory={isVictory}
             finalScore={serverState.scores}
-            tricksWon={serverState.tricksWon[serverState.yourPosition % 2]}
-            marches={serverState.scores[serverState.yourPosition % 2] >= 2 ? 1 : 0}
-            euchres={serverState.scores[serverState.yourPosition % 2] >= 2 ? 1 : 0}
-            loners={serverState.scores[serverState.yourPosition % 2] >= 4 ? 1 : 0}
+            tricksWon={serverState.tricksWon[yourTeam]}
+            marches={serverState.scores[yourTeam] >= 2 ? 1 : 0}
+            euchres={serverState.scores[yourTeam] >= 2 ? 1 : 0}
+            loners={serverState.scores[yourTeam] >= 4 ? 1 : 0}
             lpDelta={
               serverState.queueMode === 'custom' || serverState.queueMode === 'casual'
                 ? 0
-                : (lastRankUpdate?.lpChange ?? (serverState.scores[serverState.yourPosition % 2] >= 10 ? 24 : -16))
+                : (lastRankUpdate?.lpChange ?? (isVictory ? 24 : -16))
             }
-            oldTier={lastRankUpdate?.oldTier || (profile?.rankTier as any) || serverState.slots[serverState.yourPosition]?.rankTier || '9'}
-            newTier={lastRankUpdate?.newTier || (profile?.rankTier as any) || serverState.slots[serverState.yourPosition]?.rankTier || '9'}
+            oldTier={lastRankUpdate?.oldTier || (profile?.rankTier as any) || serverState.slots[yourPos]?.rankTier || '9'}
+            newTier={lastRankUpdate?.newTier || (profile?.rankTier as any) || serverState.slots[yourPos]?.rankTier || '9'}
             currentPoints={lastRankUpdate?.newPoints ?? profile?.rankPoints ?? 0}
-            xpEarned={serverState.scores[serverState.yourPosition % 2] >= 10 ? 475 : 250}
+            xpEarned={isVictory ? 475 : 250}
             playerLevel={profile?.level ?? 1}
             playerXp={profile?.xp ?? 475}
             nextLevelXp={profile?.nextLevelXp ?? 1000}

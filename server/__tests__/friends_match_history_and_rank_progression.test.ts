@@ -412,5 +412,57 @@ describe('Friends List, Match History & Rank Progression', () => {
       expect(afterAband.winStreak).toBe(0);
       expect(afterAband.matchHistory.length).toBe(1);
     });
+
+    it('includes authoritative rules.targetScore and winningTeam in sanitized game_over state for custom-point friendly rivalry', async () => {
+      pool = createTestPostgresPool();
+      const repo = new PostgresDatabaseRepository(pool);
+      await repo.initSchema();
+      roomManager.setPostgresRepository(repo);
+
+      const blueId = crypto.randomUUID();
+      const redId = crypto.randomUUID();
+      const { user: blueUser } = await repo.getOrCreateUser('RivalBlue', '🤠', undefined, blueId);
+      const { user: redUser } = await repo.getOrCreateUser('RivalRed', '👑', undefined, redId);
+      roomManager.setCachedUser(blueUser);
+      roomManager.setCachedUser(redUser);
+
+      const mockWs = { readyState: 1, send: () => {} } as any;
+      roomManager.registerConnection(blueId, { ws: mockWs, userId: blueId, username: blueUser.username, avatarIcon: blueUser.avatarIcon });
+      roomManager.registerConnection(redId, { ws: mockWs, userId: redId, username: redUser.username, avatarIcon: redUser.avatarIcon });
+
+      const room = roomManager.createRoom(blueId, { targetScore: 5 }, 'rivals');
+      roomManager.joinRoom(redId, room.code);
+      // Force Blue at seat 0 (team 0) and Red at seat 1 (team 1)
+      if (room.slots[1]?.userId !== redId) {
+        roomManager.switchSeat(redId, 1);
+      }
+
+      const gameState = {
+        phase: 'game_over' as const,
+        dealer: 0 as const,
+        currentTurn: 0 as const,
+        isAlone: false,
+        hands: { 0: [], 1: [], 2: [], 3: [] },
+        kitty: [],
+        currentTrick: { leadPlayer: 0 as const, cards: [] },
+        completedTricks: [],
+        tricksWon: [2, 3] as [number, number],
+        scores: [3, 5] as [number, number],
+        rules: { ...room.rules, targetScore: 5 },
+        history: ['GAME OVER! Team Red WINS!'],
+        players: [],
+      };
+
+      const sanitizedBlue = (roomManager as any).getSanitizedStateForPlayer(gameState, room.slots, 0, room);
+      const sanitizedRed = (roomManager as any).getSanitizedStateForPlayer(gameState, room.slots, 1, room);
+
+      expect(sanitizedBlue.rules?.targetScore).toBe(5);
+      expect(sanitizedBlue.winningTeam).toBe(1);
+      expect(sanitizedBlue.winningTeam === (sanitizedBlue.yourPosition % 2)).toBe(false);
+
+      expect(sanitizedRed.rules?.targetScore).toBe(5);
+      expect(sanitizedRed.winningTeam).toBe(1);
+      expect(sanitizedRed.winningTeam === (sanitizedRed.yourPosition % 2)).toBe(true);
+    });
   });
 });

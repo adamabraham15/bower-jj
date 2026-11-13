@@ -178,7 +178,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
                     isVictory ? 'text-emerald-400' : 'text-red-400'
                   }`}
                 >
-                  <span>{isVictory ? `+${lpDelta}` : `-${Math.abs(lpDelta)}`} LP</span>
+                  <span>{lpDelta > 0 ? `+${lpDelta}` : `-${Math.abs(lpDelta)}`} LP</span>
                 </span>
                 <span className="text-[10px] text-gray-500 block">Opponent-Sensitive</span>
               </div>

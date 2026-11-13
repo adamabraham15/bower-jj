@@ -187,6 +187,8 @@ export interface SanitizedGameState {
   roomId?: string;
   roomCode?: string;
   queueMode?: 'solo' | 'rivals' | 'duo' | 'casual' | 'custom';
+  rules?: EuchreHouseRules;
+  winningTeam?: Team;
 }
 
 export interface LeaderboardEntry {

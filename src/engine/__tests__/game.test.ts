@@ -11,6 +11,7 @@ import {
   playCard,
   completeTrick,
   startNextHand,
+  getWinningTeam,
 } from '../game';
 import { Player, Card, DEFAULT_RULES, PlayerPosition } from '../types';
 
@@ -284,5 +285,13 @@ describe('Euchre Game State Machine', () => {
 
     expect(finalState.scores[0]).toBe(10);
     expect(finalState.phase).toBe('game_over'); // Match is won!
+    expect(getWinningTeam(finalState.scores, finalState.rules.targetScore)).toBe(0);
+  });
+
+  it('identifies winning team accurately when custom targetScore is below 10 (e.g. targetScore=5)', () => {
+    expect(getWinningTeam([3, 5], 5)).toBe(1);
+    expect(getWinningTeam([5, 3], 5)).toBe(0);
+    expect(getWinningTeam([7, 4], 7)).toBe(0);
+    expect(getWinningTeam([4, 7], 7)).toBe(1);
   });
 });

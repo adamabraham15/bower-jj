@@ -559,6 +559,18 @@ export function scoreHand(state: EuchreGameState): EuchreGameState {
 }
 
 /**
+ * Determines the winning team index (0 = Blue, 1 = Red) for a completed match
+ * based on the configured target score, with a score-comparison fallback.
+ */
+export function getWinningTeam(scores: [number, number], targetScore = 10): Team {
+  const team0Reached = scores[0] >= targetScore;
+  const team1Reached = scores[1] >= targetScore;
+  if (team0Reached && !team1Reached) return 0;
+  if (team1Reached && !team0Reached) return 1;
+  return scores[0] >= scores[1] ? 0 : 1;
+}
+
+/**
  * Starts the next hand after scoring, advancing the dealer clockwise.
  */
 export function startNextHand(state: EuchreGameState): EuchreGameState {
