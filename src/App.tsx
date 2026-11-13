@@ -42,6 +42,29 @@ import {
 
 const STORAGE_KEY = 'bower_jj_player_profile';
 
+function formatMatchMode(mode?: string): string {
+  switch (mode) {
+    case 'ranked_solo':
+      return 'Ranked Solo';
+    case 'ranked_rivals':
+    case 'rivals':
+      return 'Friendly Rivalry';
+    case 'ranked_duo':
+    case 'duo':
+      return 'Ranked Duo';
+    case 'unranked':
+    case 'custom':
+    case 'casual':
+    case 'private':
+      return 'Custom Match';
+    case 'offline_ai':
+    case 'ai':
+      return 'Casual AI';
+    default:
+      return mode || 'Ranked Solo';
+  }
+}
+
 const DEFAULT_PROFILE: PlayerProfileData = {
   username: 'BowerKing',
   playerId: 'JJ-7892',
@@ -139,6 +162,19 @@ export const App: React.FC = () => {
   const [authModalInitialTab, setAuthModalInitialTab] = useState<'login' | 'register'>('register');
   const [authUser, setAuthUser] = useState<any | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const authUserRef = useRef<any | null>(null);
+
+  useEffect(() => {
+    authUserRef.current = authUser;
+  }, [authUser]);
+
+  const [lastMatchRankUpdate, setLastMatchRankUpdate] = useState<{
+    oldTier: RankTier;
+    newTier: RankTier;
+    oldPoints: number;
+    newPoints: number;
+    lpChange: number;
+  } | null>(null);
 
   // Live Multiplayer & Social State
   const [friendsList, setFriendsList] = useState<FriendSummary[]>([]);
@@ -208,26 +244,105 @@ export const App: React.FC = () => {
       }
     });
 
-    authService.fetchMatchHistory(userId).then(history => {
+    authService.fetchMatchHistory(userId, 50).then(history => {
       if (history && history.length > 0) {
-        const mapped = history.map((h: any) => ({
+        const mapped: MatchHistoryItem[] = history.map((h: any) => ({
           id: h.id,
           date: new Date(h.created_at).getTime(),
-          mode: h.mode === 'ranked_solo' ? 'Ranked Solo' : h.mode === 'offline_ai' ? 'Casual AI' : h.mode,
+          mode: formatMatchMode(h.mode),
           won: Boolean(h.won),
           score: h.score || '10 - 7',
           lpChange: h.lp_change ?? (h.won ? 20 : -15),
-          opponentNames: Array.isArray(h.opponent_names) ? h.opponent_names : ['Opponents'],
+          opponentNames: Array.isArray(h.opponent_names) && h.opponent_names.length > 0 ? h.opponent_names : ['Opponents'],
         }));
-        setProfile(prev => ({ ...prev, recentMatches: mapped }));
+        setProfile(prev => {
+          const localOnlyAi = (prev.recentMatches || []).filter(m => m.id.startsWith('match_ai_'));
+          const combined = [...mapped, ...localOnlyAi].sort((a, b) => b.date - a.date).slice(0, 50);
+          return { ...prev, recentMatches: combined };
+        });
       }
     });
+  };
+
+  // Apply authoritative server user snapshot (AUTH_SUCCESS / USER_SYNC) without stale React closure bugs
+  const applyAuthoritativeUser = (user: UserAccount) => {
+    const activeAuthId = authUserRef.current?.id;
+    const isVerifiedUser = Boolean(activeAuthId && user.id === activeAuthId);
+
+    setProfile(prev => {
+      const keepPrevRank = Boolean(activeAuthId && !isVerifiedUser);
+      const keepNonZeroStats = Boolean(
+        isVerifiedUser && (user.totalGames || 0) === 0 && (user.rankPoints || 0) === 0 && prev.totalGames > 0
+      );
+
+      const resolvedPlayerId = activeAuthId || user.id || prev.playerId;
+      const resolvedRankTier: RankTier =
+        keepPrevRank || (keepNonZeroStats && prev.rankTier !== '9')
+          ? prev.rankTier
+          : ((user.rankTier as RankTier) || prev.rankTier);
+      const resolvedRankPoints =
+        keepPrevRank || (keepNonZeroStats && prev.rankPoints > 0 && user.rankPoints === 0)
+          ? prev.rankPoints
+          : (typeof user.rankPoints === 'number' ? user.rankPoints : prev.rankPoints);
+      const resolvedWins =
+        keepPrevRank || (keepNonZeroStats && prev.wins > 0 && user.wins === 0)
+          ? prev.wins
+          : (typeof user.wins === 'number' ? user.wins : prev.wins);
+      const resolvedLosses =
+        keepPrevRank || (keepNonZeroStats && prev.losses > 0 && user.losses === 0)
+          ? prev.losses
+          : (typeof user.losses === 'number' ? user.losses : prev.losses);
+      const resolvedTotalGames =
+        keepPrevRank || (keepNonZeroStats && prev.totalGames > 0 && user.totalGames === 0)
+          ? prev.totalGames
+          : (typeof user.totalGames === 'number' ? user.totalGames : prev.totalGames);
+
+      let mergedMatches = prev.recentMatches || [];
+      if (Array.isArray(user.matchHistory) && user.matchHistory.length > 0 && !keepPrevRank) {
+        const mappedServer: MatchHistoryItem[] = user.matchHistory.map(m => ({
+          id: m.id,
+          date: m.date,
+          mode: formatMatchMode(m.mode),
+          won: Boolean(m.won),
+          score: m.score || '10 - 7',
+          lpChange: m.lpChange ?? 0,
+          opponentNames: Array.isArray(m.opponentNames) && m.opponentNames.length > 0 ? m.opponentNames : ['Opponents'],
+        }));
+        const localOnlyAi = mergedMatches.filter(m => m.id.startsWith('match_ai_'));
+        mergedMatches = [...mappedServer, ...localOnlyAi].sort((a, b) => b.date - a.date).slice(0, 50);
+      }
+
+      return {
+        ...prev,
+        username: user.username || prev.username,
+        avatarIcon: user.avatarIcon || prev.avatarIcon,
+        playerId: resolvedPlayerId,
+        level: (isVerifiedUser || !activeAuthId) && typeof user.level === 'number' ? user.level : prev.level,
+        xp: (isVerifiedUser || !activeAuthId) && typeof user.xp === 'number' ? user.xp : prev.xp,
+        rankTier: resolvedRankTier,
+        rankPoints: resolvedRankPoints,
+        wins: resolvedWins,
+        losses: resolvedLosses,
+        totalGames: resolvedTotalGames,
+        tricksWon: typeof user.tricksWon === 'number' && !keepPrevRank ? user.tricksWon : prev.tricksWon,
+        euchres: typeof user.euchres === 'number' && !keepPrevRank ? user.euchres : prev.euchres,
+        marches: typeof user.marches === 'number' && !keepPrevRank ? user.marches : prev.marches,
+        successfulLoners: typeof user.successfulLoners === 'number' && !keepPrevRank ? user.successfulLoners : prev.successfulLoners,
+        currentStreak: typeof user.winStreak === 'number' && !keepPrevRank ? user.winStreak : prev.currentStreak,
+        bestStreak: typeof user.bestWinStreak === 'number' && !keepPrevRank ? user.bestWinStreak : prev.bestStreak,
+        recentMatches: mergedMatches,
+      };
+    });
+
+    if (user.battlePass) setBattlePassState(user.battlePass);
+    if (user.challenges) setChallenges(user.challenges);
   };
 
   // 1. Restore Supabase Authentication Session & Listen to Auth Events
   useEffect(() => {
     authService.getSession().then((session) => {
       if (session?.user && session.access_token) {
+        authUserRef.current = session.user;
         setAuthUser(session.user);
         setAuthToken(session.access_token);
         syncAuthoritativeProfile(session.user.id);
@@ -256,6 +371,7 @@ export const App: React.FC = () => {
 
     const unsubscribe = authService.onAuthStateChange((session, user) => {
       if (session && user) {
+        authUserRef.current = user;
         setAuthUser(user);
         setAuthToken(session.access_token);
         try {
@@ -269,6 +385,7 @@ export const App: React.FC = () => {
           user.user_metadata?.avatar_icon || profile.avatarIcon
         );
       } else {
+        authUserRef.current = null;
         setAuthUser(null);
         setAuthToken(null);
       }
@@ -283,84 +400,66 @@ export const App: React.FC = () => {
   useEffect(() => {
     multiplayerClient.connect(profile.username, profile.avatarIcon);
 
-    multiplayerClient.setCallbacks({
+    const unsubscribe = multiplayerClient.setCallbacks({
       onAuth: (user) => {
-        setProfile(prev => {
-          const resolvedPlayerId = authUser?.id || user.id || prev.playerId;
-          const resolvedRankTier = (authUser?.id && prev.rankTier !== '9')
-            ? prev.rankTier
-            : ((user.rankTier as RankTier) || prev.rankTier);
-          const resolvedRankPoints = (authUser?.id && prev.rankPoints > 0 && user.rankPoints === 0)
-            ? prev.rankPoints
-            : (typeof user.rankPoints === 'number' ? user.rankPoints : prev.rankPoints);
-          const resolvedWins = (authUser?.id && prev.wins > 0 && user.wins === 0)
-            ? prev.wins
-            : (typeof user.wins === 'number' ? user.wins : prev.wins);
-          const resolvedLosses = (authUser?.id && prev.losses > 0 && user.losses === 0)
-            ? prev.losses
-            : (typeof user.losses === 'number' ? user.losses : prev.losses);
-          const resolvedTotalGames = (authUser?.id && prev.totalGames > 0 && user.totalGames === 0)
-            ? prev.totalGames
-            : (typeof user.totalGames === 'number' ? user.totalGames : prev.totalGames);
-
-          return {
-            ...prev,
-            username: user.username || prev.username,
-            avatarIcon: user.avatarIcon || prev.avatarIcon,
-            playerId: resolvedPlayerId,
-            level: (authUser?.id && prev.level > user.level) ? prev.level : (user.level || prev.level),
-            xp: (authUser?.id && prev.xp > user.xp) ? prev.xp : (typeof user.xp === 'number' ? user.xp : prev.xp),
-            rankTier: resolvedRankTier,
-            rankPoints: resolvedRankPoints,
-            wins: resolvedWins,
-            losses: resolvedLosses,
-            totalGames: resolvedTotalGames,
-            tricksWon: typeof user.tricksWon === 'number' && user.tricksWon > 0 ? user.tricksWon : prev.tricksWon,
-            euchres: typeof user.euchres === 'number' && user.euchres > 0 ? user.euchres : prev.euchres,
-            marches: typeof user.marches === 'number' && user.marches > 0 ? user.marches : prev.marches,
-            successfulLoners: typeof user.successfulLoners === 'number' && user.successfulLoners > 0 ? user.successfulLoners : prev.successfulLoners,
-            currentStreak: typeof user.winStreak === 'number' ? user.winStreak : prev.currentStreak,
-            bestStreak: typeof user.bestWinStreak === 'number' ? user.bestWinStreak : prev.bestStreak,
-          };
-        });
-        if (user.battlePass) setBattlePassState(user.battlePass);
-        if (user.challenges) setChallenges(user.challenges);
+        applyAuthoritativeUser(user);
+      },
+      onUserSync: (user) => {
+        applyAuthoritativeUser(user);
       },
       onRoom: (room) => {
-        // When receiving a room update while on menu, bring player into the unified lobby!
+        // When receiving a lobby room update (invite accept, invite link, code), bring player directly into the unified lobby
         if (room.status === 'lobby') {
           setLobbyInitialMode(room.queueMode === 'rivals' ? 'rivals' : 'custom');
-          setIsLobbyOpen(true);
+          setIsFriendsOpen(false);
           setMatchmakingQueue(null);
+          setMultiplayerState(null);
+          setCurrentView('menu');
+          setIsLobbyOpen(true);
         }
       },
       onGameSync: (serverGameState) => {
+        if (serverGameState.phase !== 'game_over') {
+          setLastMatchRankUpdate(null);
+        }
         setMultiplayerState(serverGameState);
         setCurrentView('multiplayer_game');
         setIsLobbyOpen(false);
         setMatchmakingQueue(null);
 
-        // Record multiplayer match outcome upon game over (idempotent per room)
-        if (serverGameState.phase === 'game_over' && serverGameState.roomId) {
-          if (lastRecordedGameOverRoomRef.current !== serverGameState.roomId) {
-            lastRecordedGameOverRoomRef.current = serverGameState.roomId;
-
+        // Refresh authoritative profile & match history upon game over (server persists Postgres transactionally)
+        const gameKey = serverGameState.roomId || `${serverGameState.roomCode || 'mp'}_${serverGameState.scores.join('-')}`;
+        if (serverGameState.phase === 'game_over' && lastRecordedGameOverRoomRef.current !== gameKey) {
+          lastRecordedGameOverRoomRef.current = gameKey;
+          const activeUid = authUserRef.current?.id;
+          if (activeUid) {
+            setTimeout(() => syncAuthoritativeProfile(activeUid), 500);
+          } else {
             const myTeam = serverGameState.yourPosition % 2;
             const oppTeam = (serverGameState.yourPosition + 1) % 2;
             const myScore = serverGameState.scores[myTeam] || 0;
             const oppScore = serverGameState.scores[oppTeam] || 0;
             const won = myScore >= 10;
+            const isRanked = serverGameState.queueMode !== 'custom' && serverGameState.queueMode !== 'casual';
             const oppSlots = serverGameState.slots.filter(s => s.position % 2 !== myTeam);
             const oppNames = oppSlots.map(s => s.username || `Player ${s.position}`);
-            const modeLabel = serverGameState.queueMode === 'rivals' ? 'Rivals' : 'Ranked Solo';
+            const modeLabel = formatMatchMode(
+              serverGameState.queueMode === 'rivals'
+                ? 'ranked_rivals'
+                : serverGameState.queueMode === 'duo'
+                ? 'ranked_duo'
+                : isRanked
+                ? 'ranked_solo'
+                : 'custom'
+            );
 
             const mpMatchItem: MatchHistoryItem = {
-              id: `match_${serverGameState.roomId}_${Date.now()}`,
+              id: `match_${gameKey}_${Date.now()}`,
               date: Date.now(),
               mode: modeLabel,
               won,
               score: `${myScore} - ${oppScore}`,
-              lpChange: won ? 25 : -16,
+              lpChange: isRanked ? (won ? 24 : -16) : 0,
               opponentNames: oppNames.length > 0 ? oppNames : ['Opponents'],
             };
 
@@ -369,19 +468,8 @@ export const App: React.FC = () => {
               wins: won ? prev.wins + 1 : prev.wins,
               losses: won ? prev.losses : prev.losses + 1,
               totalGames: prev.totalGames + 1,
-              recentMatches: [mpMatchItem, ...(prev.recentMatches || [])].slice(0, 30),
+              recentMatches: [mpMatchItem, ...(prev.recentMatches || [])].slice(0, 50),
             }));
-
-            if (authUser?.id) {
-              authService.recordOfflineMatch(authUser.id, won, {
-                tricksWon: serverGameState.tricksWon[myTeam],
-                score: `${myScore} - ${oppScore}`,
-                mode: serverGameState.queueMode === 'rivals' ? 'ranked_rivals' : 'ranked_solo',
-                opponentNames: oppNames,
-              }).then(() => {
-                syncAuthoritativeProfile(authUser.id);
-              });
-            }
           }
         }
       },
@@ -411,11 +499,16 @@ export const App: React.FC = () => {
         setChallenges(chs);
       },
       onRankUpdate: (update) => {
+        setLastMatchRankUpdate(update);
         setProfile(prev => ({
           ...prev,
           rankTier: update.newTier,
           rankPoints: update.newPoints,
         }));
+
+        if (authUserRef.current?.id) {
+          setTimeout(() => syncAuthoritativeProfile(authUserRef.current.id), 350);
+        }
 
         if (update.didRankUp) {
           setRankUpData({
@@ -434,9 +527,16 @@ export const App: React.FC = () => {
       },
       onError: (msg) => {
         console.warn('Multiplayer notice:', msg);
+        if (msg && !msg.includes('Connection error')) {
+          showToast(msg, 'Notice');
+        }
       },
     });
-  }, [profile.username, profile.avatarIcon]);
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   // Save profile changes
   useEffect(() => {
@@ -750,6 +850,10 @@ export const App: React.FC = () => {
               onClick={() => {
                 const code = partyInvite.roomCode;
                 const mode: LobbyGameMode = partyInvite.mode === 'rivals' ? 'rivals' : 'custom';
+                setIsFriendsOpen(false);
+                setMatchmakingQueue(null);
+                setMultiplayerState(null);
+                setCurrentView('menu');
                 setLobbyInitialMode(mode);
                 multiplayerClient.acceptPartyInvite(code);
                 setIsLobbyOpen(true);
@@ -789,6 +893,7 @@ export const App: React.FC = () => {
         <MultiplayerGameTable
           serverState={multiplayerState}
           profile={profile}
+          lastRankUpdate={lastMatchRankUpdate}
           onOpenRules={() => setIsRulesOpen(true)}
           onOpenTutorial={() => setIsTutorialOpen(true)}
           onOpenEmotes={() => setIsEmoteWheelOpen(true)}
@@ -796,6 +901,7 @@ export const App: React.FC = () => {
           isMuted={isMuted}
           onToggleMute={handleToggleMute}
           onExitGame={() => {
+            multiplayerClient.leaveRoom();
             multiplayerClient.leaveQueue();
             setMultiplayerState(null);
             setCurrentView('menu');
@@ -872,6 +978,7 @@ export const App: React.FC = () => {
         incomingRequests={incomingFriendRequests}
         onInviteToParty={() => {
           showToast('Invited friend to party!');
+          setIsFriendsOpen(false);
           setLobbyInitialMode('rivals');
           setIsLobbyOpen(true);
         }}

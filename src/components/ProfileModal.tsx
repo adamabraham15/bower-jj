@@ -131,29 +131,33 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   useEffect(() => {
     if (isOpen && profile.playerId) {
-      authService.fetchMatchHistory(profile.playerId).then((history) => {
+      authService.fetchMatchHistory(profile.playerId, 50).then((history) => {
         if (history && history.length > 0) {
+          const formatMode = (m: string) =>
+            m === 'ranked_solo'
+              ? 'Ranked Solo'
+              : m === 'ranked_rivals' || m === 'rivals'
+              ? 'Friendly Rivalry'
+              : m === 'ranked_duo' || m === 'duo'
+              ? 'Ranked Duo'
+              : m === 'unranked' || m === 'custom' || m === 'casual' || m === 'private'
+              ? 'Custom Match'
+              : m === 'offline_ai' || m === 'ai'
+              ? 'Casual AI'
+              : m;
+
           const mapped: MatchHistoryItem[] = history.map((h: any) => ({
             id: h.id,
             date: new Date(h.created_at).getTime(),
-            mode: h.mode === 'ranked_solo' ? 'Ranked Solo' : h.mode === 'offline_ai' ? 'Casual AI' : h.mode,
+            mode: formatMode(h.mode),
             won: Boolean(h.won),
             score: h.score || '10 - 7',
             lpChange: h.lp_change ?? (h.won ? 20 : -15),
-            opponentNames: Array.isArray(h.opponent_names) ? h.opponent_names : ['Opponents'],
+            opponentNames: Array.isArray(h.opponent_names) && h.opponent_names.length > 0 ? h.opponent_names : ['Opponents'],
           }));
 
-          const combined = [...mapped];
-          const seenIds = new Set(mapped.map(m => m.id));
-          if (profile.recentMatches) {
-            for (const rm of profile.recentMatches) {
-              if (!seenIds.has(rm.id)) {
-                combined.push(rm);
-                seenIds.add(rm.id);
-              }
-            }
-          }
-          combined.sort((a, b) => b.date - a.date);
+          const localOnlyAi = (profile.recentMatches || []).filter(m => m.id.startsWith('match_ai_'));
+          const combined = [...mapped, ...localOnlyAi].sort((a, b) => b.date - a.date);
           setLocalMatches(combined);
         } else if (profile.recentMatches && profile.recentMatches.length > 0) {
           setLocalMatches(profile.recentMatches);

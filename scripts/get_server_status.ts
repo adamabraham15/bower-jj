@@ -31,20 +31,40 @@ function checkHealth(): Promise<any> {
   });
 }
 
-function findCloudflareUrl(): string | null {
+async function findCloudflareUrl(): Promise<string | null> {
+  const serverLog = path.join('C:', 'Users', 'adama', 'bower-jj', 'server.log');
   const localTunnelLog = path.join('C:', 'Users', 'adama', '.gemini', 'antigravity', 'scratch', 'bower-jj', 'tunnel.log');
   const pm2LogPath = path.join(os.homedir(), '.pm2', 'logs', 'bower-jj-tunnel-out.log');
   const pm2ErrPath = path.join(os.homedir(), '.pm2', 'logs', 'bower-jj-tunnel-error.log');
 
-  for (const logPath of [localTunnelLog, pm2ErrPath, pm2LogPath]) {
+  for (const logPath of [serverLog, localTunnelLog, pm2ErrPath, pm2LogPath]) {
     if (fs.existsSync(logPath)) {
-      const content = fs.readFileSync(logPath, 'utf8');
-      const matches = content.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/g);
-      if (matches && matches.length > 0) {
-        return matches[matches.length - 1];
-      }
+      try {
+        const content = fs.readFileSync(logPath, 'utf8');
+        const matches = content.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/g);
+        if (matches && matches.length > 0) {
+          return matches[matches.length - 1];
+        }
+      } catch {}
     }
   }
+
+  // Fallback: check Supabase server_registry
+  try {
+    const res = await fetch('https://luqyiarxemhreuxfuzwz.supabase.co/rest/v1/server_registry?id=eq.primary&select=public_url', {
+      headers: {
+        apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1cXlpYXJ4ZW1ocmV1eGZ1end6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyOTU0ODEsImV4cCI6MjEwNjg3MTQ4MX0.zEGNBVy4wdSBjw7SDr_6WJbQc1ifwBakgv1XzL4cst4',
+        Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1cXlpYXJ4ZW1ocmV1eGZ1end6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyOTU0ODEsImV4cCI6MjEwNjg3MTQ4MX0.zEGNBVy4wdSBjw7SDr_6WJbQc1ifwBakgv1XzL4cst4',
+      },
+    });
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      if (Array.isArray(data) && data[0]?.public_url) {
+        return data[0].public_url;
+      }
+    }
+  } catch {}
+
   return null;
 }
 
@@ -55,7 +75,7 @@ async function main() {
 
   const health = await checkHealth();
   const localIp = getLocalIp();
-  const cfUrl = findCloudflareUrl();
+  const cfUrl = await findCloudflareUrl();
 
   if (health && health.status === 'healthy') {
     console.log(' [●] SERVER STATUS      : ONLINE (PORT 3001)');

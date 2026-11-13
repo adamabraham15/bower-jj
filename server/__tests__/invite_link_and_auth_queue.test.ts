@@ -288,5 +288,123 @@ describe('Invite Link Parsing and Authentication Queue Suite', () => {
 
       rm.cleanup();
     });
+
+    it('creates a fresh lobby room when re-inviting after a finished match and preserves custom mode', () => {
+      const rm = new RoomManager();
+      const inviterMessages: ServerMessage[] = [];
+      const inviteeMessages: ServerMessage[] = [];
+
+      rm.registerConnection('user_a', {
+        ws: { readyState: 1, send: (m: string) => inviterMessages.push(JSON.parse(m)) } as any,
+        userId: 'user_a',
+        username: 'PlayerA',
+        avatarIcon: '👑',
+      });
+      rm.registerConnection('user_b', {
+        ws: { readyState: 1, send: (m: string) => inviteeMessages.push(JSON.parse(m)) } as any,
+        userId: 'user_b',
+        username: 'PlayerB',
+        avatarIcon: '🎴',
+      });
+
+      // Play a finished room previously
+      const oldRoom = rm.createRoom('user_a', undefined, 'custom');
+      rm.joinRoom('user_b', oldRoom.code);
+      oldRoom.status = 'finished';
+
+      // Re-invite from finished state with custom mode -> must create a NEW lobby room (not reuse finished room!)
+      rm.inviteFriendToParty('user_a', 'user_b', 'custom');
+
+      const invite = inviteeMessages.find(m => m.type === 'PARTY_INVITE_RECEIVED') as any;
+      expect(invite).toBeDefined();
+      expect(invite.roomCode).not.toBe(oldRoom.code);
+      expect(invite.mode).toBe('custom');
+
+      // Invitee accepts the invite and enters the exact new room with InviterA, then starts with AI fill
+      const joined = rm.joinRoom('user_b', invite.roomCode);
+      expect(joined.status).toBe('lobby');
+      expect(joined.queueMode).toBe('custom');
+      expect(joined.slots.some(s => s?.userId === 'user_a')).toBe(true);
+      expect(joined.slots.some(s => s?.userId === 'user_b')).toBe(true);
+
+      const started = rm.startGame('user_a');
+      expect(started.status).toBe('playing');
+      expect(started.slots.every(s => s !== null)).toBe(true);
+
+      rm.cleanup();
+    });
+
+    it('keeps reconnected user online for invites when their superseded socket closes', () => {
+      const rm = new RoomManager();
+      const ws1: any = { readyState: 1, send: () => {} };
+      const ws2Messages: ServerMessage[] = [];
+      const ws2: any = { readyState: 1, send: (m: string) => ws2Messages.push(JSON.parse(m)) };
+      const inviterMessages: ServerMessage[] = [];
+
+      rm.registerConnection('user_inviter', {
+        ws: { readyState: 1, send: (m: string) => inviterMessages.push(JSON.parse(m)) } as any,
+        userId: 'user_inviter',
+        username: 'HostUser',
+        avatarIcon: '👑',
+      });
+
+      // Invitee connects on ws1, then refreshes/reconnects on ws2 before ws1 closes
+      rm.registerConnection('user_invitee', {
+        ws: ws1,
+        userId: 'user_invitee',
+        username: 'FriendUser',
+        avatarIcon: '⚔️',
+      });
+      rm.registerConnection('user_invitee', {
+        ws: ws2,
+        userId: 'user_invitee',
+        username: 'FriendUser',
+        avatarIcon: '⚔️',
+      });
+
+      // Old socket closes -> must NOT mark user_invitee offline
+      rm.handleDisconnect('user_invitee', ws1);
+
+      rm.inviteFriendToParty('user_inviter', 'user_invitee', 'rivals');
+
+      const invite = ws2Messages.find(m => m.type === 'PARTY_INVITE_RECEIVED') as any;
+      expect(invite).toBeDefined();
+      expect(inviterMessages.some(m => m.type === 'ERROR')).toBe(false);
+
+      rm.cleanup();
+    });
+
+    it('clears stale finished room on acceptPartyInvite and preserves multiple notice listeners', () => {
+      const client = new MultiplayerClient();
+      const appNotices: string[] = [];
+      const modalNotices: string[] = [];
+      const sent: any[] = [];
+
+      (client as any).ws = { readyState: 1, send: (raw: string) => sent.push(JSON.parse(raw)) };
+      (client as any).isAuthenticated = true;
+
+      const unsubApp = client.setCallbacks({ onNotice: (msg) => appNotices.push(msg) });
+      const unsubModal = client.setCallbacks({ onNotice: (msg) => modalNotices.push(msg) });
+
+      (client as any).handleMessage({ type: 'NOTICE', message: 'First notice' });
+      expect(appNotices).toEqual(['First notice']);
+      expect(modalNotices).toEqual(['First notice']);
+
+      // Closing child modal must not silence App's notice listener
+      unsubModal();
+      (client as any).handleMessage({ type: 'NOTICE', message: 'Second notice' });
+      expect(appNotices).toEqual(['First notice', 'Second notice']);
+      expect(modalNotices).toEqual(['First notice']);
+
+      // Simulate stale finished room still cached before accepting new invite
+      (client as any).currentRoom = { code: 'OLD999', status: 'finished' };
+      client.acceptPartyInvite('NEW123');
+
+      expect(client.getCurrentRoom()).toBeNull();
+      expect(client.getPendingJoinCode()).toBe('NEW123');
+      expect(sent.some(m => m.type === 'PARTY_INVITE_ACCEPT' && m.partyRoomCode === 'NEW123')).toBe(true);
+
+      unsubApp();
+    });
   });
 });

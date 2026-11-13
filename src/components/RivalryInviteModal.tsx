@@ -15,11 +15,13 @@ import {
   Clock,
   Send,
   Users,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { FriendSummary, Room } from '../../server/types';
 import { RankBadge, RankTier } from './RankBadge';
 import { multiplayerClient } from '../services/multiplayerClient';
 import { sounds } from '../audio/sound';
+import { PlayerPosition } from '../engine/types';
 
 interface RivalryInviteModalProps {
   isOpen: boolean;
@@ -45,11 +47,17 @@ export const RivalryInviteModal: React.FC<RivalryInviteModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    // Connect and create a rivals room
+    // Connect and create a rivals room if not already in one
     multiplayerClient.connect();
-    multiplayerClient.createRoom(undefined, 'rivals');
 
-    multiplayerClient.setCallbacks({
+    const activeRoom = multiplayerClient.getCurrentRoom();
+    if (!multiplayerClient.hasActiveRoom() || activeRoom?.queueMode !== 'rivals') {
+      multiplayerClient.createRoom(undefined, 'rivals');
+    } else if (activeRoom && activeRoom.status === 'lobby') {
+      setCurrentRoom(activeRoom);
+    }
+
+    const unsubscribe = multiplayerClient.setCallbacks({
       onRoom: (room) => {
         setCurrentRoom(room);
         if (room.status === 'playing') {
@@ -67,14 +75,36 @@ export const RivalryInviteModal: React.FC<RivalryInviteModalProps> = ({
     });
 
     return () => {
-      // Cleanup room if unmounted before start
+      unsubscribe();
     };
   }, [isOpen, onMatchFound]);
 
   if (!isOpen) return null;
 
-  const rivalFriendSlot = currentRoom?.slots[1];
-  const hasRivalJoined = rivalFriendSlot !== null && rivalFriendSlot !== undefined && !rivalFriendSlot.isAI;
+  const myUserId = multiplayerClient.getUserId();
+  const myUsername = multiplayerClient.getUsername();
+  const myPos = currentRoom?.slots.findIndex(
+    s => s && (myUserId ? s.userId === myUserId : s.username === myUsername)
+  );
+  const myPosition = myPos !== undefined && myPos !== -1 ? (myPos as PlayerPosition) : null;
+  const isHost = Boolean(
+    currentRoom && (
+      myUserId
+        ? currentRoom.hostUserId === myUserId
+        : (currentRoom.slots[0]?.username === myUsername || currentRoom.hostUserId === currentRoom.slots[0]?.userId)
+    )
+  );
+
+  const blueSlot = currentRoom?.slots[0];
+  const redSlot = currentRoom?.slots[1];
+  const hasTwoPlayers = Boolean(blueSlot && !blueSlot.isAI && redSlot && !redSlot.isAI);
+
+  const handleSwapSides = () => {
+    sounds.playUiClick();
+    if (myPosition === null) return;
+    const targetPos = myPosition === 0 ? 1 : 0;
+    multiplayerClient.switchSeat(targetPos as PlayerPosition);
+  };
 
   const handleInviteFriend = (friendId: string, friendName: string) => {
     sounds.playUiClick();
@@ -134,6 +164,7 @@ export const RivalryInviteModal: React.FC<RivalryInviteModalProps> = ({
           <button
             onClick={() => {
               sounds.playUiClick();
+              multiplayerClient.leaveRoom();
               onClose();
             }}
             className="w-8 h-8 rounded-full bg-slate-800 text-gray-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors"
@@ -158,40 +189,79 @@ export const RivalryInviteModal: React.FC<RivalryInviteModalProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
-              {/* Team Blue: You */}
-              <div className="p-3 rounded-xl bg-blue-950/60 border border-blue-500/50 space-y-1">
-                <div className="text-[10px] font-black text-blue-400 uppercase">Team Blue</div>
-                <div className="font-bold text-white flex items-center space-x-1.5">
-                  <span>{currentRoom?.slots[0]?.avatarIcon || '🤠'}</span>
-                  <span className="truncate">{currentRoom?.slots[0]?.username || 'You (Host)'}</span>
+              {/* Team Blue (Seat 0) */}
+              <div className={`p-3 rounded-xl border space-y-1 transition-all ${
+                myPosition === 0
+                  ? 'bg-blue-950/90 border-blue-400 ring-2 ring-blue-500/40 text-blue-100 shadow-lg'
+                  : blueSlot
+                  ? 'bg-blue-950/60 border-blue-500/50 text-blue-200'
+                  : 'bg-slate-900 border-dashed border-slate-700 text-gray-500'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-blue-400 uppercase">Team Blue</span>
+                  {myPosition === 0 && (
+                    <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1 rounded">
+                      YOU
+                    </span>
+                  )}
                 </div>
+                {blueSlot ? (
+                  <div className="font-bold text-white flex items-center space-x-1.5 min-w-0">
+                    <span className="text-base flex-shrink-0">{blueSlot.avatarIcon}</span>
+                    <span className="truncate">{blueSlot.username}</span>
+                  </div>
+                ) : (
+                  <div className="text-gray-500 italic text-[11px]">Empty Seat</div>
+                )}
                 <div className="text-[10px] text-blue-300/70">
-                  Partner: Random / AI
+                  Partner: Random / AI (Seat 3)
                 </div>
               </div>
 
-              {/* Team Red: Rival Friend */}
+              {/* Team Red (Seat 1) */}
               <div className={`p-3 rounded-xl border space-y-1 transition-all ${
-                hasRivalJoined
+                myPosition === 1
+                  ? 'bg-red-950/90 border-red-400 ring-2 ring-red-500/40 text-red-100 shadow-lg'
+                  : redSlot && !redSlot.isAI
                   ? 'bg-red-950/60 border-red-500/60 text-red-100'
                   : 'bg-slate-900 border-dashed border-slate-700 text-gray-400'
               }`}>
-                <div className="text-[10px] font-black text-red-400 uppercase">Team Red (Opponent)</div>
-                {hasRivalJoined ? (
-                  <div className="font-bold text-white flex items-center space-x-1.5">
-                    <span>{rivalFriendSlot?.avatarIcon}</span>
-                    <span className="truncate">{rivalFriendSlot?.username}</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-red-400 uppercase">Team Red</span>
+                  {myPosition === 1 && (
+                    <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1 rounded">
+                      YOU
+                    </span>
+                  )}
+                </div>
+                {redSlot && !redSlot.isAI ? (
+                  <div className="font-bold text-white flex items-center space-x-1.5 min-w-0">
+                    <span className="text-base flex-shrink-0">{redSlot.avatarIcon}</span>
+                    <span className="truncate">{redSlot.username}</span>
                   </div>
                 ) : (
-                  <div className="flex items-center space-x-1.5 text-amber-400 font-bold">
+                  <div className="flex items-center space-x-1.5 text-amber-400 font-bold text-[11px]">
                     <Clock className="w-3.5 h-3.5 animate-spin" />
                     <span>Waiting for Friend...</span>
                   </div>
                 )}
                 <div className="text-[10px] text-red-300/70">
-                  Partner: Random / AI
+                  Partner: Random / AI (Seat 4)
                 </div>
               </div>
+            </div>
+
+            {/* Quick Side Swap Button */}
+            <div className="flex justify-center pt-1">
+              <button
+                onClick={handleSwapSides}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/40 text-xs font-bold flex items-center space-x-1.5 shadow-sm active:scale-95 transition-all"
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5" />
+                <span>
+                  Switch Sides ({myPosition === 0 ? 'Switch to Team Red' : 'Switch to Team Blue'})
+                </span>
+              </button>
             </div>
           </div>
 
@@ -328,7 +398,24 @@ export const RivalryInviteModal: React.FC<RivalryInviteModalProps> = ({
 
         {/* Footer Actions */}
         <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-2">
-          {hasRivalJoined ? (
+          {!isHost ? (
+            <div className="space-y-2">
+              <div className="w-full py-3.5 rounded-2xl bg-cyan-950/80 border border-cyan-500/50 text-cyan-300 font-bold text-xs flex items-center justify-center space-x-2">
+                <Clock className="w-4 h-4 animate-spin text-cyan-400" />
+                <span>Ready! Waiting for host to launch the match...</span>
+              </div>
+              <button
+                onClick={() => {
+                  sounds.playUiClick();
+                  multiplayerClient.leaveRoom();
+                  onClose();
+                }}
+                className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-gray-400 hover:text-white text-xs font-bold transition-colors"
+              >
+                Leave Rivalry Room
+              </button>
+            </div>
+          ) : hasTwoPlayers ? (
             <button
               onClick={handleStartMatch}
               className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 hover:from-emerald-400 text-slate-950 font-black text-sm uppercase tracking-wider shadow-xl shadow-emerald-500/30 flex items-center justify-center space-x-2 active:scale-95 transition-all"

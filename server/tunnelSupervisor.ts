@@ -5,13 +5,17 @@
  * auto-restarts on expiration, and syncs live public URL into Supabase server_registry.
  */
 
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, execSync, ChildProcess } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import https from 'https';
 import http from 'http';
+import { fileURLToPath } from 'url';
 import { logger } from './telemetry';
 import { PostgresDatabaseRepository } from './db/postgres';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export class TunnelSupervisor {
   private child: ChildProcess | null = null;
@@ -45,7 +49,7 @@ export class TunnelSupervisor {
 
   private killExistingCloudflared(): void {
     try {
-      require('child_process').execSync('taskkill /F /IM cloudflared.exe >nul 2>&1');
+      execSync('taskkill /F /IM cloudflared.exe >nul 2>&1');
     } catch {}
   }
 
@@ -73,7 +77,7 @@ export class TunnelSupervisor {
       try {
         const dest = path.resolve(process.cwd(), 'cloudflared.exe');
         logger.info('[TUNNEL SUPERVISOR] cloudflared.exe not found. Auto-downloading latest official Windows binary...');
-        require('child_process').execSync(
+        execSync(
           `curl.exe -s -L -o "${dest}" https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe`,
           { timeout: 30000 }
         );
@@ -206,17 +210,46 @@ export class TunnelSupervisor {
   }
 
   public async syncUrlToDatabase(url: string): Promise<void> {
-    if (!this.pgRepo) return;
+    if (this.pgRepo) {
+      try {
+        await (this.pgRepo as any).pool.query(
+          `INSERT INTO public.server_registry (id, public_url, updated_at)
+           VALUES ('primary', $1, NOW())
+           ON CONFLICT (id) DO UPDATE SET public_url = EXCLUDED.public_url, updated_at = NOW()`,
+          [url]
+        );
+        logger.info(`[TUNNEL SUPERVISOR] Successfully registered ${url} into Supabase server_registry (PostgreSQL).`);
+        return;
+      } catch (err: any) {
+        logger.warn(`[TUNNEL SUPERVISOR] Database registration error: ${err.message}`);
+      }
+    }
+
+    // Direct REST API sync fallback for server_registry
     try {
-      await (this.pgRepo as any).pool.query(
-        `INSERT INTO public.server_registry (id, public_url, updated_at)
-         VALUES ('primary', $1, NOW())
-         ON CONFLICT (id) DO UPDATE SET public_url = EXCLUDED.public_url, updated_at = NOW()`,
-        [url]
-      );
-      logger.info(`[TUNNEL SUPERVISOR] Successfully registered ${url} into Supabase server_registry.`);
-    } catch (err: any) {
-      logger.warn(`[TUNNEL SUPERVISOR] Database registration error: ${err.message}`);
+      const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://luqyiarxemhreuxfuzwz.supabase.co';
+      const anonKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1cXlpYXJ4ZW1ocmV1eGZ1end6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyOTU0ODEsImV4cCI6MjEwNjg3MTQ4MX0.zEGNBVy4wdSBjw7SDr_6WJbQc1ifwBakgv1XzL4cst4';
+      const res = await fetch(`${supabaseUrl}/rest/v1/server_registry?id=eq.primary`, {
+        method: 'PATCH',
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${anonKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({
+          public_url: url,
+          updated_at: new Date().toISOString(),
+        }),
+      });
+
+      if (res.ok) {
+        logger.info(`[TUNNEL SUPERVISOR] Successfully registered ${url} into Supabase server_registry (REST).`);
+      } else {
+        logger.warn(`[TUNNEL SUPERVISOR] REST server_registry sync failed with status ${res.status}`);
+      }
+    } catch (restErr: any) {
+      logger.warn(`[TUNNEL SUPERVISOR] REST server_registry sync error: ${restErr.message}`);
     }
   }
 

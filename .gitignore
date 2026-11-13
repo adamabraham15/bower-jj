@@ -1,0 +1,26 @@
+# Dependencies & Build
+node_modules/
+dist/
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+
+# Logs & Runtime State
+*.log
+server.stop
+cloudflared.exe
+
+# Local Windows convenience scripts in repo root
+/start_server.cmd
+/stop_server.cmd
+/status_server.cmd
+/restart_server.cmd
+
+# Ephemeral runtime & test data
+server/data/active_matches/
+server/data/backups/
+server/data/migration_report_*.json
+server/data/test_migration_sandbox/
+test_migration_sandbox/

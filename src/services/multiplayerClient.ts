@@ -23,6 +23,7 @@ export class MultiplayerClient {
   private ws: WebSocket | null = null;
   private sessionToken: string | null = null;
   private accessToken: string | null = null;
+  private lastSentAccessToken: string | null = null;
   private userId: string | null = null;
   private username: string = 'Player';
   private avatarIcon: string = '🤠';
@@ -109,6 +110,7 @@ export class MultiplayerClient {
 
   // Event Listeners
   private onAuthCallback?: (user: UserAccount, token: string) => void;
+  private onUserSyncCallback?: (user: UserAccount) => void;
   private onRoomCallback?: (room: Room, yourPosition?: PlayerPosition) => void;
   private onGameSyncCallback?: (state: SanitizedGameState) => void;
   private onQueueCallback?: (data: { inQueue: boolean; mode?: string; playersFound: number; elapsedSeconds: number }) => void;
@@ -134,6 +136,7 @@ export class MultiplayerClient {
   private roomListeners = new Set<(room: Room, yourPosition?: PlayerPosition) => void>();
   private gameSyncListeners = new Set<(state: SanitizedGameState) => void>();
   private queueListeners = new Set<(data: { inQueue: boolean; mode?: string; playersFound: number; elapsedSeconds: number }) => void>();
+  private noticeListeners = new Set<(message: string, title?: string) => void>();
   private errorListeners = new Set<(errorMsg: string) => void>();
 
   // Outgoing message queue for requests made while connecting
@@ -151,6 +154,7 @@ export class MultiplayerClient {
 
   public setCallbacks(callbacks: {
     onAuth?: (user: UserAccount, token: string) => void;
+    onUserSync?: (user: UserAccount) => void;
     onRoom?: (room: Room, yourPosition?: PlayerPosition) => void;
     onGameSync?: (state: SanitizedGameState) => void;
     onQueue?: (data: { inQueue: boolean; mode?: string; playersFound: number; elapsedSeconds: number }) => void;
@@ -173,6 +177,7 @@ export class MultiplayerClient {
     onError?: (errorMsg: string) => void;
   }): () => void {
     if (callbacks.onAuth) this.onAuthCallback = callbacks.onAuth;
+    if (callbacks.onUserSync) this.onUserSyncCallback = callbacks.onUserSync;
     if (callbacks.onRoom) {
       this.onRoomCallback = callbacks.onRoom;
       this.roomListeners.add(callbacks.onRoom);
@@ -193,7 +198,10 @@ export class MultiplayerClient {
     if (callbacks.onPartyInvite) this.onPartyInviteCallback = callbacks.onPartyInvite;
     if (callbacks.onProfile) this.onProfileCallback = callbacks.onProfile;
     if (callbacks.onMatchmakingStats) this.onMatchmakingStatsCallback = callbacks.onMatchmakingStats;
-    if (callbacks.onNotice) this.onNoticeCallback = callbacks.onNotice;
+    if (callbacks.onNotice) {
+      this.onNoticeCallback = callbacks.onNotice;
+      this.noticeListeners.add(callbacks.onNotice);
+    }
     if (callbacks.onError) {
       this.onErrorCallback = callbacks.onError;
       this.errorListeners.add(callbacks.onError);
@@ -212,6 +220,10 @@ export class MultiplayerClient {
         this.queueListeners.delete(callbacks.onQueue);
         if (this.onQueueCallback === callbacks.onQueue) this.onQueueCallback = undefined;
       }
+      if (callbacks.onNotice) {
+        this.noticeListeners.delete(callbacks.onNotice);
+        if (this.onNoticeCallback === callbacks.onNotice) this.onNoticeCallback = undefined;
+      }
       if (callbacks.onError) {
         this.errorListeners.delete(callbacks.onError);
         if (this.onErrorCallback === callbacks.onError) this.onErrorCallback = undefined;
@@ -225,6 +237,7 @@ export class MultiplayerClient {
     accessToken?: string,
     forceFresh: boolean = false
   ): Promise<boolean> {
+    const tokenUpgraded = Boolean(accessToken && accessToken !== this.lastSentAccessToken);
     if (username) this.username = username;
     if (avatarIcon) this.avatarIcon = avatarIcon;
     if (accessToken) this.accessToken = accessToken;
@@ -237,8 +250,8 @@ export class MultiplayerClient {
     }
 
     if (!forceFresh && this.ws && this.ws.readyState === WebSocket.OPEN && this.isAuthenticated) {
-      if (accessToken && accessToken !== this.accessToken) {
-        this.reauthenticate(accessToken, username, avatarIcon);
+      if (tokenUpgraded || (this.accessToken && this.accessToken !== this.lastSentAccessToken)) {
+        this.reauthenticate(this.accessToken || accessToken, username, avatarIcon);
       }
       return true;
     }
@@ -279,6 +292,7 @@ export class MultiplayerClient {
             this.reconnectTimer = null;
           }
           // Authenticate immediately with authoritative token if available
+          this.lastSentAccessToken = this.accessToken || null;
           this.send({
             type: 'AUTH',
             username: this.username,
@@ -347,6 +361,7 @@ export class MultiplayerClient {
     if (username) this.username = username;
     if (avatarIcon) this.avatarIcon = avatarIcon;
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.lastSentAccessToken = this.accessToken || null;
       this.send({
         type: 'AUTH',
         username: this.username,
@@ -374,16 +389,29 @@ export class MultiplayerClient {
     switch (msg.type) {
       case 'AUTH_SUCCESS':
         this.isAuthenticated = true;
-        this.sessionToken = msg.sessionToken;
+        if (msg.sessionToken) {
+          this.sessionToken = msg.sessionToken;
+          try {
+            localStorage.setItem('bower_jj_session_token', msg.sessionToken);
+          } catch {}
+        }
         this.userId = msg.user.id;
         this.username = msg.user.username;
         this.avatarIcon = msg.user.avatarIcon;
-        try {
-          localStorage.setItem('bower_jj_session_token', msg.sessionToken);
-        } catch {}
         this.onAuthCallback?.(msg.user, msg.sessionToken);
         this.flushPendingMessages();
         this.resolvePendingAuth(true);
+        // If accessToken arrived while connecting, upgrade session immediately
+        if (this.accessToken && this.accessToken !== this.lastSentAccessToken) {
+          this.reauthenticate(this.accessToken, this.username, this.avatarIcon);
+        }
+        break;
+
+      case 'USER_SYNC':
+        this.userId = msg.user.id;
+        this.username = msg.user.username;
+        this.avatarIcon = msg.user.avatarIcon;
+        this.onUserSyncCallback?.(msg.user);
         break;
 
       case 'ROOM_UPDATE': {
@@ -453,7 +481,10 @@ export class MultiplayerClient {
         break;
 
       case 'NOTICE':
-        this.onNoticeCallback?.(msg.message, msg.title);
+        if (this.onNoticeCallback) this.onNoticeCallback(msg.message, msg.title);
+        this.noticeListeners.forEach(cb => {
+          if (cb !== this.onNoticeCallback) cb(msg.message, msg.title);
+        });
         break;
 
       case 'ERROR':
@@ -481,17 +512,32 @@ export class MultiplayerClient {
     }
   }
 
+  private prepareRoomJoin(roomCode: string): string {
+    const code = roomCode.trim().toUpperCase();
+    if (this.currentRoom && this.currentRoom.code !== code) {
+      this.leaveRoom();
+    } else if (this.currentRoom && this.currentRoom.status !== 'lobby') {
+      this.currentRoom = null;
+      this.myPosition = null;
+    }
+    this.pendingJoinCode = code;
+    if (typeof window !== 'undefined' && typeof WebSocket !== 'undefined' && !this.isConnected() && !this.isConnecting) {
+      this.connect();
+    }
+    return code;
+  }
+
   // --- API Methods ---
-  public createRoom(rules?: Partial<EuchreHouseRules>, queueMode?: 'rivals' | 'solo' | 'casual' | 'custom') {
+  public createRoom(rules?: Partial<EuchreHouseRules>, queueMode?: 'rivals' | 'solo' | 'casual' | 'custom' | 'duo') {
+    if (this.currentRoom && this.currentRoom.status !== 'lobby') {
+      this.currentRoom = null;
+      this.myPosition = null;
+    }
     this.send({ type: 'ROOM_CREATE', rules, queueMode });
   }
 
   public joinRoom(roomCode: string) {
-    const code = roomCode.trim().toUpperCase();
-    if (this.currentRoom && this.currentRoom.code !== code) {
-      this.leaveRoom();
-    }
-    this.pendingJoinCode = code;
+    const code = this.prepareRoomJoin(roomCode);
     this.send({ type: 'ROOM_JOIN', roomCode: code });
   }
 
@@ -642,19 +688,15 @@ export class MultiplayerClient {
     this.send({ type: 'EQUIP_COSMETIC', category, itemId });
   }
 
-  public sendPartyInvite(friendUserId?: string, mode: 'rivals' | 'duo' = 'rivals', friendUsername?: string) {
-    if (!this.currentRoom) {
+  public sendPartyInvite(friendUserId?: string, mode: 'rivals' | 'custom' | 'duo' = 'rivals', friendUsername?: string) {
+    if (!this.currentRoom || this.currentRoom.status !== 'lobby') {
       this.isPendingPartyCreate = true;
     }
     this.send({ type: 'PARTY_INVITE_SEND', friendUserId, friendUsername, mode });
   }
 
   public acceptPartyInvite(partyRoomCode: string) {
-    const code = partyRoomCode.trim().toUpperCase();
-    if (this.currentRoom && this.currentRoom.code !== code) {
-      this.leaveRoom();
-    }
-    this.pendingJoinCode = code;
+    const code = this.prepareRoomJoin(partyRoomCode);
     this.send({ type: 'PARTY_INVITE_ACCEPT', partyRoomCode: code });
   }
 

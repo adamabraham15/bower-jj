@@ -5,7 +5,7 @@
  * and launch matches.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Swords,
@@ -58,9 +58,15 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [aiFillDifficulty, setAiFillDifficulty] = useState<AIDifficulty>('medium');
   const [isFriendsOpen, setIsFriendsOpen] = useState(false);
+  const onMatchFoundRef = useRef(onMatchFound);
+  onMatchFoundRef.current = onMatchFound;
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setCurrentRoom(null);
+      setStatusMessage(null);
+      return;
+    }
 
     multiplayerClient.connect();
 
@@ -68,9 +74,12 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
     const activeRoom = multiplayerClient.getCurrentRoom();
     if (activeRoom && activeRoom.status === 'lobby') {
       setCurrentRoom(activeRoom);
-    } else if (!multiplayerClient.isPendingJoin()) {
-      // Create fresh room with the chosen initial mode
-      multiplayerClient.createRoom(undefined, initialMode);
+    } else {
+      setCurrentRoom(null);
+      if (!multiplayerClient.isPendingJoin()) {
+        // Create fresh room with the chosen initial mode
+        multiplayerClient.createRoom(undefined, initialMode);
+      }
     }
 
     const unsubscribe = multiplayerClient.setCallbacks({
@@ -78,11 +87,11 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
         setCurrentRoom(room);
         if (room.status === 'playing') {
           sounds.playVictoryFanfare();
-          onMatchFound();
+          onMatchFoundRef.current();
         }
       },
       onGameSync: () => {
-        onMatchFound();
+        onMatchFoundRef.current();
       },
       onNotice: (msg) => {
         setStatusMessage(msg);
@@ -97,7 +106,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
     return () => {
       unsubscribe();
     };
-  }, [isOpen, initialMode, onMatchFound]);
+  }, [isOpen, initialMode]);
 
   if (!isOpen) return null;
 
@@ -179,7 +188,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
   const handleInviteFriend = (friend: FriendSummary) => {
     if (!currentRoom) return;
     sounds.playUiClick();
-    multiplayerClient.sendPartyInvite(friend.userId, currentMode === 'rivals' ? 'rivals' : 'duo');
+    multiplayerClient.sendPartyInvite(friend.userId, currentMode === 'rivals' ? 'rivals' : 'custom');
     setInvitedFriends(prev => new Set(prev).add(friend.userId));
     setStatusMessage(`Invitation sent to ${friend.username}!`);
   };
@@ -188,7 +197,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
     e.preventDefault();
     if (!usernameInput.trim()) return;
     sounds.playUiClick();
-    multiplayerClient.sendPartyInvite(undefined, currentMode === 'rivals' ? 'rivals' : 'duo', usernameInput.trim());
+    multiplayerClient.sendPartyInvite(undefined, currentMode === 'rivals' ? 'rivals' : 'custom', usernameInput.trim());
     setStatusMessage(`Challenge sent to ${usernameInput.trim()}!`);
     setUsernameInput('');
   };
@@ -646,7 +655,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
               </span>
             </div>
 
-            {onlineFriends.length > 0 ? (
+            {onlineFriends.length > 0 && (
               <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
                 {onlineFriends.map((fr) => {
                   const isInvited = invitedFriends.has(fr.userId);
@@ -675,24 +684,24 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                   );
                 })}
               </div>
-            ) : (
-              <form onSubmit={handleInviteByUsername} className="flex space-x-2 pt-1">
-                <input
-                  type="text"
-                  placeholder="Challenge player by username..."
-                  value={usernameInput}
-                  onChange={e => setUsernameInput(e.target.value)}
-                  className="flex-1 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-cyan-400 font-mono"
-                />
-                <button
-                  type="submit"
-                  className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center space-x-1"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Send</span>
-                </button>
-              </form>
             )}
+
+            <form onSubmit={handleInviteByUsername} className="flex space-x-2 pt-1">
+              <input
+                type="text"
+                placeholder="Challenge player by username..."
+                value={usernameInput}
+                onChange={e => setUsernameInput(e.target.value)}
+                className="flex-1 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-cyan-400 font-mono"
+              />
+              <button
+                type="submit"
+                className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center space-x-1"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Send</span>
+              </button>
+            </form>
           </div>
         </div>
         )}

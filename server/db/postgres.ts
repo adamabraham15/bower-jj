@@ -35,7 +35,7 @@ export interface PostgresConfig {
 export interface MatchResultRecordInput {
   matchId: string;
   roomCode: string;
-  mode: 'ranked_solo' | 'ranked_rivals' | 'unranked' | 'private';
+  mode: 'ranked_solo' | 'ranked_rivals' | 'ranked_duo' | 'unranked' | 'private';
   composition: '4H' | '3H1B' | '2H2B' | '1H3B';
   winningTeam: number;
   finalScore: string;
@@ -52,6 +52,8 @@ export interface MatchResultRecordInput {
     euchres: number;
     marches: number;
     successfulLoners: number;
+    opponentNames?: string[];
+    teammateAbandoned?: boolean;
   }[];
   idempotencyKey?: string;
 }
@@ -211,7 +213,36 @@ export class PostgresDatabaseRepository {
     );
 
     if (res.rows.length === 0) return null;
-    return this.mapRowToUserAccount(res.rows[0]);
+    const user = this.mapRowToUserAccount(res.rows[0]);
+    await this.attachMatchHistory(user);
+    return user;
+  }
+
+  private async attachMatchHistory(user: UserAccount): Promise<void> {
+    try {
+      const histRes = await this.queryWithRetry(
+        `
+        SELECT id, won, mode, score, lp_change, mmr_change, opponent_names, created_at
+        FROM public.player_match_history
+        WHERE user_id = $1
+        ORDER BY created_at DESC
+        LIMIT 50;
+        `,
+        [user.id]
+      );
+      user.matchHistory = histRes.rows.map((h) => ({
+        id: h.id,
+        date: h.created_at ? new Date(h.created_at).getTime() : Date.now(),
+        mode: h.mode,
+        won: Boolean(h.won),
+        score: h.score || '10 - 7',
+        lpChange: h.lp_change ?? 0,
+        mmrChange: h.mmr_change ?? 0,
+        opponentNames: Array.isArray(h.opponent_names) ? h.opponent_names : ['Opponents'],
+      }));
+    } catch {
+      user.matchHistory = user.matchHistory || [];
+    }
   }
 
   public async getUserByUsername(username: string): Promise<UserAccount | null> {
@@ -244,7 +275,9 @@ export class PostgresDatabaseRepository {
     );
 
     if (res.rows.length === 0) return null;
-    return this.mapRowToUserAccount(res.rows[0]);
+    const user = this.mapRowToUserAccount(res.rows[0]);
+    await this.attachMatchHistory(user);
+    return user;
   }
 
   public async getOrCreateUser(
@@ -253,12 +286,14 @@ export class PostgresDatabaseRepository {
     sessionToken?: string,
     authUserId?: string
   ): Promise<{ user: UserAccount; sessionToken: string }> {
-    // 1. Session token cache hit
+    // 1. Session token cache hit (only if not overriding with a different verified authUserId)
     if (sessionToken && this.sessionStore.has(sessionToken)) {
       const cachedUserId = this.sessionStore.get(sessionToken)!;
-      const cachedUser = await this.getUserById(cachedUserId);
-      if (cachedUser) {
-        return { user: cachedUser, sessionToken };
+      if (!authUserId || cachedUserId === authUserId) {
+        const cachedUser = await this.getUserById(cachedUserId);
+        if (cachedUser) {
+          return { user: cachedUser, sessionToken };
+        }
       }
     }
 
@@ -510,6 +545,9 @@ export class PostgresDatabaseRepository {
       const humanCount = input.humanPlayers.length;
       const botCount = 4 - humanCount;
       const matchUuid = crypto.randomUUID();
+      // Live DB matches_mode_check allows ('ranked_solo', 'ranked_rivals', 'unranked', 'private');
+      // player_match_history retains the specific mode ('ranked_duo', etc.) for per-player breakdown.
+      const matchesTableMode = input.mode === 'ranked_duo' ? 'ranked_solo' : input.mode;
 
       await client.query(
         `
@@ -520,7 +558,7 @@ export class PostgresDatabaseRepository {
         [
           matchUuid,
           input.roomCode,
-          input.mode,
+          matchesTableMode,
           humanCount,
           botCount,
           input.composition,
@@ -531,60 +569,83 @@ export class PostgresDatabaseRepository {
       );
 
       const playerResults: any[] = [];
+      const isRankedMode =
+        input.mode === 'ranked_solo' ||
+        input.mode === 'ranked_rivals' ||
+        input.mode === 'ranked_duo';
 
       // 3. Process Each Human Player Atomically
       for (const p of input.humanPlayers) {
         const won = p.team === input.winningTeam;
 
-        // Calculate LP change and Elo MMR
-        const lpChange = won ? 24 : -16;
-        const mmrChange = won ? 18 : -14;
-
-        // Authoritative read of player's current rank tier, points, and MMR from PostgreSQL
+        // Authoritative read of player's current rank tier, points, MMR, and demotion shield from PostgreSQL
         const rankRow = await client.query(
-          `SELECT rank_tier, rank_points, mmr FROM public.player_ranks WHERE user_id = $1 LIMIT 1`,
+          `SELECT rank_tier, rank_points, mmr, has_demotion_shield FROM public.player_ranks WHERE user_id = $1 LIMIT 1`,
           [p.userId]
         );
         const currentTier = (rankRow.rows[0]?.rank_tier || p.rankTier || '9') as RankTier;
         const currentPoints = rankRow.rows[0]?.rank_points ?? p.rankPoints ?? 0;
         const currentMmr = rankRow.rows[0]?.mmr ?? p.mmr ?? 1200;
+        let hasDemotionShield = Boolean(rankRow.rows[0]?.has_demotion_shield);
 
-        // Calculate Rank Tier & Points with promotion / demotion rules
-        let newPoints = currentPoints + lpChange;
+        // Calculate LP change and Elo MMR (strictly zero in unranked/private modes or teammate abandonment loss mitigation)
+        let lpChange = 0;
+        let mmrChange = 0;
+        let newPoints = currentPoints;
         let newTier = currentTier;
-        const currentTierIdx = TIER_ORDER.indexOf(currentTier);
+        let newMmr = currentMmr;
 
-        if (newPoints >= 100) {
-          if (currentTierIdx < TIER_ORDER.length - 1) {
-            newTier = TIER_ORDER[currentTierIdx + 1];
-            newPoints = newPoints - 100;
+        if (isRankedMode) {
+          if (!won && p.teammateAbandoned) {
+            lpChange = 0;
+            mmrChange = 0;
           } else {
-            newPoints = 100;
+            lpChange = won ? 24 : -16;
+            mmrChange = won ? 18 : -14;
           }
-        } else if (newPoints < 0) {
-          if (currentTierIdx > 0) {
-            newTier = TIER_ORDER[currentTierIdx - 1];
-            newPoints = 75; // Demotion soft landing
-          } else {
-            newPoints = 0;
+
+          newPoints = currentPoints + lpChange;
+          const currentTierIdx = TIER_ORDER.indexOf(currentTier);
+
+          if (newPoints >= 100) {
+            if (currentTierIdx < TIER_ORDER.length - 1) {
+              newTier = TIER_ORDER[currentTierIdx + 1];
+              newPoints = newPoints - 100;
+              hasDemotionShield = true;
+            } else {
+              // Respect DB CHECK constraint (rank_points BETWEEN 0 AND 100) at max tier BOWER_JJ
+              newPoints = 100;
+            }
+          } else if (newPoints < 0) {
+            if (hasDemotionShield) {
+              newPoints = 0;
+              hasDemotionShield = false;
+            } else if (currentTierIdx > 0) {
+              newTier = TIER_ORDER[currentTierIdx - 1];
+              newPoints = 75; // Demotion soft landing
+              hasDemotionShield = true;
+            } else {
+              newPoints = 0;
+            }
           }
+
+          newMmr = Math.max(800, currentMmr + mmrChange);
+
+          // Update player_ranks only on ranked games
+          await client.query(
+            `
+            UPDATE public.player_ranks SET
+              rank_tier = $2,
+              rank_points = $3,
+              mmr = $4,
+              has_demotion_shield = $5,
+              placement_matches_remaining = GREATEST(0, placement_matches_remaining - 1),
+              updated_at = NOW()
+            WHERE user_id = $1;
+            `,
+            [p.userId, newTier, newPoints, newMmr, hasDemotionShield]
+          );
         }
-
-        const newMmr = Math.max(800, currentMmr + mmrChange);
-
-        // Update player_ranks
-        await client.query(
-          `
-          UPDATE public.player_ranks SET
-            rank_tier = $2,
-            rank_points = $3,
-            mmr = $4,
-            placement_matches_remaining = GREATEST(0, placement_matches_remaining - 1),
-            updated_at = NOW()
-          WHERE user_id = $1;
-          `,
-          [p.userId, newTier, newPoints, newMmr]
-        );
 
         // Update player_statistics
         await client.query(
@@ -634,8 +695,11 @@ export class PostgresDatabaseRepository {
           [p.userId, bpXpEarned]
         );
 
-        // Insert Match History
-        const opponentNames = input.humanPlayers.filter((o) => o.team !== p.team).map((o) => o.username);
+        // Insert Match History (preserving explicit human + AI opponent names when supplied)
+        const opponentNames =
+          p.opponentNames && p.opponentNames.length > 0
+            ? p.opponentNames
+            : input.humanPlayers.filter((o) => o.team !== p.team).map((o) => o.username);
         const historyId = crypto.randomUUID();
 
         await client.query(
@@ -740,7 +804,7 @@ export class PostgresDatabaseRepository {
 
   // --- SOCIAL & FRIENDSHIPS ---
 
-  public async getFriendsSummary(userId: string, onlineUserIds: Set<string>): Promise<FriendSummary[]> {
+  public async getFriendsSummary(userId: string, onlineUserIds: Set<string> = new Set()): Promise<FriendSummary[]> {
     const res = await this.queryWithRetry(
       `
       SELECT
@@ -756,9 +820,13 @@ export class PostgresDatabaseRepository {
       [userId]
     );
 
-    return res.rows.map((row) => {
+    const seen = new Set<string>();
+    const summary: FriendSummary[] = [];
+    for (const row of res.rows) {
+      if (seen.has(row.userId)) continue;
+      seen.add(row.userId);
       const isOnline = onlineUserIds.has(row.userId);
-      return {
+      summary.push({
         userId: row.userId,
         username: row.username,
         avatarIcon: row.avatarIcon || '🤠',
@@ -767,8 +835,9 @@ export class PostgresDatabaseRepository {
         level: row.level || 1,
         isOnline,
         status: isOnline ? 'online' : 'offline',
-      };
-    });
+      });
+    }
+    return summary;
   }
 
   public async sendFriendRequest(fromUserId: string, targetUsername: string): Promise<{ success: boolean; error?: string }> {
@@ -776,14 +845,46 @@ export class PostgresDatabaseRepository {
     if (!target) return { success: false, error: 'Player not found' };
     if (target.id === fromUserId) return { success: false, error: 'Cannot add yourself' };
 
-    await this.queryWithRetry(
+    const alreadyFriends = await this.queryWithRetry(
+      `SELECT 1 FROM public.friendships
+       WHERE (user_id = $1 AND friend_id = $2)
+          OR (user_id = $2 AND friend_id = $1)
+       LIMIT 1`,
+      [fromUserId, target.id]
+    );
+    if (alreadyFriends.rows.length > 0) {
+      return { success: false, error: 'Already friends with this player' };
+    }
+
+    // If the target player already sent us a request, accept it mutually
+    const reverseReq = await this.queryWithRetry(
+      `SELECT id FROM public.friend_requests WHERE from_user_id = $1 AND to_user_id = $2 LIMIT 1`,
+      [target.id, fromUserId]
+    );
+    if (reverseReq.rows.length > 0) {
+      return await this.acceptFriendRequest(fromUserId, target.id);
+    }
+
+    const existingReq = await this.queryWithRetry(
+      `SELECT 1 FROM public.friend_requests WHERE from_user_id = $1 AND to_user_id = $2 LIMIT 1`,
+      [fromUserId, target.id]
+    );
+    if (existingReq.rows.length > 0) {
+      return { success: false, error: 'Friend request already sent' };
+    }
+
+    const insertRes = await this.queryWithRetry(
       `
       INSERT INTO public.friend_requests (from_user_id, to_user_id, created_at)
       VALUES ($1, $2, NOW())
-      ON CONFLICT (from_user_id, to_user_id) DO NOTHING;
+      ON CONFLICT (from_user_id, to_user_id) DO NOTHING
+      RETURNING id;
       `,
       [fromUserId, target.id]
     );
+    if (insertRes.rows.length === 0) {
+      return { success: false, error: 'Friend request already sent' };
+    }
     return { success: true };
   }
 
@@ -800,7 +901,9 @@ export class PostgresDatabaseRepository {
         [userId, fromUserId]
       );
       await client.query(
-        `DELETE FROM public.friend_requests WHERE from_user_id = $1 AND to_user_id = $2`,
+        `DELETE FROM public.friend_requests
+         WHERE (from_user_id = $1 AND to_user_id = $2)
+            OR (from_user_id = $2 AND to_user_id = $1)`,
         [fromUserId, userId]
       );
       await client.query('COMMIT');
@@ -920,7 +1023,7 @@ export class PostgresDatabaseRepository {
   public async declineFriendRequest(userId: string, fromUserId: string): Promise<boolean> {
     const res = await this.queryWithRetry(
       `DELETE FROM friend_requests
-       WHERE user_id = $1 AND from_user_id = $2`,
+       WHERE to_user_id = $1 AND from_user_id = $2`,
       [userId, fromUserId]
     );
     return (res.rowCount || 0) > 0;
@@ -1175,9 +1278,24 @@ export class PostgresDatabaseRepository {
 
       await client.query(
         `UPDATE player_statistics
-         SET total_games = total_games + 1, losses = losses + 1, win_streak = 0, updated_at = NOW()
+         SET total_games = total_games + 1, losses = losses + 1, current_streak = 0, updated_at = NOW()
          WHERE user_id = $1`,
         [userId]
+      );
+
+      const forfeitMatchId = crypto.randomUUID();
+      await client.query(
+        `INSERT INTO public.matches (
+           id, room_code, mode, human_count, bot_count, composition, winning_team, final_score, duration_seconds, created_at
+         ) VALUES ($1, $2, 'ranked_solo', 1, 3, '1H3B', 1, 'Forfeit', 0, NOW())`,
+        [forfeitMatchId, `FF_${forfeitMatchId.slice(0, 6).toUpperCase()}`]
+      );
+
+      await client.query(
+        `INSERT INTO public.player_match_history (
+           id, user_id, match_id, won, mode, score, lp_change, mmr_change, opponent_names, created_at
+         ) VALUES ($1, $2, $3, FALSE, 'ranked_solo', 'Forfeit', $4, -30, $5, NOW())`,
+        [crypto.randomUUID(), userId, forfeitMatchId, lpChange, opponentNames]
       );
 
       await client.query('COMMIT');
@@ -1215,6 +1333,17 @@ export class PostgresDatabaseRepository {
       successfulLoners: row.successfulLoners || 0,
       winStreak: row.winStreak || 0,
       bestWinStreak: row.bestWinStreak || 0,
+      friends: [],
+      friendRequests: [],
+      recentPlayers: [],
+      challenges: [],
+      unlockedCosmetics: {
+        hats: ['🤠'],
+        cardBacks: ['classic_blue'],
+        banners: ['default_navy'],
+        titles: ['Recruit'],
+      },
+      matchHistory: [],
       equippedCosmetics: {
         hat: row.equipped_hat || '🤠',
         cardBack: row.equipped_card_back || 'classic_blue',

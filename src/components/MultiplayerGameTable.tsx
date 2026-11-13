@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { SanitizedGameState, PlayerSlot } from '../../server/types';
+import { SanitizedGameState, PlayerSlot, RankTier } from '../../server/types';
 import { Card, Suit, PlayerPosition, getPlayerTeam } from '../engine/types';
 import { isCardPlayLegal, formatCardName, ALL_SUITS } from '../engine/cards';
 import { CardView, SuitIcon } from './CardView';
@@ -28,6 +28,13 @@ import {
 interface MultiplayerGameTableProps {
   serverState: SanitizedGameState;
   profile?: PlayerProfileData;
+  lastRankUpdate?: {
+    oldTier: RankTier;
+    newTier: RankTier;
+    oldPoints: number;
+    newPoints: number;
+    lpChange: number;
+  } | null;
   onOpenRules: () => void;
   onOpenTutorial: () => void;
   onOpenEmotes: () => void;
@@ -40,6 +47,7 @@ interface MultiplayerGameTableProps {
 export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
   serverState,
   profile,
+  lastRankUpdate,
   onOpenRules,
   onOpenTutorial,
   onOpenEmotes,
@@ -554,10 +562,14 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             marches={serverState.scores[serverState.yourPosition % 2] >= 2 ? 1 : 0}
             euchres={serverState.scores[serverState.yourPosition % 2] >= 2 ? 1 : 0}
             loners={serverState.scores[serverState.yourPosition % 2] >= 4 ? 1 : 0}
-            lpDelta={serverState.scores[serverState.yourPosition % 2] >= 10 ? 25 : -16}
-            oldTier={(profile?.rankTier as any) || serverState.slots[serverState.yourPosition]?.rankTier || '9'}
-            newTier={(profile?.rankTier as any) || serverState.slots[serverState.yourPosition]?.rankTier || '9'}
-            currentPoints={profile?.rankPoints ?? 60}
+            lpDelta={
+              serverState.queueMode === 'custom' || serverState.queueMode === 'casual'
+                ? 0
+                : (lastRankUpdate?.lpChange ?? (serverState.scores[serverState.yourPosition % 2] >= 10 ? 24 : -16))
+            }
+            oldTier={lastRankUpdate?.oldTier || (profile?.rankTier as any) || serverState.slots[serverState.yourPosition]?.rankTier || '9'}
+            newTier={lastRankUpdate?.newTier || (profile?.rankTier as any) || serverState.slots[serverState.yourPosition]?.rankTier || '9'}
+            currentPoints={lastRankUpdate?.newPoints ?? profile?.rankPoints ?? 0}
             xpEarned={serverState.scores[serverState.yourPosition % 2] >= 10 ? 475 : 250}
             playerLevel={profile?.level ?? 1}
             playerXp={profile?.xp ?? 475}

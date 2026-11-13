@@ -40,9 +40,19 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; isError?: boolean } | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      multiplayerClient.fetchFriends();
-    }
+    if (!isOpen) return;
+    multiplayerClient.fetchFriends();
+    const unsub = multiplayerClient.setCallbacks({
+      onError: (err) => {
+        setFeedbackMsg({ text: err, isError: true });
+      },
+      onNotice: (msg) => {
+        if (msg.toLowerCase().includes('friend')) {
+          setFeedbackMsg({ text: msg, isError: false });
+        }
+      },
+    });
+    return () => unsub();
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -52,12 +62,11 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
     if (!searchUsername.trim()) return;
 
     multiplayerClient.sendFriendRequest(searchUsername.trim());
-    setFeedbackMsg({ text: `Friend request sent to ${searchUsername.trim()}!` });
+    setFeedbackMsg({ text: `Sending friend request to ${searchUsername.trim()}...` });
     setSearchUsername('');
     setTimeout(() => {
       multiplayerClient.fetchFriends();
-      setFeedbackMsg(null);
-    }, 2500);
+    }, 800);
   };
 
   const handleAccept = (fromUserId: string) => {
@@ -173,7 +182,25 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
           {activeTab === 'friends' && (
             <div className="space-y-4">
               {friends.length === 0 ? (
-                <div className="text-center py-10 space-y-2">
+                <div className="text-center py-8 space-y-3">
+                  {incomingRequests.length > 0 && (
+                    <div className="mx-auto max-w-sm bg-amber-500/15 border border-amber-400/50 rounded-2xl p-3 flex items-center justify-between text-left">
+                      <div>
+                        <div className="text-xs font-black text-amber-300">
+                          {incomingRequests.length} Incoming Friend {incomingRequests.length === 1 ? 'Request' : 'Requests'}!
+                        </div>
+                        <div className="text-[11px] text-amber-100/80">
+                          Accept pending requests to see your friends here.
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('requests')}
+                        className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs flex-shrink-0 ml-2"
+                      >
+                        View
+                      </button>
+                    </div>
+                  )}
                   <p className="text-gray-400 text-sm">No friends added yet!</p>
                   <p className="text-xs text-gray-500">
                     Search for players by their username to build your Euchre squad.

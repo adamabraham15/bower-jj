@@ -360,8 +360,8 @@ export async function createMultiplayerServer(
             identity.userId
           );
 
-          // If verified Supabase player, synchronize authoritative lifetime stats and rank progression
-          if (!identity.isGuest && supabaseAdmin) {
+          // Synchronize authoritative lifetime stats & rank from Supabase when running in fallback mode
+          if (!activePgRepo && !identity.isGuest && supabaseAdmin) {
             try {
               const [rankRes, statsRes, xpRes] = await Promise.all([
                 supabaseAdmin.from('player_ranks').select('*').eq('user_id', identity.userId).maybeSingle(),
@@ -373,7 +373,7 @@ export async function createMultiplayerServer(
               if (rankRes?.data) {
                 if (rankRes.data.rank_tier) updates.rankTier = rankRes.data.rank_tier;
                 if (typeof rankRes.data.rank_points === 'number') updates.rankPoints = rankRes.data.rank_points;
-                if (typeof rankRes.data.mmr === 'number') updates.eloMmr = rankRes.data.mmr;
+                if (typeof rankRes.data.mmr === 'number') updates.mmr = rankRes.data.mmr;
               }
               if (statsRes?.data) {
                 if (typeof statsRes.data.wins === 'number') updates.wins = statsRes.data.wins;
@@ -392,12 +392,17 @@ export async function createMultiplayerServer(
               }
 
               if (Object.keys(updates).length > 0) {
-                activeDb.updateUser(user.id, updates);
+                await activeDb.updateUser(user.id, updates);
                 Object.assign(user, updates);
               }
             } catch (syncErr) {
               logger.warn(`[AUTH] Could not fetch authoritative stats from Supabase: ${syncErr}`);
             }
+          }
+
+          if (authenticatedUserId && authenticatedUserId !== user.id) {
+            activeRm.leaveRoom(authenticatedUserId);
+            activeRm.handleDisconnect(authenticatedUserId, ws);
           }
 
           authenticatedUserId = user.id;
@@ -410,6 +415,7 @@ export async function createMultiplayerServer(
             avatarIcon: user.avatarIcon,
           };
 
+          activeRm.setCachedUser(user);
           activeRm.registerConnection(user.id, conn);
 
           const response: ServerMessage = {
@@ -423,7 +429,7 @@ export async function createMultiplayerServer(
 
           // Send initial social and battle pass data
           await activeRm.sendFriendListUpdate(user.id);
-          activeRm.sendBattlePass(user.id);
+          await activeRm.sendBattlePass(user.id);
 
           // Drain any messages pipelined while AUTH was in flight
           while (preAuthQueue.length > 0) {
@@ -449,7 +455,7 @@ export async function createMultiplayerServer(
           case 'ROOM_CREATE': {
             const room = msg.queueMode === 'rivals'
               ? activeRm.createRivalsRoom(uid, msg.rules)
-              : activeRm.createRoom(uid, msg.rules);
+              : activeRm.createRoom(uid, msg.rules, msg.queueMode);
             const response: ServerMessage = {
               type: 'ROOM_UPDATE',
               room,
@@ -582,6 +588,8 @@ export async function createMultiplayerServer(
               await activeRm.sendFriendListUpdate(uid);
               await activeRm.sendFriendListUpdate(msg.fromUserId);
               ws.send(JSON.stringify({ type: 'NOTICE', message: 'Friend added!' }));
+            } else {
+              sendError(ws, res.error || 'Failed to accept friend request');
             }
             break;
           }
@@ -612,7 +620,7 @@ export async function createMultiplayerServer(
           case 'CLAIM_PASS_REWARD': {
             const claimRes = await activeDb.claimPassReward(uid, msg.tier, msg.isPremium);
             if (claimRes.success) {
-              activeRm.sendBattlePass(uid);
+              await activeRm.sendBattlePass(uid);
               ws.send(JSON.stringify({
                 type: 'NOTICE',
                 message: `Claimed: ${claimRes.item || `Tier ${msg.tier} reward`}!`,
@@ -629,7 +637,8 @@ export async function createMultiplayerServer(
             await activeDb.equipCosmetic(uid, msg.category, msg.itemId);
             const u = await activeDb.getUserById(uid);
             if (u) {
-              ws.send(JSON.stringify({ type: 'AUTH_SUCCESS', sessionToken: '', user: u }));
+              activeRm.setCachedUser(u);
+              ws.send(JSON.stringify({ type: 'USER_SYNC', user: u }));
             }
             break;
           }
@@ -638,14 +647,17 @@ export async function createMultiplayerServer(
             let targetUserId = msg.friendUserId;
             if (!targetUserId && msg.friendUsername) {
               const username = msg.friendUsername.trim();
-              const targetUser = await (activeDb && (activeDb as any).getUserByUsernameAsync
-                ? (activeDb as any).getUserByUsernameAsync(username)
-                : activeDb.getUserByUsername(username));
-              if (targetUser) {
-                targetUserId = targetUser.id;
-              } else {
-                ws.send(JSON.stringify({ type: 'ERROR', message: `Player "${username}" not found or offline` }));
-                break;
+              targetUserId = activeRm.findOnlineUserIdByUsername(username);
+              if (!targetUserId) {
+                const targetUser = await (activeDb && (activeDb as any).getUserByUsernameAsync
+                  ? (activeDb as any).getUserByUsernameAsync(username)
+                  : activeDb.getUserByUsername(username));
+                if (targetUser) {
+                  targetUserId = targetUser.id;
+                } else {
+                  ws.send(JSON.stringify({ type: 'ERROR', message: `Player "${username}" not found or offline` }));
+                  break;
+                }
               }
             }
             if (targetUserId) {
@@ -734,7 +746,7 @@ export async function createMultiplayerServer(
     ws.on('close', () => {
       telemetry.onConnectionClosed();
       if (authenticatedUserId) {
-        activeRm.handleDisconnect(authenticatedUserId);
+        activeRm.handleDisconnect(authenticatedUserId, ws);
       }
     });
 

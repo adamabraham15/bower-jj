@@ -400,7 +400,7 @@ class AuthService {
   /**
    * Fetch user's match history from PostgreSQL
    */
-  public async fetchMatchHistory(userId: string, limit = 20): Promise<any[]> {
+  public async fetchMatchHistory(userId: string, limit = 50): Promise<any[]> {
     if (!supabase) return [];
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
     if (!isUuid) return [];

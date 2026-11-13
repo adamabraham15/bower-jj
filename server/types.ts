@@ -19,7 +19,7 @@ export type RankTier = '9' | '10' | 'Q' | 'K' | 'A' | 'BOWER_JJ';
 export interface MatchRecord {
   id: string;
   date: number;
-  mode: 'ranked_solo' | 'ranked_duo' | 'unranked' | 'private' | 'ai';
+  mode: 'ranked_solo' | 'ranked_rivals' | 'ranked_duo' | 'unranked' | 'private' | 'ai';
   won: boolean;
   score: string; // e.g. "10 - 6"
   lpChange: number;
@@ -126,13 +126,15 @@ export interface PlayerSlot {
 }
 
 export interface Room {
+  id?: string; // Unique match UUID for idempotency & history tracking
   code: string; // 6-character code
   hostUserId: string;
   status: 'lobby' | 'playing' | 'finished';
   rules: EuchreHouseRules;
   slots: (PlayerSlot | null)[]; // 4 seats
   isMatchmade: boolean;
-  queueMode?: 'solo' | 'rivals' | 'duo' | 'casual';
+  composition?: '4H' | '3H1B' | '2H2B' | '1H3B';
+  queueMode?: 'solo' | 'rivals' | 'duo' | 'casual' | 'custom';
   partyLeaderId?: string;
   partyMembers?: string[];
   createdAt: number;
@@ -184,7 +186,7 @@ export interface SanitizedGameState {
   slots: PlayerSlot[];
   roomId?: string;
   roomCode?: string;
-  queueMode?: 'solo' | 'rivals' | 'duo' | 'casual';
+  queueMode?: 'solo' | 'rivals' | 'duo' | 'casual' | 'custom';
 }
 
 export interface LeaderboardEntry {
@@ -220,7 +222,7 @@ export interface PublicPlayerData {
 // Client -> Server Messages
 export type ClientMessage =
   | { type: 'AUTH'; sessionToken?: string; username?: string; avatarIcon?: string; accessToken?: string }
-  | { type: 'ROOM_CREATE'; rules?: Partial<EuchreHouseRules>; queueMode?: 'rivals' | 'solo' | 'casual' | 'custom' }
+  | { type: 'ROOM_CREATE'; rules?: Partial<EuchreHouseRules>; queueMode?: 'rivals' | 'solo' | 'casual' | 'custom' | 'duo' }
   | { type: 'ROOM_JOIN'; roomCode: string }
   | { type: 'ROOM_FILL_AI'; difficulty?: AIDifficulty }
   | { type: 'ROOM_START' }
@@ -241,7 +243,7 @@ export type ClientMessage =
   | { type: 'GET_LEADERBOARD' }
   | { type: 'CLAIM_PASS_REWARD'; tier: number; isPremium: boolean }
   | { type: 'EQUIP_COSMETIC'; category: 'hat' | 'cardBack' | 'banner' | 'title'; itemId?: string }
-  | { type: 'PARTY_INVITE_SEND'; friendUserId?: string; friendUsername?: string; mode?: 'rivals' | 'duo' }
+  | { type: 'PARTY_INVITE_SEND'; friendUserId?: string; friendUsername?: string; mode?: 'rivals' | 'custom' | 'duo' }
   | { type: 'PARTY_INVITE_ACCEPT'; partyRoomCode: string }
   | { type: 'GET_PROFILE'; targetUserId?: string; targetUsername?: string }
   | { type: 'REPORT_PLAYER'; targetUserId?: string; targetUsername?: string; reason: string }
@@ -254,6 +256,7 @@ export type ClientMessage =
 // Server -> Client Messages
 export type ServerMessage =
   | { type: 'AUTH_SUCCESS'; sessionToken: string; user: UserAccount }
+  | { type: 'USER_SYNC'; user: UserAccount }
   | { type: 'ROOM_UPDATE'; room: Room; yourPosition?: PlayerPosition }
   | { type: 'GAME_SYNC'; state: SanitizedGameState }
   | { type: 'QUEUE_UPDATE'; inQueue: boolean; mode?: string; playersFound: number; elapsedSeconds: number }

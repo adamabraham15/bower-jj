@@ -74,9 +74,23 @@ export class RoomManager {
   public trickResolutionDelayMs: number = 1800;
   public aiTurnDelayMs: number = 750;
   public pgRepo?: PostgresDatabaseRepository;
+  private userCache: Map<string, UserAccount> = new Map();
 
   public setPostgresRepository(repo: PostgresDatabaseRepository): void {
     this.pgRepo = repo;
+  }
+
+  public setCachedUser(user: UserAccount): void {
+    if (user?.id) {
+      this.userCache.set(user.id, user);
+    }
+  }
+
+  private getCachedUser(userId: string): UserAccount | null {
+    if (this.userCache.has(userId)) {
+      return this.userCache.get(userId)!;
+    }
+    return this.pgRepo ? null : db.getUserById(userId);
   }
 
   constructor() {
@@ -260,6 +274,7 @@ export class RoomManager {
       for (const rec of records) {
         if (!rec.room || !rec.state) continue;
         const room: Room = rec.room;
+        if (!room.id) room.id = crypto.randomUUID();
         const state: EuchreGameState = rec.state;
 
         // Human slots must reconnect to re-establish WebSockets
@@ -337,8 +352,9 @@ export class RoomManager {
   public registerConnection(userId: string, conn: ClientConnection) {
     this.connections.set(userId, conn);
 
-    // Reconnection check
+    // Reconnection check (skip already-finished rooms so stale matches don't hijack new lobbies)
     for (const [code, room] of this.rooms.entries()) {
+      if (room.status === 'finished') continue;
       const slotIdx = room.slots.findIndex(s => s && s.userId === userId);
       if (slotIdx !== -1) {
         const slot = room.slots[slotIdx]!;
@@ -365,9 +381,11 @@ export class RoomManager {
     }
   }
 
-  public handleDisconnect(userId: string) {
+  public handleDisconnect(userId: string, ws?: WebSocket) {
     const conn = this.connections.get(userId);
     if (!conn) return;
+    // Do not remove a newer live connection when an older socket closes later
+    if (ws && conn.ws !== ws) return;
 
     this.leaveQueue(userId);
 
@@ -375,21 +393,25 @@ export class RoomManager {
     if (roomCode) {
       const room = this.rooms.get(roomCode);
       if (room) {
-        const slotIdx = room.slots.findIndex(s => s && s.userId === userId);
-        if (slotIdx !== -1) {
-          const slot = room.slots[slotIdx]!;
-          slot.connected = false;
+        if (room.status === 'finished') {
+          conn.roomCode = undefined;
+        } else {
+          const slotIdx = room.slots.findIndex(s => s && s.userId === userId);
+          if (slotIdx !== -1) {
+            const slot = room.slots[slotIdx]!;
+            slot.connected = false;
 
-          // Start 45-second reconnect grace period
-          this.startDisconnectTimer(roomCode, slotIdx as PlayerPosition, 45000);
-          this.persistActiveMatch(roomCode);
+            // Start 45-second reconnect grace period
+            this.startDisconnectTimer(roomCode, slotIdx as PlayerPosition, 45000);
+            this.persistActiveMatch(roomCode);
 
-          this.broadcastRoom(roomCode, {
-            type: 'DISCONNECT_ALERT',
-            position: slotIdx as PlayerPosition,
-            username: slot.username,
-            graceRemainingSec: 45,
-          });
+            this.broadcastRoom(roomCode, {
+              type: 'DISCONNECT_ALERT',
+              position: slotIdx as PlayerPosition,
+              username: slot.username,
+              graceRemainingSec: 45,
+            });
+          }
         }
       }
     }
@@ -421,17 +443,40 @@ export class RoomManager {
         const oppPos1 = ((pos + 1) % 4) as PlayerPosition;
         const oppPos2 = ((pos + 3) % 4) as PlayerPosition;
         const oppNames = [room.slots[oppPos1]?.username || 'Opponent 1', room.slots[oppPos2]?.username || 'Opponent 2'];
-        const penaltyResult = db.recordAbandonment(abandoningUserId, oppNames);
-        if (penaltyResult) {
-          this.sendToUser(abandoningUserId, {
-            type: 'RANK_UPDATE',
-            oldTier: penaltyResult.oldTier,
-            newTier: penaltyResult.newTier,
-            oldPoints: penaltyResult.oldPoints,
-            newPoints: penaltyResult.newPoints,
-            lpChange: penaltyResult.lpChange,
-            didRankUp: false,
+        if (this.pgRepo) {
+          this.pgRepo.recordAbandonment(abandoningUserId, oppNames).then(async (penaltyResult) => {
+            if (penaltyResult) {
+              this.sendToUser(abandoningUserId, {
+                type: 'RANK_UPDATE',
+                oldTier: penaltyResult.oldTier,
+                newTier: penaltyResult.newTier,
+                oldPoints: penaltyResult.oldPoints,
+                newPoints: penaltyResult.newPoints,
+                lpChange: penaltyResult.lpChange,
+                didRankUp: false,
+              });
+              const updated = await this.pgRepo?.getUserById(abandoningUserId);
+              if (updated) {
+                this.setCachedUser(updated);
+                this.sendToUser(abandoningUserId, { type: 'USER_SYNC', user: updated });
+              }
+            }
+          }).catch(err => {
+            logger.warn(`[ABANDON PG] Failed to record abandonment for ${abandoningUserId}: ${err}`);
           });
+        } else {
+          const penaltyResult = db.recordAbandonment(abandoningUserId, oppNames);
+          if (penaltyResult) {
+            this.sendToUser(abandoningUserId, {
+              type: 'RANK_UPDATE',
+              oldTier: penaltyResult.oldTier,
+              newTier: penaltyResult.newTier,
+              oldPoints: penaltyResult.oldPoints,
+              newPoints: penaltyResult.newPoints,
+              lpChange: penaltyResult.lpChange,
+              didRankUp: false,
+            });
+          }
         }
       }
     }
@@ -482,12 +527,20 @@ export class RoomManager {
 
   // --- ROOM MANAGEMENT ---
 
-  public createRoom(userId: string, rules?: Partial<EuchreHouseRules>): Room {
+  public createRoom(
+    userId: string,
+    rules?: Partial<EuchreHouseRules>,
+    queueMode: 'rivals' | 'solo' | 'casual' | 'custom' | 'duo' = 'custom'
+  ): Room {
     const conn = this.connections.get(userId);
     if (!conn) throw new Error('Not connected');
 
+    if (conn.roomCode) {
+      this.leaveRoom(userId);
+    }
+
     const code = crypto.randomBytes(3).toString('hex').toUpperCase();
-    const userAcc = db.getUserById(userId);
+    const userAcc = this.getCachedUser(userId);
 
     const hostSlot: PlayerSlot = {
       position: 0,
@@ -501,12 +554,14 @@ export class RoomManager {
     };
 
     const room: Room = {
+      id: crypto.randomUUID(),
       code,
       hostUserId: userId,
       status: 'lobby',
       rules: { ...DEFAULT_RULES, ...rules },
       slots: [hostSlot, null, null, null],
       isMatchmade: false,
+      queueMode,
       createdAt: Date.now(),
       lastActionAt: Date.now(),
     };
@@ -523,9 +578,7 @@ export class RoomManager {
    * Prevents partnership collusion by pitting friends against each other!
    */
   public createRivalsRoom(userId: string, rules?: Partial<EuchreHouseRules>): Room {
-    const room = this.createRoom(userId, rules);
-    room.queueMode = 'rivals';
-    return room;
+    return this.createRoom(userId, rules, 'rivals');
   }
 
   public joinRoom(userId: string, code: string): Room {
@@ -564,7 +617,7 @@ export class RoomManager {
       throw new Error('Room is full');
     }
 
-    const userAcc = db.getUserById(userId);
+    const userAcc = this.getCachedUser(userId);
 
     const slot: PlayerSlot = {
       position: emptyIdx as PlayerPosition,
@@ -604,7 +657,7 @@ export class RoomManager {
 
     // Determine target tier & AI difficulty from host or players in room
     let targetTier: RankTier = overrideTier || '9';
-    const hostAcc = db.getUserById(userId);
+    const hostAcc = this.getCachedUser(userId);
     if (hostAcc) {
       targetTier = overrideTier || hostAcc.rankTier;
     }
@@ -693,7 +746,7 @@ export class RoomManager {
 
     let occupiedCount = room.slots.filter(s => s !== null).length;
     if (occupiedCount !== 4) {
-      if (room.queueMode === 'rivals' || room.queueMode === 'custom') {
+      if (room.queueMode === 'rivals' || room.queueMode === 'custom' || room.queueMode === 'duo') {
         this.fillWithAI(userId);
         occupiedCount = room.slots.filter(s => s !== null).length;
       }
@@ -712,6 +765,10 @@ export class RoomManager {
       rankTier: s!.rankTier,
     }));
 
+    if (!room.id || room.resultsRecorded) {
+      room.id = crypto.randomUUID();
+    }
+    room.resultsRecorded = false;
     const initialState = initializeGame(players, room.rules, 0);
     this.gameStates.set(room.code, initialState);
     room.status = 'playing';
@@ -878,7 +935,7 @@ export class RoomManager {
   }
 
   private getUserTierIndex(userId: string): number {
-    const user = db.getUserById(userId);
+    const user = this.getCachedUser(userId);
     const tier = user?.rankTier || '9';
     const idx = TIER_ORDER.indexOf(tier);
     return idx !== -1 ? idx : 0;
@@ -952,7 +1009,7 @@ export class RoomManager {
           const uid = matchedUserIds[i];
           const conn = this.connections.get(uid);
           if (conn) {
-            const userAcc = db.getUserById(uid);
+            const userAcc = this.getCachedUser(uid);
             room.slots[i] = {
               position: i as PlayerPosition,
               isAI: false,
@@ -985,7 +1042,7 @@ export class RoomManager {
       const humanCount = Math.min(this.soloQueue.length, 3);
       const matchedUserIds = this.soloQueue.splice(0, humanCount);
       const hostId = matchedUserIds[0];
-      const hostAcc = db.getUserById(hostId);
+      const hostAcc = this.getCachedUser(hostId);
       const targetTier = hostAcc?.rankTier || '9';
 
       const avgWait = matchedUserIds.reduce((sum, uid) => {
@@ -1004,7 +1061,7 @@ export class RoomManager {
         const uid = matchedUserIds[i];
         const conn = this.connections.get(uid);
         if (conn) {
-          const userAcc = db.getUserById(uid);
+          const userAcc = this.getCachedUser(uid);
           room.slots[i] = {
             position: i as PlayerPosition,
             isAI: false,
@@ -1037,7 +1094,7 @@ export class RoomManager {
     if (readySolo.length > 0) {
       const hostId = readySolo[0];
       this.soloQueue = this.soloQueue.filter(id => id !== hostId);
-      const hostAcc = db.getUserById(hostId);
+      const hostAcc = this.getCachedUser(hostId);
       const targetTier = hostAcc?.rankTier || '9';
       const conn = this.connections.get(hostId);
       const wait = now - (conn?.queueEnterTime || now);
@@ -1191,10 +1248,24 @@ export class RoomManager {
     if (room.resultsRecorded) return; // Prevent duplicate execution
     room.resultsRecorded = true;
     room.status = 'finished';
+    if (!room.id) room.id = crypto.randomUUID();
     this.clearActiveMatchSnapshot(room.code);
 
     const winningTeam = state.scores[0] >= state.rules.targetScore ? 0 : 1;
     const finalScore = `${state.scores[0]} - ${state.scores[1]}`;
+    const isRanked =
+      room.isMatchmade ||
+      room.queueMode === 'solo' ||
+      room.queueMode === 'rivals' ||
+      room.queueMode === 'duo';
+    const pgMode: 'ranked_solo' | 'ranked_rivals' | 'ranked_duo' | 'unranked' =
+      room.queueMode === 'rivals'
+        ? 'ranked_rivals'
+        : room.queueMode === 'duo'
+        ? 'ranked_duo'
+        : (room.isMatchmade || room.queueMode === 'solo')
+        ? 'ranked_solo'
+        : 'unranked';
 
     // Calculate MMR averages
     const team0Mmr = (this.getPlayerMmr(room.slots[0]) + this.getPlayerMmr(room.slots[2])) / 2;
@@ -1203,9 +1274,94 @@ export class RoomManager {
     const team0Names = [room.slots[0]?.username || 'Player 1', room.slots[2]?.username || 'Player 3'];
     const team1Names = [room.slots[1]?.username || 'Player 2', room.slots[3]?.username || 'Player 4'];
 
+    // If PostgreSQL repository is connected, use it as the SINGLE authoritative persistence & notification source
+    if (this.pgRepo) {
+      const humanSlots = room.slots.filter(
+        (s): s is PlayerSlot => Boolean(s && !s.isAI && s.userId && !room.abandonedUserIds?.includes(s.userId))
+      );
+      if (humanSlots.length === 0) return;
+
+      const composition =
+        room.composition ||
+        (humanSlots.length === 4 ? '4H' : humanSlots.length === 3 ? '3H1B' : humanSlots.length === 2 ? '2H2B' : '1H3B');
+
+      const humanPlayers = humanSlots.map((s) => {
+        const pTeam = getPlayerTeam(s.position);
+        const userAcc = this.getCachedUser(s.userId!);
+        const oppNames = pTeam === 0 ? team1Names : team0Names;
+        const partnerPos = ((s.position + 2) % 4) as PlayerPosition;
+        const partnerSlot = room.slots[partnerPos];
+        const teammateAbandoned = Boolean(partnerSlot && partnerSlot.abandoned);
+        return {
+          userId: s.userId!,
+          position: s.position,
+          team: pTeam,
+          username: s.username,
+          rankTier: s.rankTier || userAcc?.rankTier || '9',
+          rankPoints: userAcc?.rankPoints || 0,
+          mmr: userAcc?.mmr || 1200,
+          tricksWon: state.tricksWon[pTeam] || 0,
+          euchres: state.scores[pTeam] >= 2 ? 1 : 0,
+          marches: state.scores[pTeam] >= 2 ? 1 : 0,
+          successfulLoners: state.scores[pTeam] >= 4 ? 1 : 0,
+          opponentNames: oppNames,
+          teammateAbandoned,
+        };
+      });
+
+      this.pgRepo
+        .recordMatchResult({
+          matchId: room.id,
+          roomCode: room.code,
+          mode: pgMode,
+          composition: composition as any,
+          winningTeam,
+          finalScore,
+          durationSeconds: Math.max(0, Math.round((Date.now() - room.createdAt) / 1000)),
+          humanPlayers,
+          idempotencyKey: `match_${room.id}`,
+        })
+        .then(async (res) => {
+          if (res && res.playerResults) {
+            for (const pr of res.playerResults) {
+              if (isRanked) {
+                const didRankUp = TIER_ORDER.indexOf(pr.newTier) > TIER_ORDER.indexOf(pr.oldTier);
+                this.sendToUser(pr.userId, {
+                  type: 'RANK_UPDATE',
+                  oldTier: pr.oldTier,
+                  newTier: pr.newTier,
+                  oldPoints: pr.oldPoints,
+                  newPoints: pr.newPoints,
+                  lpChange: pr.lpChange,
+                  didRankUp,
+                });
+              }
+
+              const freshUser = await this.pgRepo?.getUserById(pr.userId);
+              if (freshUser) {
+                this.setCachedUser(freshUser);
+                this.sendToUser(pr.userId, {
+                  type: 'BATTLE_PASS_UPDATE',
+                  battlePass: freshUser.battlePass,
+                  challenges: freshUser.challenges,
+                });
+                this.sendToUser(pr.userId, {
+                  type: 'USER_SYNC',
+                  user: freshUser,
+                });
+              }
+            }
+          }
+        })
+        .catch((err) => {
+          console.error(`[MATCH RECORD PG] Failed recording match result for room ${room.code}:`, err);
+        });
+      return;
+    }
+
+    // Local JSON fallback path (unit tests / dev offline DB)
     room.slots.forEach(slot => {
       if (slot && slot.userId && !slot.isAI) {
-        // If this player previously abandoned the match, skip awarding rewards
         if (room.abandonedUserIds?.includes(slot.userId)) {
           return;
         }
@@ -1217,12 +1373,10 @@ export class RoomManager {
         const oppTeamMmr = playerTeam === 0 ? team1Mmr : team0Mmr;
         const oppNames = playerTeam === 0 ? team1Names : team0Names;
 
-        // Check if partner abandoned for Loss Mitigation
         const partnerPos = ((slot.position + 2) % 4) as PlayerPosition;
         const partnerSlot = room.slots[partnerPos];
         const isTeammateAbandoned = Boolean(partnerSlot && partnerSlot.abandoned);
 
-        // Authoritative XP, Battle Pass, and Challenge Updates
         const updatedUser = db.recordMatchCompletion(
           slot.userId,
           isWin,
@@ -1240,9 +1394,9 @@ export class RoomManager {
           });
         }
 
-        // Authoritative Elo MMR & LP Calculation (if ranked match)
-        if (room.isMatchmade || room.queueMode === 'solo' || room.queueMode === 'rivals' || room.queueMode === 'duo') {
-          const rankResult = db.recordRankedMatchResult(
+        let rankResult: ReturnType<typeof db.recordRankedMatchResult> = null;
+        if (isRanked) {
+          rankResult = db.recordRankedMatchResult(
             slot.userId,
             isWin,
             myTeamMmr,
@@ -1264,95 +1418,8 @@ export class RoomManager {
             });
           }
         }
-
-        // Synchronize updated rank and stats to Supabase for authenticated players
-        if (supabaseAdmin && slot.userId && !slot.userId.startsWith('usr_') && !slot.userId.startsWith('dev_')) {
-          try {
-            if (updatedUser) {
-              supabaseAdmin.from('player_statistics').update({
-                wins: updatedUser.wins,
-                losses: updatedUser.losses,
-                total_games: updatedUser.totalGames,
-                tricks_won: updatedUser.tricksWon,
-                euchres: updatedUser.euchres,
-                marches: updatedUser.marches,
-                successful_loners: updatedUser.successfulLoners,
-                current_streak: updatedUser.winStreak,
-                best_streak: updatedUser.bestWinStreak,
-                updated_at: new Date().toISOString(),
-              }).eq('user_id', slot.userId).catch(() => {});
-
-              supabaseAdmin.from('player_xp').update({
-                xp: updatedUser.xp,
-                level: updatedUser.level,
-                next_level_xp: updatedUser.level * 1000,
-                updated_at: new Date().toISOString(),
-              }).eq('user_id', slot.userId).catch(() => {});
-            }
-
-            if (rankResult) {
-              supabaseAdmin.from('player_ranks').update({
-                rank_tier: rankResult.newTier,
-                rank_points: rankResult.newPoints,
-                updated_at: new Date().toISOString(),
-              }).eq('user_id', slot.userId).catch(() => {});
-            }
-          } catch (syncErr) {
-            logger.warn(`[SYNC] Could not sync match result to Supabase: ${syncErr}`);
-          }
-        }
       }
     });
-
-    // If PostgreSQL repository is connected, record transactional match result with idempotency key
-    if (this.pgRepo) {
-      const humanSlots = room.slots.filter(s => s && !s.isAI && s.userId);
-      const composition = room.composition || (humanSlots.length === 4 ? '4H' : humanSlots.length === 3 ? '3H1B' : humanSlots.length === 2 ? '2H2B' : '1H3B');
-      const humanPlayers = humanSlots.map(s => {
-        const pTeam = getPlayerTeam(s.position);
-        const userAcc = db.getUserById(s.userId!);
-        return {
-          userId: s.userId!,
-          position: s.position,
-          team: pTeam,
-          username: s.username,
-          rankTier: s.rankTier || userAcc?.rankTier || '9',
-          rankPoints: userAcc?.rankPoints || 0,
-          mmr: userAcc?.eloMmr || 1200,
-          tricksWon: state.tricksWon[pTeam] || 0,
-          euchres: state.scores[pTeam] >= 2 ? 1 : 0,
-          marches: state.scores[pTeam] >= 2 ? 1 : 0,
-          successfulLoners: state.scores[pTeam] >= 4 ? 1 : 0,
-        };
-      });
-
-      this.pgRepo.recordMatchResult({
-        matchId: room.id,
-        roomCode: room.code,
-        mode: (room.queueMode === 'rivals' ? 'ranked_rivals' : room.isMatchmade ? 'ranked_solo' : 'unranked') as any,
-        composition: composition as any,
-        winningTeam,
-        finalScore,
-        humanPlayers,
-        idempotencyKey: `match_${room.id}`,
-      }).then(res => {
-        if (res && res.playerResults) {
-          for (const pr of res.playerResults) {
-            this.sendToUser(pr.userId, {
-              type: 'RANK_UPDATE',
-              oldTier: pr.oldTier,
-              newTier: pr.newTier,
-              oldPoints: pr.oldPoints,
-              newPoints: pr.newPoints,
-              lpChange: pr.lpChange,
-              didRankUp: pr.oldTier !== pr.newTier,
-            });
-          }
-        }
-      }).catch(err => {
-        console.error(`[MATCH RECORD PG] Failed recording match result for room ${room.code}:`, err);
-      });
-    }
   }
 
   private getPlayerMmr(slot: PlayerSlot | null): number {
@@ -1369,7 +1436,7 @@ export class RoomManager {
           return 1300;
       }
     }
-    const u = db.getUserById(slot.userId || '');
+    const u = this.getCachedUser(slot.userId || '');
     return u?.mmr || 1200;
   }
 
@@ -1542,10 +1609,18 @@ export class RoomManager {
     if (this.pgRepo) {
       try {
         const onlineIds = new Set<string>();
-        for (const [cId, conn] of this.connections) {
+        for (const [, conn] of this.connections) {
           if (conn.userId) onlineIds.add(conn.userId);
         }
-        friends = await this.pgRepo.getFriendsSummary(userId, onlineIds);
+        const pgFriends = await this.pgRepo.getFriendsSummary(userId, onlineIds);
+        friends = pgFriends.map((f) => {
+          const conn = this.connections.get(f.userId);
+          return {
+            ...f,
+            status: conn?.roomCode ? 'in_game' : f.isOnline ? 'online' : 'offline',
+            roomCode: conn?.roomCode,
+          };
+        });
         incomingRequests = await this.pgRepo.getIncomingFriendRequests(userId);
       } catch (err) {
         logger.warn(`[FRIENDS] Error querying friends from PostgreSQL: ${err}`);
@@ -1586,9 +1661,12 @@ export class RoomManager {
     });
   }
 
-  public sendBattlePass(userId: string) {
-    const user = db.getUserById(userId);
+  public async sendBattlePass(userId: string) {
+    const user = this.pgRepo
+      ? await this.pgRepo.getUserById(userId)
+      : db.getUserById(userId);
     if (!user) return;
+    this.setCachedUser(user);
     this.sendToUser(userId, {
       type: 'BATTLE_PASS_UPDATE',
       battlePass: user.battlePass,
@@ -1596,18 +1674,37 @@ export class RoomManager {
     });
   }
 
-  public inviteFriendToParty(userId: string, friendUserId: string, mode: 'rivals' | 'duo' = 'rivals') {
-    let conn = this.connections.get(userId);
+  public findOnlineUserIdByUsername(username: string): string | undefined {
+    const needle = username.trim().toLowerCase();
+    if (!needle) return undefined;
+    for (const [uid, conn] of this.connections.entries()) {
+      if (conn.username.trim().toLowerCase() === needle && conn.ws.readyState === WebSocket.OPEN) {
+        return uid;
+      }
+    }
+    return undefined;
+  }
+
+  public inviteFriendToParty(userId: string, friendUserId: string, mode: 'rivals' | 'custom' | 'duo' = 'rivals') {
+    const conn = this.connections.get(userId);
     if (!conn) return;
 
+    const existingRoom = conn.roomCode ? this.rooms.get(conn.roomCode) : undefined;
     let room: Room;
     let isNewRoom = false;
-    if (!conn.roomCode) {
-      room = mode === 'rivals' ? this.createRivalsRoom(userId) : this.createRoom(userId);
+    if (!existingRoom || existingRoom.status !== 'lobby') {
+      if (conn.roomCode) {
+        this.leaveRoom(userId);
+      }
+      room = mode === 'rivals'
+        ? this.createRivalsRoom(userId)
+        : this.createRoom(userId, undefined, mode);
       isNewRoom = true;
     } else {
-      room = this.rooms.get(conn.roomCode)!;
-      if (mode) room.queueMode = mode;
+      room = existingRoom;
+      if (mode && room.hostUserId === userId) {
+        room.queueMode = mode;
+      }
     }
 
     const hostPos = room.slots.findIndex(s => s && s.userId === userId);
@@ -1627,7 +1724,7 @@ export class RoomManager {
     }
 
     const friendConn = this.connections.get(friendUserId);
-    if (!friendConn) {
+    if (!friendConn || friendConn.ws.readyState !== WebSocket.OPEN) {
       this.sendToUser(userId, { type: 'ERROR', message: 'Friend is currently offline' });
       return;
     }

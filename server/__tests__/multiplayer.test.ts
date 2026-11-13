@@ -76,4 +76,78 @@ describe('Multiplayer Server & Anti-Cheat Architecture', () => {
     expect(secondWin!.level).toBe(2);
     expect(secondWin!.xp).toBe(650);
   });
+
+  it('allows players to join custom rooms and switch seats between Blue and Red teams', () => {
+    const roomMgr = new RoomManager();
+    const mockWs1: any = { readyState: 1, send: () => {} };
+    const mockWs2: any = { readyState: 1, send: () => {} };
+
+    // Register connections for Host (Alice) and Guest (Bob)
+    roomMgr.registerConnection('user_alice', { ws: mockWs1, userId: 'user_alice', username: 'Alice', avatarIcon: '🤠' });
+    roomMgr.registerConnection('user_bob', { ws: mockWs2, userId: 'user_bob', username: 'Bob', avatarIcon: '🤖' });
+
+    // Alice creates a custom room
+    const room = roomMgr.createRoom('user_alice');
+    expect(room.slots[0]?.username).toBe('Alice');
+    expect(room.slots[0]?.position).toBe(0); // Blue Team (South)
+
+    // Bob joins Alice's room
+    const joinedRoom = roomMgr.joinRoom('user_bob', room.code);
+    expect(joinedRoom.slots[1]?.username).toBe('Bob');
+    expect(joinedRoom.slots[1]?.position).toBe(1); // Red Team (West)
+
+    // Bob switches seats to empty Seat 2 (Partner on Blue Team with Alice)
+    const switchedRoom = roomMgr.switchSeat('user_bob', 2);
+    expect(switchedRoom.slots[1]).toBeNull();
+    expect(switchedRoom.slots[2]?.username).toBe('Bob');
+    expect(switchedRoom.slots[2]?.position).toBe(2); // Blue Team (North)
+
+    // Alice swaps seats with Bob (Alice moves to Seat 2, Bob moves to Seat 0)
+    const swappedRoom = roomMgr.switchSeat('user_alice', 2);
+    expect(swappedRoom.slots[0]?.username).toBe('Bob');
+    expect(swappedRoom.slots[0]?.position).toBe(0);
+    expect(swappedRoom.slots[2]?.username).toBe('Alice');
+    expect(swappedRoom.slots[2]?.position).toBe(2);
+
+    // Bob switches from Blue Team (Seat 0) to Red Team (Seat 3)
+    const redRoom = roomMgr.switchSeat('user_bob', 3);
+    expect(redRoom.slots[0]).toBeNull();
+    expect(redRoom.slots[3]?.username).toBe('Bob');
+    expect(redRoom.slots[3]?.position).toBe(3); // Red Team (East)
+
+    roomMgr.cleanup();
+  });
+
+  it('correctly handles Friendly Rivalry room seating and side swapping', () => {
+    const roomMgr = new RoomManager();
+    const mockWs1: any = { readyState: 1, send: () => {} };
+    const mockWs2: any = { readyState: 1, send: () => {} };
+
+    roomMgr.registerConnection('user_host', { ws: mockWs1, userId: 'user_host', username: 'HostRival', avatarIcon: '👑' });
+    roomMgr.registerConnection('user_guest', { ws: mockWs2, userId: 'user_guest', username: 'GuestRival', avatarIcon: '⚔️' });
+
+    // Host creates rivals room
+    const room = roomMgr.createRivalsRoom('user_host');
+    expect(room.queueMode).toBe('rivals');
+    expect(room.slots[0]?.username).toBe('HostRival'); // Team Blue
+
+    // Guest joins rivals room -> must be assigned Seat 1 (Team Red)
+    const joinedRoom = roomMgr.joinRoom('user_guest', room.code);
+    expect(joinedRoom.slots[1]?.username).toBe('GuestRival'); // Team Red
+
+    // Guest swaps sides with Host (Seat 1 <-> Seat 0)
+    const swapped = roomMgr.switchSeat('user_guest', 0);
+    expect(swapped.slots[0]?.username).toBe('GuestRival'); // Now Blue
+    expect(swapped.slots[1]?.username).toBe('HostRival');  // Now Red
+
+    // Host updates room mode from 'rivals' to 'custom' right inside the lobby
+    const updatedModeRoom = roomMgr.updateRoomMode('user_host', 'custom');
+    expect(updatedModeRoom.queueMode).toBe('custom');
+
+    // Host switches mode back to 'rivals'
+    const backToRivals = roomMgr.updateRoomMode('user_host', 'rivals');
+    expect(backToRivals.queueMode).toBe('rivals');
+
+    roomMgr.cleanup();
+  });
 });
