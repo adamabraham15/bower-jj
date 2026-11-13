@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { extractInviteCodeFromUrl } from '../../src/App';
 import { MultiplayerClient } from '../../src/services/multiplayerClient';
+import { RoomManager } from '../roomManager';
+import { ServerMessage } from '../types';
 
 describe('Invite Link Parsing and Authentication Queue Suite', () => {
   const originalWindow = global.window;
@@ -106,6 +108,185 @@ describe('Invite Link Parsing and Authentication Queue Suite', () => {
       client.joinRoom('ABC123');
       expect(client.isPendingJoin()).toBe(true);
       expect(client.getPendingJoinCode()).toBe('ABC123');
+    });
+
+    it('sets isPendingJoin when party invite is sent until ROOM_UPDATE is received', () => {
+      const client = new MultiplayerClient();
+      expect(client.isPendingJoin()).toBe(false);
+
+      // Inviting friend before room is created sets pending party create flag
+      client.sendPartyInvite('friend_user_456', 'rivals');
+      expect(client.isPendingJoin()).toBe(true);
+
+      // When ROOM_UPDATE arrives, pending status clears and currentRoom is populated
+      (client as any).handleMessage({
+        type: 'ROOM_UPDATE',
+        room: {
+          code: 'RIV123',
+          hostUserId: 'inviter_123',
+          status: 'lobby',
+          rules: {} as any,
+          slots: [
+            { position: 0, isAI: false, userId: 'inviter_123', username: 'Inviter', avatarIcon: '👑', rankTier: '9', connected: true, isReady: true },
+            null, null, null
+          ],
+          isMatchmade: false,
+          queueMode: 'rivals',
+          createdAt: Date.now(),
+          lastActionAt: Date.now(),
+        },
+        yourPosition: 0,
+      });
+
+      expect(client.isPendingJoin()).toBe(false);
+      expect(client.getCurrentRoom()?.code).toBe('RIV123');
+      expect(client.getMyPosition()).toBe(0);
+    });
+  });
+
+  describe('Authoritative Room Invites, Lobby Redirection & Seat Synchronization', () => {
+    it('sends ROOM_UPDATE immediately to inviter and PARTY_INVITE_RECEIVED with mode to invitee', () => {
+      const rm = new RoomManager();
+      const inviterMessages: ServerMessage[] = [];
+      const inviteeMessages: ServerMessage[] = [];
+
+      const inviterWs: any = {
+        readyState: 1,
+        send: (raw: string) => inviterMessages.push(JSON.parse(raw)),
+      };
+      const inviteeWs: any = {
+        readyState: 1,
+        send: (raw: string) => inviteeMessages.push(JSON.parse(raw)),
+      };
+
+      rm.registerConnection('user_inviter', {
+        ws: inviterWs,
+        userId: 'user_inviter',
+        username: 'InviterPlayer',
+        avatarIcon: '👑',
+      });
+      rm.registerConnection('user_invitee', {
+        ws: inviteeWs,
+        userId: 'user_invitee',
+        username: 'InviteePlayer',
+        avatarIcon: '⚔️',
+      });
+
+      // Inviter challenges Invitee to a rivals match
+      rm.inviteFriendToParty('user_inviter', 'user_invitee', 'rivals');
+
+      // 1. Inviter MUST receive ROOM_UPDATE with their new room and position 0
+      const inviterRoomUpdate = inviterMessages.find(m => m.type === 'ROOM_UPDATE') as any;
+      expect(inviterRoomUpdate).toBeDefined();
+      expect(inviterRoomUpdate.yourPosition).toBe(0);
+      expect(inviterRoomUpdate.room.queueMode).toBe('rivals');
+      expect(inviterRoomUpdate.room.hostUserId).toBe('user_inviter');
+
+      const roomCode = inviterRoomUpdate.room.code;
+
+      // 2. Invitee MUST receive PARTY_INVITE_RECEIVED with the matching roomCode and mode
+      const inviteMsg = inviteeMessages.find(m => m.type === 'PARTY_INVITE_RECEIVED') as any;
+      expect(inviteMsg).toBeDefined();
+      expect(inviteMsg.fromUsername).toBe('InviterPlayer');
+      expect(inviteMsg.roomCode).toBe(roomCode);
+      expect(inviteMsg.mode).toBe('rivals');
+
+      // 3. Invitee accepts the invite and joins the exact room
+      const joinedRoom = rm.joinRoom('user_invitee', inviteMsg.roomCode);
+      expect(joinedRoom.code).toBe(roomCode);
+      expect(joinedRoom.slots[0]?.userId).toBe('user_inviter');
+      expect(joinedRoom.slots[1]?.userId).toBe('user_invitee'); // Team Red (opposing Host on Team Blue)
+
+      // Both players are in the exact same lobby!
+      expect(rm.getRoom(roomCode)?.slots[0]?.username).toBe('InviterPlayer');
+      expect(rm.getRoom(roomCode)?.slots[1]?.username).toBe('InviteePlayer');
+
+      rm.cleanup();
+    });
+
+    it('allows changing seats between Blue and Red teams in custom mode and cleans up on leaveRoom', () => {
+      const rm = new RoomManager();
+      const p1Messages: ServerMessage[] = [];
+      const p2Messages: ServerMessage[] = [];
+
+      rm.registerConnection('user_p1', {
+        ws: { readyState: 1, send: (m: string) => p1Messages.push(JSON.parse(m)) } as any,
+        userId: 'user_p1',
+        username: 'P1',
+        avatarIcon: '🔵',
+      });
+      rm.registerConnection('user_p2', {
+        ws: { readyState: 1, send: (m: string) => p2Messages.push(JSON.parse(m)) } as any,
+        userId: 'user_p2',
+        username: 'P2',
+        avatarIcon: '🔴',
+      });
+
+      // P1 creates custom room
+      const room = rm.createRoom('user_p1');
+      expect(room.slots[0]?.userId).toBe('user_p1'); // Seat 0 (Blue Team)
+
+      // P2 joins room -> assigned to Seat 1 (Red Team)
+      rm.joinRoom('user_p2', room.code);
+      expect(room.slots[1]?.userId).toBe('user_p2');
+
+      // P2 switches to Seat 2 (Partner on Blue Team with P1)
+      rm.switchSeat('user_p2', 2);
+      expect(room.slots[1]).toBeNull();
+      expect(room.slots[2]?.userId).toBe('user_p2');
+      expect(room.slots[0]?.userId).toBe('user_p1');
+
+      // P1 switches to Seat 3 (Red Team)
+      rm.switchSeat('user_p1', 3);
+      expect(room.slots[0]).toBeNull();
+      expect(room.slots[3]?.userId).toBe('user_p1');
+
+      // P2 leaves the room
+      rm.leaveRoom('user_p2');
+      expect(room.slots[2]).toBeNull();
+      expect(room.slots[3]?.userId).toBe('user_p1');
+
+      // P1 leaves the room -> room is automatically cleaned up
+      rm.leaveRoom('user_p1');
+      expect(rm.getRoom(room.code)).toBeUndefined();
+
+      rm.cleanup();
+    });
+
+    it('automatically leaves previous room when joining another room', () => {
+      const rm = new RoomManager();
+      rm.registerConnection('user_solo', {
+        ws: { readyState: 1, send: () => {} } as any,
+        userId: 'user_solo',
+        username: 'Solo',
+        avatarIcon: '🤠',
+      });
+      rm.registerConnection('user_host2', {
+        ws: { readyState: 1, send: () => {} } as any,
+        userId: 'user_host2',
+        username: 'Host2',
+        avatarIcon: '👑',
+      });
+
+      // Solo creates Room 1
+      const room1 = rm.createRoom('user_solo');
+      expect(room1.slots[0]?.userId).toBe('user_solo');
+
+      // Host2 creates Room 2
+      const room2 = rm.createRoom('user_host2');
+      expect(room2.slots[0]?.userId).toBe('user_host2');
+
+      // Solo accepts an invite / joins Room 2 while still sitting in Room 1
+      rm.joinRoom('user_solo', room2.code);
+
+      // Solo must be removed from Room 1, and Room 1 (having 0 humans) is deleted!
+      expect(rm.getRoom(room1.code)).toBeUndefined();
+
+      // Solo is now sitting in Room 2 at Seat 1
+      expect(room2.slots[0]?.userId).toBe('user_host2');
+      expect(room2.slots[1]?.userId).toBe('user_solo');
+
+      rm.cleanup();
     });
   });
 });

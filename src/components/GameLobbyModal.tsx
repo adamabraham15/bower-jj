@@ -188,7 +188,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
     e.preventDefault();
     if (!usernameInput.trim()) return;
     sounds.playUiClick();
-    multiplayerClient.sendFriendRequest(usernameInput.trim());
+    multiplayerClient.sendPartyInvite(undefined, currentMode === 'rivals' ? 'rivals' : 'duo', usernameInput.trim());
     setStatusMessage(`Challenge sent to ${usernameInput.trim()}!`);
     setUsernameInput('');
   };

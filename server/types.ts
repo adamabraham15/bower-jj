@@ -241,7 +241,7 @@ export type ClientMessage =
   | { type: 'GET_LEADERBOARD' }
   | { type: 'CLAIM_PASS_REWARD'; tier: number; isPremium: boolean }
   | { type: 'EQUIP_COSMETIC'; category: 'hat' | 'cardBack' | 'banner' | 'title'; itemId?: string }
-  | { type: 'PARTY_INVITE_SEND'; friendUserId: string; mode?: 'rivals' | 'duo' }
+  | { type: 'PARTY_INVITE_SEND'; friendUserId?: string; friendUsername?: string; mode?: 'rivals' | 'duo' }
   | { type: 'PARTY_INVITE_ACCEPT'; partyRoomCode: string }
   | { type: 'GET_PROFILE'; targetUserId?: string; targetUsername?: string }
   | { type: 'REPORT_PLAYER'; targetUserId?: string; targetUsername?: string; reason: string }

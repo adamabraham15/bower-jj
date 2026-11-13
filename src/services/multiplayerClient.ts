@@ -23,6 +23,7 @@ export class MultiplayerClient {
   private ws: WebSocket | null = null;
   private sessionToken: string | null = null;
   private accessToken: string | null = null;
+  private userId: string | null = null;
   private username: string = 'Player';
   private avatarIcon: string = '🤠';
   private serverUrl: string = '';
@@ -31,7 +32,17 @@ export class MultiplayerClient {
   private reconnectAttempts: number = 0;
   private readonly maxReconnectAttempts: number = 8;
 
+  private currentRoom: Room | null = null;
+  private myPosition: PlayerPosition | null = null;
   private cachedResolvedUrl: string | null = null;
+  private isAuthenticated: boolean = false;
+  private authResolvers: Array<(success: boolean) => void> = [];
+
+  private resolvePendingAuth(success: boolean) {
+    const resolvers = [...this.authResolvers];
+    this.authResolvers = [];
+    resolvers.forEach(r => r(success));
+  }
 
   public clearCachedServerUrl(): void {
     this.cachedResolvedUrl = null;
@@ -113,7 +124,7 @@ export class MultiplayerClient {
     lpChange: number;
     didRankUp: boolean;
   }) => void;
-  private onPartyInviteCallback?: (invite: { fromUsername: string; fromAvatar: string; roomCode: string }) => void;
+  private onPartyInviteCallback?: (invite: { fromUsername: string; fromAvatar: string; roomCode: string; mode?: string }) => void;
   private onProfileCallback?: (profile: PublicPlayerData) => void;
   private onMatchmakingStatsCallback?: (stats: MatchmakingStats) => void;
   private onNoticeCallback?: (message: string, title?: string) => void;
@@ -127,6 +138,8 @@ export class MultiplayerClient {
 
   // Outgoing message queue for requests made while connecting
   private pendingMessages: ClientMessage[] = [];
+  private pendingJoinCode: string | null = null;
+  private isPendingPartyCreate: boolean = false;
 
   constructor() {
     try {
@@ -153,7 +166,7 @@ export class MultiplayerClient {
       lpChange: number;
       didRankUp: boolean;
     }) => void;
-    onPartyInvite?: (invite: { fromUsername: string; fromAvatar: string; roomCode: string }) => void;
+    onPartyInvite?: (invite: { fromUsername: string; fromAvatar: string; roomCode: string; mode?: string }) => void;
     onProfile?: (profile: PublicPlayerData) => void;
     onMatchmakingStats?: (stats: MatchmakingStats) => void;
     onNotice?: (message: string, title?: string) => void;
@@ -223,11 +236,18 @@ export class MultiplayerClient {
       } catch {}
     }
 
-    if (!forceFresh && this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+    if (!forceFresh && this.ws && this.ws.readyState === WebSocket.OPEN && this.isAuthenticated) {
       if (accessToken && accessToken !== this.accessToken) {
         this.reauthenticate(accessToken, username, avatarIcon);
       }
       return true;
+    }
+
+    if (!forceFresh && (this.isConnecting || (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)))) {
+      return new Promise<boolean>((resolve) => {
+        this.authResolvers.push(resolve);
+        setTimeout(() => resolve(this.isAuthenticated), 7000);
+      });
     }
 
     if (forceFresh && this.ws) {
@@ -237,11 +257,17 @@ export class MultiplayerClient {
       this.ws = null;
     }
 
+    this.isAuthenticated = false;
     this.isConnecting = true;
     const resolvedUrl = await this.resolveServerUrl(forceFresh);
     this.serverUrl = resolvedUrl;
 
     return new Promise((resolve) => {
+      this.authResolvers.push(resolve);
+      const safetyTimer = setTimeout(() => {
+        this.resolvePendingAuth(this.isAuthenticated);
+      }, 8000);
+
       try {
         this.ws = new WebSocket(this.serverUrl);
 
@@ -260,7 +286,6 @@ export class MultiplayerClient {
             sessionToken: this.sessionToken || undefined,
             accessToken: this.accessToken || undefined,
           });
-          resolve(true);
         };
 
         this.ws.onmessage = (event) => {
@@ -275,22 +300,29 @@ export class MultiplayerClient {
         this.ws.onerror = (err) => {
           console.warn('Multiplayer WebSocket error:', err);
           this.cachedResolvedUrl = null;
+          this.isAuthenticated = false;
           this.onErrorCallback?.('Connection error to multiplayer server');
           this.errorListeners.forEach(cb => cb('Connection error to multiplayer server'));
-          resolve(false);
+          clearTimeout(safetyTimer);
+          this.resolvePendingAuth(false);
         };
 
         this.ws.onclose = () => {
           this.isConnecting = false;
+          this.isAuthenticated = false;
           this.ws = null;
           this.cachedResolvedUrl = null;
+          clearTimeout(safetyTimer);
+          this.resolvePendingAuth(false);
           this.scheduleAutoReconnect();
         };
       } catch (err) {
         this.isConnecting = false;
+        this.isAuthenticated = false;
         this.cachedResolvedUrl = null;
+        clearTimeout(safetyTimer);
+        this.resolvePendingAuth(false);
         this.scheduleAutoReconnect();
-        resolve(false);
       }
     });
   }
@@ -326,7 +358,7 @@ export class MultiplayerClient {
   }
 
   private flushPendingMessages() {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.isAuthenticated) return;
     const queued = [...this.pendingMessages];
     this.pendingMessages = [];
     for (const msg of queued) {
@@ -341,20 +373,38 @@ export class MultiplayerClient {
   private handleMessage(msg: ServerMessage) {
     switch (msg.type) {
       case 'AUTH_SUCCESS':
+        this.isAuthenticated = true;
         this.sessionToken = msg.sessionToken;
+        this.userId = msg.user.id;
+        this.username = msg.user.username;
+        this.avatarIcon = msg.user.avatarIcon;
         try {
           localStorage.setItem('bower_jj_session_token', msg.sessionToken);
         } catch {}
         this.onAuthCallback?.(msg.user, msg.sessionToken);
         this.flushPendingMessages();
+        this.resolvePendingAuth(true);
         break;
 
-      case 'ROOM_UPDATE':
-        if (this.onRoomCallback) this.onRoomCallback(msg.room, msg.yourPosition);
+      case 'ROOM_UPDATE': {
+        this.pendingJoinCode = null;
+        this.isPendingPartyCreate = false;
+        this.currentRoom = msg.room;
+        if (msg.yourPosition !== undefined) {
+          this.myPosition = msg.yourPosition;
+        } else if (this.userId) {
+          const myIdx = msg.room.slots.findIndex(s => s && s.userId === this.userId);
+          if (myIdx !== -1) this.myPosition = myIdx as PlayerPosition;
+        } else {
+          const myIdx = msg.room.slots.findIndex(s => s && s.username === this.username);
+          if (myIdx !== -1) this.myPosition = myIdx as PlayerPosition;
+        }
+        if (this.onRoomCallback) this.onRoomCallback(msg.room, this.myPosition ?? undefined);
         this.roomListeners.forEach(cb => {
-          if (cb !== this.onRoomCallback) cb(msg.room, msg.yourPosition);
+          if (cb !== this.onRoomCallback) cb(msg.room, this.myPosition ?? undefined);
         });
         break;
+      }
 
       case 'GAME_SYNC':
         if (this.onGameSyncCallback) this.onGameSyncCallback(msg.state);
@@ -407,6 +457,8 @@ export class MultiplayerClient {
         break;
 
       case 'ERROR':
+        this.pendingJoinCode = null;
+        this.isPendingPartyCreate = false;
         this.onErrorCallback?.(msg.message);
         this.errorListeners.forEach(cb => cb(msg.message));
         break;
@@ -421,7 +473,7 @@ export class MultiplayerClient {
       return;
     }
 
-    if (this.ws && this.ws.readyState === WebSocket.OPEN && this.sessionToken) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN && this.isAuthenticated) {
       this.ws.send(JSON.stringify(msg));
     } else {
       // Buffer outgoing messages while connecting/authenticating
@@ -430,12 +482,17 @@ export class MultiplayerClient {
   }
 
   // --- API Methods ---
-  public createRoom(rules?: Partial<EuchreHouseRules>, queueMode?: 'rivals' | 'solo' | 'casual') {
+  public createRoom(rules?: Partial<EuchreHouseRules>, queueMode?: 'rivals' | 'solo' | 'casual' | 'custom') {
     this.send({ type: 'ROOM_CREATE', rules, queueMode });
   }
 
   public joinRoom(roomCode: string) {
-    this.send({ type: 'ROOM_JOIN', roomCode: roomCode.trim().toUpperCase() });
+    const code = roomCode.trim().toUpperCase();
+    if (this.currentRoom && this.currentRoom.code !== code) {
+      this.leaveRoom();
+    }
+    this.pendingJoinCode = code;
+    this.send({ type: 'ROOM_JOIN', roomCode: code });
   }
 
   public fillWithAI(difficulty: AIDifficulty = 'medium') {
@@ -450,8 +507,74 @@ export class MultiplayerClient {
     this.send({ type: 'ROOM_UPDATE_RULES', rules });
   }
 
+  public updateRoomMode(mode: 'rivals' | 'custom' | 'solo' | 'duo' | 'casual') {
+    this.send({ type: 'ROOM_UPDATE_MODE', mode });
+  }
+
   public kickPlayer(position: PlayerPosition) {
     this.send({ type: 'ROOM_KICK', position });
+  }
+
+  public switchSeat(targetPosition: PlayerPosition) {
+    this.send({ type: 'ROOM_SWITCH_SEAT', targetPosition });
+  }
+
+  public leaveRoom() {
+    this.send({ type: 'ROOM_LEAVE' });
+    this.currentRoom = null;
+    this.myPosition = null;
+    this.pendingJoinCode = null;
+    this.isPendingPartyCreate = false;
+  }
+
+  public isPendingJoin(): boolean {
+    return this.pendingJoinCode !== null || this.isPendingPartyCreate;
+  }
+
+  public getPendingJoinCode(): string | null {
+    return this.pendingJoinCode;
+  }
+
+  public isAuthed(): boolean {
+    return this.isAuthenticated;
+  }
+
+  public async waitForAuth(timeoutMs: number = 6000): Promise<boolean> {
+    if (this.isAuthenticated) return true;
+    return new Promise((resolve) => {
+      this.authResolvers.push(resolve);
+      setTimeout(() => resolve(this.isAuthenticated), timeoutMs);
+    });
+  }
+
+  public hasActiveRoom(): boolean {
+    return (this.currentRoom !== null && this.currentRoom.status === 'lobby') || this.pendingJoinCode !== null || this.isPendingPartyCreate;
+  }
+
+  public isHost(): boolean {
+    if (!this.currentRoom) return false;
+    if (this.userId) return this.currentRoom.hostUserId === this.userId;
+    return this.currentRoom.slots[0]?.username === this.username;
+  }
+
+  public getCurrentRoom(): Room | null {
+    return this.currentRoom;
+  }
+
+  public getCurrentRoomCode(): string | null {
+    return this.currentRoom?.code || null;
+  }
+
+  public getMyPosition(): PlayerPosition | null {
+    return this.myPosition;
+  }
+
+  public getUserId(): string | null {
+    return this.userId;
+  }
+
+  public getUsername(): string {
+    return this.username;
   }
 
   public enterQueue(mode: 'solo' | 'rivals' | 'duo' | 'casual' = 'solo') {
@@ -519,12 +642,20 @@ export class MultiplayerClient {
     this.send({ type: 'EQUIP_COSMETIC', category, itemId });
   }
 
-  public sendPartyInvite(friendUserId: string, mode: 'rivals' | 'duo' = 'rivals') {
-    this.send({ type: 'PARTY_INVITE_SEND', friendUserId, mode });
+  public sendPartyInvite(friendUserId?: string, mode: 'rivals' | 'duo' = 'rivals', friendUsername?: string) {
+    if (!this.currentRoom) {
+      this.isPendingPartyCreate = true;
+    }
+    this.send({ type: 'PARTY_INVITE_SEND', friendUserId, friendUsername, mode });
   }
 
   public acceptPartyInvite(partyRoomCode: string) {
-    this.send({ type: 'PARTY_INVITE_ACCEPT', partyRoomCode });
+    const code = partyRoomCode.trim().toUpperCase();
+    if (this.currentRoom && this.currentRoom.code !== code) {
+      this.leaveRoom();
+    }
+    this.pendingJoinCode = code;
+    this.send({ type: 'PARTY_INVITE_ACCEPT', partyRoomCode: code });
   }
 
   public fetchProfile(targetUserId?: string, targetUsername?: string) {

@@ -532,7 +532,14 @@ export class RoomManager {
     const conn = this.connections.get(userId);
     if (!conn) throw new Error('Not connected');
 
-    const room = this.rooms.get(code.toUpperCase());
+    const targetCode = code.toUpperCase();
+
+    // If player is seated in a different room, leave it first
+    if (conn.roomCode && conn.roomCode !== targetCode) {
+      this.leaveRoom(userId);
+    }
+
+    const room = this.rooms.get(targetCode);
     if (!room) throw new Error(`Room ${code} not found`);
 
     if (room.status !== 'lobby') {
@@ -794,6 +801,43 @@ export class RoomManager {
     });
 
     return room;
+  }
+
+  public leaveRoom(userId: string): void {
+    const conn = this.connections.get(userId);
+    if (!conn || !conn.roomCode) return;
+
+    const roomCode = conn.roomCode;
+    conn.roomCode = undefined;
+
+    const room = this.rooms.get(roomCode);
+    if (!room) return;
+
+    const slotIdx = room.slots.findIndex(s => s && s.userId === userId);
+    if (slotIdx === -1) return;
+
+    if (room.status === 'lobby') {
+      room.slots[slotIdx] = null;
+
+      // If the leaving player was the room host, pass host to the next seated human
+      if (room.hostUserId === userId) {
+        const nextHuman = room.slots.find(s => s && !s.isAI && s.userId);
+        if (nextHuman && nextHuman.userId) {
+          room.hostUserId = nextHuman.userId;
+        } else {
+          // No human players remain in the lobby: clean up the empty room
+          this.clearActiveMatchSnapshot(roomCode);
+          this.gameStates.delete(roomCode);
+          this.rooms.delete(roomCode);
+          return;
+        }
+      }
+
+      this.broadcastRoom(roomCode, {
+        type: 'ROOM_UPDATE',
+        room,
+      });
+    }
   }
 
   // --- MATCHMAKING QUEUE (REAL PLAYERS FIRST, TIER-COMPENSATED BOTS SECOND) ---
@@ -1557,11 +1601,29 @@ export class RoomManager {
     if (!conn) return;
 
     let room: Room;
+    let isNewRoom = false;
     if (!conn.roomCode) {
       room = mode === 'rivals' ? this.createRivalsRoom(userId) : this.createRoom(userId);
+      isNewRoom = true;
     } else {
       room = this.rooms.get(conn.roomCode)!;
-      room.queueMode = mode;
+      if (mode) room.queueMode = mode;
+    }
+
+    const hostPos = room.slots.findIndex(s => s && s.userId === userId);
+
+    // Immediately provide authoritative room state to the inviter
+    this.sendToUser(userId, {
+      type: 'ROOM_UPDATE',
+      room,
+      yourPosition: hostPos !== -1 ? (hostPos as PlayerPosition) : 0,
+    });
+
+    if (!isNewRoom) {
+      this.broadcastRoom(room.code, {
+        type: 'ROOM_UPDATE',
+        room,
+      });
     }
 
     const friendConn = this.connections.get(friendUserId);
@@ -1575,11 +1637,12 @@ export class RoomManager {
       fromUsername: conn.username,
       fromAvatar: conn.avatarIcon,
       roomCode: room.code,
+      mode: room.queueMode,
     });
 
     this.sendToUser(userId, {
       type: 'NOTICE',
-      message: `Challenged ${friendConn.username} to Friendly Rivalry match!`,
+      message: `Challenged ${friendConn.username} to ${room.queueMode === 'rivals' ? 'Friendly Rivalry' : 'Custom Lobby'} match!`,
     });
   }
 

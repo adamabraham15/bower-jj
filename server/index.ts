@@ -635,7 +635,22 @@ export async function createMultiplayerServer(
           }
 
           case 'PARTY_INVITE_SEND': {
-            activeRm.inviteFriendToParty(uid, msg.friendUserId, msg.mode);
+            let targetUserId = msg.friendUserId;
+            if (!targetUserId && msg.friendUsername) {
+              const username = msg.friendUsername.trim();
+              const targetUser = await (activeDb && (activeDb as any).getUserByUsernameAsync
+                ? (activeDb as any).getUserByUsernameAsync(username)
+                : activeDb.getUserByUsername(username));
+              if (targetUser) {
+                targetUserId = targetUser.id;
+              } else {
+                ws.send(JSON.stringify({ type: 'ERROR', message: `Player "${username}" not found or offline` }));
+                break;
+              }
+            }
+            if (targetUserId) {
+              activeRm.inviteFriendToParty(uid, targetUserId, msg.mode);
+            }
             break;
           }
 

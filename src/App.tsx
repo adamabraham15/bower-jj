@@ -740,7 +740,9 @@ export const App: React.FC = () => {
             <span className="text-2xl">{partyInvite.fromAvatar}</span>
             <div>
               <div className="text-xs font-black text-white">{partyInvite.fromUsername}</div>
-              <div className="text-[10px] text-cyan-300">Challenged you to Friendly Rivalry match!</div>
+              <div className="text-[10px] text-cyan-300">
+                {partyInvite.mode === 'rivals' ? 'Challenged you to Friendly Rivalry match!' : 'Invited you to Custom Game lobby!'}
+              </div>
             </div>
           </div>
           <div className="flex space-x-2 pt-1">
