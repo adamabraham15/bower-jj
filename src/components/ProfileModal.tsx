@@ -130,6 +130,16 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   }, [profile.recentMatches]);
 
   useEffect(() => {
+    if (profile.equippedCosmetics?.banner) setSelectedBanner(profile.equippedCosmetics.banner);
+    if (profile.equippedCosmetics?.cardBack) setSelectedCardBack(profile.equippedCosmetics.cardBack);
+    if (profile.equippedCosmetics?.title) setSelectedTitle(profile.equippedCosmetics.title);
+  }, [
+    profile.equippedCosmetics?.banner,
+    profile.equippedCosmetics?.cardBack,
+    profile.equippedCosmetics?.title,
+  ]);
+
+  useEffect(() => {
     if (isOpen && profile.playerId) {
       authService.fetchMatchHistory(profile.playerId, 50).then((history) => {
         if (history && history.length > 0) {
@@ -172,7 +182,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     ? Math.round((profile.wins / profile.totalGames) * 100)
     : 0;
 
-  const xpPercent = Math.min(100, Math.round((profile.xp / profile.nextLevelXp) * 100));
+  const displayXp = profile.xp >= 1000 ? profile.xp % 1000 : profile.xp;
+  const displayNextLevelXp = 1000;
+  const xpPercent = Math.min(100, Math.round((displayXp / displayNextLevelXp) * 100));
   const matches: MatchHistoryItem[] = localMatches;
 
   const currentBannerTheme = BANNER_THEMES[selectedBanner] || BANNER_THEMES.default_navy;
@@ -257,7 +269,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           <div className="flex justify-between text-xs font-bold text-gray-300 mb-1">
             <span>XP Progress</span>
             <span className="text-amber-400 font-mono">
-              {profile.xp.toLocaleString()} / {profile.nextLevelXp.toLocaleString()} XP
+              {displayXp.toLocaleString()} / {displayNextLevelXp.toLocaleString()} XP
             </span>
           </div>
           <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700/80 p-0.5">
@@ -390,7 +402,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     onClick={() => {
                       sounds.playUiClick();
                       onUpdateAvatar(item.icon);
-                      onUpdateCosmetic?.('hat', item.icon);
                     }}
                     className={`p-2 rounded-2xl flex flex-col items-center justify-center transition-all ${
                       profile.avatarIcon === item.icon

@@ -136,11 +136,39 @@ export function extractInviteCodeFromUrl(): string | null {
   return null;
 }
 
+export function normalizeXpProgress(
+  rawXp?: number,
+  rawLevel?: number
+): { xp: number; level: number; nextLevelXp: number } {
+  const safeXp = Math.max(0, Math.floor(typeof rawXp === 'number' ? rawXp : 0));
+  const safeLevel = Math.max(1, Math.floor(typeof rawLevel === 'number' ? rawLevel : 1));
+  if (safeXp >= 1000) {
+    return {
+      xp: safeXp % 1000,
+      level: Math.floor(safeXp / 1000) + 1,
+      nextLevelXp: 1000,
+    };
+  }
+  return {
+    xp: safeXp,
+    level: safeLevel,
+    nextLevelXp: 1000,
+  };
+}
+
 export const App: React.FC = () => {
   const [profile, setProfile] = useState<PlayerProfileData>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : DEFAULT_PROFILE;
+      if (!saved) return DEFAULT_PROFILE;
+      const parsed = JSON.parse(saved) as PlayerProfileData;
+      const norm = normalizeXpProgress(parsed.xp, parsed.level);
+      return {
+        ...parsed,
+        xp: norm.xp,
+        level: norm.level,
+        nextLevelXp: norm.nextLevelXp,
+      };
     } catch {
       return DEFAULT_PROFILE;
     }
@@ -229,27 +257,43 @@ export const App: React.FC = () => {
   const syncAuthoritativeProfile = (userId: string) => {
     authService.fetchFullProfile(userId).then(sync => {
       if (sync) {
-        setProfile(prev => ({
-          ...prev,
-          username: sync.profile?.username || prev.username,
-          playerId: sync.profile?.id || userId,
-          avatarIcon: sync.profile?.avatar_icon || prev.avatarIcon,
-          level: sync.xp?.level ?? prev.level,
-          xp: sync.xp?.xp ?? prev.xp,
-          nextLevelXp: sync.xp?.next_level_xp ?? prev.nextLevelXp,
-          rankTier: (sync.rank?.rank_tier as RankTier) || prev.rankTier,
-          rankPoints: sync.rank?.rank_points ?? prev.rankPoints,
-          wins: sync.statistics?.wins ?? prev.wins,
-          losses: sync.statistics?.losses ?? prev.losses,
-          totalGames: sync.statistics?.total_games ?? prev.totalGames,
-          tricksWon: sync.statistics?.tricks_won ?? prev.tricksWon,
-          euchres: sync.statistics?.euchres ?? prev.euchres,
-          marches: sync.statistics?.marches ?? prev.marches,
-          successfulLoners: sync.statistics?.successful_loners ?? prev.successfulLoners,
-          currentStreak: sync.statistics?.current_streak ?? prev.currentStreak,
-          bestStreak: sync.statistics?.best_streak ?? prev.bestStreak,
-          favTrumpSuit: sync.statistics?.favorite_suit || prev.favTrumpSuit,
-        }));
+        setProfile(prev => {
+          const normXp = normalizeXpProgress(sync.xp?.xp ?? prev.xp, sync.xp?.level ?? prev.level);
+          const hatIcon = sync.cosmetics?.equipped_hat;
+          const profileAvatar = sync.profile?.avatar_icon;
+          const resolvedAvatar =
+            hatIcon && hatIcon !== '🤠' && (!profileAvatar || profileAvatar === '🤠')
+              ? hatIcon
+              : profileAvatar || hatIcon || prev.avatarIcon;
+
+          return {
+            ...prev,
+            username: sync.profile?.username || prev.username,
+            playerId: sync.profile?.id || userId,
+            avatarIcon: resolvedAvatar,
+            level: normXp.level,
+            xp: normXp.xp,
+            nextLevelXp: normXp.nextLevelXp,
+            rankTier: (sync.rank?.rank_tier as RankTier) || prev.rankTier,
+            rankPoints: sync.rank?.rank_points ?? prev.rankPoints,
+            wins: sync.statistics?.wins ?? prev.wins,
+            losses: sync.statistics?.losses ?? prev.losses,
+            totalGames: sync.statistics?.total_games ?? prev.totalGames,
+            tricksWon: sync.statistics?.tricks_won ?? prev.tricksWon,
+            euchres: sync.statistics?.euchres ?? prev.euchres,
+            marches: sync.statistics?.marches ?? prev.marches,
+            successfulLoners: sync.statistics?.successful_loners ?? prev.successfulLoners,
+            currentStreak: sync.statistics?.current_streak ?? prev.currentStreak,
+            bestStreak: sync.statistics?.best_streak ?? prev.bestStreak,
+            favTrumpSuit: sync.statistics?.favorite_suit || prev.favTrumpSuit,
+            equippedCosmetics: {
+              hat: hatIcon || resolvedAvatar || prev.equippedCosmetics?.hat || '🤠',
+              cardBack: sync.cosmetics?.equipped_card_back || prev.equippedCosmetics?.cardBack || 'classic_blue',
+              banner: sync.cosmetics?.equipped_banner || prev.equippedCosmetics?.banner || 'default_navy',
+              title: sync.cosmetics?.equipped_title || prev.equippedCosmetics?.title || 'Recruit',
+            },
+          };
+        });
       }
     });
 
@@ -279,12 +323,21 @@ export const App: React.FC = () => {
     const isVerifiedUser = Boolean(activeAuthId && user.id === activeAuthId);
 
     setProfile(prev => {
-      const keepPrevRank = Boolean(activeAuthId && !isVerifiedUser);
+      const prevHasSavedUuid = Boolean(
+        prev.playerId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(prev.playerId)
+      );
+      const isMismatchedUnauthedHandshake = Boolean(
+        !activeAuthId && prevHasSavedUuid && user.id !== prev.playerId && (user.totalGames || 0) === 0
+      );
+      const keepPrevRank = Boolean((activeAuthId && !isVerifiedUser) || isMismatchedUnauthedHandshake);
       const keepNonZeroStats = Boolean(
-        isVerifiedUser && (user.totalGames || 0) === 0 && (user.rankPoints || 0) === 0 && prev.totalGames > 0
+        (isVerifiedUser || prev.playerId === user.id) &&
+          (user.totalGames || 0) === 0 &&
+          (user.rankPoints || 0) === 0 &&
+          prev.totalGames > 0
       );
 
-      const resolvedPlayerId = activeAuthId || user.id || prev.playerId;
+      const resolvedPlayerId = activeAuthId || (keepPrevRank ? prev.playerId : user.id) || prev.playerId;
       const resolvedRankTier: RankTier =
         keepPrevRank || (keepNonZeroStats && prev.rankTier !== '9')
           ? prev.rankTier
@@ -321,13 +374,26 @@ export const App: React.FC = () => {
         mergedMatches = [...mappedServer, ...localOnlyAi].sort((a, b) => b.date - a.date).slice(0, 50);
       }
 
+      const rawLevel =
+        !keepPrevRank && (isVerifiedUser || !activeAuthId) && typeof user.level === 'number' ? user.level : prev.level;
+      const rawXp =
+        !keepPrevRank && (isVerifiedUser || !activeAuthId) && typeof user.xp === 'number' ? user.xp : prev.xp;
+      const normXp = normalizeXpProgress(rawXp, rawLevel);
+
+      const resolvedAvatar = keepPrevRank
+        ? prev.avatarIcon
+        : user.equippedCosmetics?.hat && user.equippedCosmetics.hat !== '🤠' && user.avatarIcon === '🤠'
+        ? user.equippedCosmetics.hat
+        : user.avatarIcon || prev.avatarIcon;
+
       return {
         ...prev,
-        username: user.username || prev.username,
-        avatarIcon: user.avatarIcon || prev.avatarIcon,
+        username: keepPrevRank ? prev.username : (user.username || prev.username),
+        avatarIcon: resolvedAvatar,
         playerId: resolvedPlayerId,
-        level: (isVerifiedUser || !activeAuthId) && typeof user.level === 'number' ? user.level : prev.level,
-        xp: (isVerifiedUser || !activeAuthId) && typeof user.xp === 'number' ? user.xp : prev.xp,
+        level: normXp.level,
+        xp: normXp.xp,
+        nextLevelXp: normXp.nextLevelXp,
         rankTier: resolvedRankTier,
         rankPoints: resolvedRankPoints,
         wins: resolvedWins,
@@ -339,6 +405,14 @@ export const App: React.FC = () => {
         successfulLoners: typeof user.successfulLoners === 'number' && !keepPrevRank ? user.successfulLoners : prev.successfulLoners,
         currentStreak: typeof user.winStreak === 'number' && !keepPrevRank ? user.winStreak : prev.currentStreak,
         bestStreak: typeof user.bestWinStreak === 'number' && !keepPrevRank ? user.bestWinStreak : prev.bestStreak,
+        equippedCosmetics: !keepPrevRank && user.equippedCosmetics
+          ? {
+              hat: user.equippedCosmetics.hat || resolvedAvatar || prev.equippedCosmetics?.hat || '🤠',
+              cardBack: user.equippedCosmetics.cardBack || prev.equippedCosmetics?.cardBack || 'classic_blue',
+              banner: user.equippedCosmetics.banner || prev.equippedCosmetics?.banner || 'default_navy',
+              title: user.equippedCosmetics.title || prev.equippedCosmetics?.title || 'Recruit',
+            }
+          : prev.equippedCosmetics,
         recentMatches: mergedMatches,
       };
     });
@@ -791,10 +865,12 @@ export const App: React.FC = () => {
       const nextLosses = won ? prev.losses : prev.losses + 1;
       const nextGames = prev.totalGames + 1;
       const earnedXp = won ? 150 : 50;
-      const totalXp = prev.xp + earnedXp;
-      const levelUp = totalXp >= prev.nextLevelXp;
-      const nextLevel = levelUp ? prev.level + 1 : prev.level;
-      const nextLevelXp = levelUp ? prev.nextLevelXp + 1000 : prev.nextLevelXp;
+      const baseNorm = normalizeXpProgress(prev.xp, prev.level);
+      const combinedXp = baseNorm.xp + earnedXp;
+      const levelsGained = Math.floor(combinedXp / 1000);
+      const nextLevel = baseNorm.level + levelsGained;
+      const totalXp = combinedXp % 1000;
+      const nextLevelXp = 1000;
       const currentStreak = won ? prev.currentStreak + 1 : 0;
       const bestStreak = Math.max(prev.bestStreak, currentStreak);
       const tricksWon = prev.tricksWon + (stats?.tricksWon || 0);
@@ -890,8 +966,19 @@ export const App: React.FC = () => {
   };
 
   const handleUpdateAvatar = (avatar: string) => {
-    setProfile(p => ({ ...p, avatarIcon: avatar }));
-    multiplayerClient.connect(profile.username, avatar);
+    setProfile(p => ({
+      ...p,
+      avatarIcon: avatar,
+      equippedCosmetics: {
+        ...(p.equippedCosmetics || {}),
+        hat: avatar,
+      },
+    }));
+    multiplayerClient.setAvatarIcon(avatar);
+    multiplayerClient.equipCosmetic('hat', avatar);
+    if (authUserRef.current?.id) {
+      authService.updateUserAvatar(authUserRef.current.id, avatar);
+    }
   };
 
   const handleUpdateUsername = (name: string) => {
@@ -902,12 +989,16 @@ export const App: React.FC = () => {
   const handleUpdateCosmetic = (category: 'hat' | 'cardBack' | 'banner' | 'title', id: string) => {
     setProfile(prev => ({
       ...prev,
+      ...(category === 'hat' ? { avatarIcon: id } : {}),
       equippedCosmetics: {
         ...(prev.equippedCosmetics || {}),
         [category]: id,
       },
     }));
     multiplayerClient.equipCosmetic(category, id);
+    if (authUserRef.current?.id) {
+      authService.updateUserCosmetic(authUserRef.current.id, category, id);
+    }
   };
 
   return (
@@ -973,6 +1064,7 @@ export const App: React.FC = () => {
       {currentView === 'ai_game' && activeGameState ? (
         <GameTable
           initialState={activeGameState}
+          profile={profile}
           onOpenRules={() => setIsRulesOpen(true)}
           onOpenTutorial={() => setIsTutorialOpen(true)}
           onOpenEmotes={() => setIsEmoteWheelOpen(true)}
@@ -996,6 +1088,32 @@ export const App: React.FC = () => {
           activeEmotes={activeEmotes}
           isMuted={isMuted}
           onToggleMute={handleToggleMute}
+          onPlayAgain={() => {
+            const qMode = multiplayerState.queueMode;
+            if (qMode === 'custom' || qMode === 'rivals') {
+              const targetLobbyMode: LobbyGameMode = qMode === 'rivals' ? 'rivals' : 'custom';
+              setLobbyInitialMode(targetLobbyMode);
+              multiplayerClient.returnRoomToLobby(targetLobbyMode);
+              setMultiplayerState(null);
+              setCurrentView('menu');
+              setIsLobbyOpen(true);
+            } else {
+              multiplayerClient.leaveRoom();
+              multiplayerClient.leaveQueue();
+              setMultiplayerState(null);
+              setCurrentView('menu');
+              const nextQueue: QueueType =
+                qMode === 'duo'
+                  ? 'ranked_duo'
+                  : qMode === 'casual'
+                  ? 'unranked'
+                  : 'ranked_solo';
+              setMatchmakingQueue(nextQueue);
+            }
+            if (authUser?.id) {
+              syncAuthoritativeProfile(authUser.id);
+            }
+          }}
           onExitGame={() => {
             multiplayerClient.leaveRoom();
             multiplayerClient.leaveQueue();

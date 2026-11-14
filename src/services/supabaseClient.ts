@@ -381,6 +381,59 @@ class AuthService {
   }
 
   /**
+   * Persist avatar change directly to Supabase profiles, player_cosmetics, and user metadata
+   */
+  public async updateUserAvatar(userId: string, avatarIcon: string): Promise<boolean> {
+    if (!supabase || !userId || !avatarIcon) return false;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    if (!isUuid) return false;
+    try {
+      const now = new Date().toISOString();
+      await Promise.all([
+        supabase.from('profiles').update({ avatar_icon: avatarIcon, updated_at: now }).eq('id', userId),
+        supabase.from('player_cosmetics').update({ equipped_hat: avatarIcon, updated_at: now }).eq('user_id', userId),
+        supabase.auth.updateUser({ data: { avatar_icon: avatarIcon } }).catch(() => {}),
+      ]);
+      return true;
+    } catch (err) {
+      console.warn('Could not persist avatar to Supabase:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Persist cosmetic change directly to Supabase player_cosmetics (and profiles if hat)
+   */
+  public async updateUserCosmetic(
+    userId: string,
+    category: 'hat' | 'cardBack' | 'banner' | 'title',
+    itemId: string
+  ): Promise<boolean> {
+    if (!supabase || !userId || !itemId) return false;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    if (!isUuid) return false;
+    const colMap: Record<string, string> = {
+      hat: 'equipped_hat',
+      cardBack: 'equipped_card_back',
+      banner: 'equipped_banner',
+      title: 'equipped_title',
+    };
+    const col = colMap[category];
+    if (!col) return false;
+    try {
+      const now = new Date().toISOString();
+      await supabase.from('player_cosmetics').update({ [col]: itemId, updated_at: now }).eq('user_id', userId);
+      if (category === 'hat') {
+        await supabase.from('profiles').update({ avatar_icon: itemId, updated_at: now }).eq('id', userId);
+      }
+      return true;
+    } catch (err) {
+      console.warn('Could not persist cosmetic to Supabase:', err);
+      return false;
+    }
+  }
+
+  /**
    * Record match outcome for authenticated users
    */
   public async recordOfflineMatch(
@@ -430,11 +483,15 @@ class AuthService {
 
       if (xpRes.data) {
         const xpEarned = won ? 150 : 50;
-        const totalXp = (xpRes.data.xp || 0) + xpEarned;
-        const levelUp = totalXp >= (xpRes.data.next_level_xp || 1000);
-        const level = levelUp ? (xpRes.data.level || 1) + 1 : (xpRes.data.level || 1);
-        const next_level_xp = levelUp ? (xpRes.data.next_level_xp || 1000) + 1000 : (xpRes.data.next_level_xp || 1000);
-        await supabase.from('player_xp').update({ xp: totalXp, level, next_level_xp, updated_at: new Date().toISOString() }).eq('user_id', userId);
+        const rawXp = xpRes.data.xp || 0;
+        const baseXp = rawXp % 1000;
+        const baseLevel = rawXp >= 1000 ? Math.floor(rawXp / 1000) + 1 : (xpRes.data.level || 1);
+        const totalXp = baseXp + xpEarned;
+        const levelsGained = Math.floor(totalXp / 1000);
+        const level = baseLevel + levelsGained;
+        const xp = totalXp % 1000;
+        const next_level_xp = 1000;
+        await supabase.from('player_xp').update({ xp, level, next_level_xp, updated_at: new Date().toISOString() }).eq('user_id', userId);
       }
 
       // Record rank progression for competitive ranking

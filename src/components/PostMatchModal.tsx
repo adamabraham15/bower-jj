@@ -161,7 +161,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
           {lpDelta !== undefined && lpDelta !== 0 ? (
             <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <RankBadge tier={newTier} size="md" />
+                <RankBadge tier={newTier} points={currentPoints} size="md" />
                 <div>
                   <div className="text-xs font-black text-white uppercase tracking-wider">
                     Ranked Progression

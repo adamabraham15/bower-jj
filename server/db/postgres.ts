@@ -195,7 +195,7 @@ export class PostgresDatabaseRepository {
         s.total_games as "totalGames", s.wins, s.losses, s.tricks_won as "tricksWon",
         s.euchres, s.marches, s.successful_loners as "successfulLoners",
         s.current_streak as "winStreak", s.best_streak as "bestWinStreak",
-        x.level, x.xp,
+        x.level, x.xp, x.next_level_xp as "nextLevelXp",
         c.equipped_hat, c.equipped_card_back, c.equipped_banner, c.equipped_title,
         bp.tier as "bpTier", bp.xp as "bpXp", bp.tier_xp_required as "bpTierReq",
         bp.is_premium as "bpIsPremium", bp.claimed_free_tiers as "bpClaimedFree",
@@ -257,7 +257,7 @@ export class PostgresDatabaseRepository {
         s.total_games as "totalGames", s.wins, s.losses, s.tricks_won as "tricksWon",
         s.euchres, s.marches, s.successful_loners as "successfulLoners",
         s.current_streak as "winStreak", s.best_streak as "bestWinStreak",
-        x.level, x.xp,
+        x.level, x.xp, x.next_level_xp as "nextLevelXp",
         c.equipped_hat, c.equipped_card_back, c.equipped_banner, c.equipped_title,
         bp.tier as "bpTier", bp.xp as "bpXp", bp.tier_xp_required as "bpTierReq",
         bp.is_premium as "bpIsPremium", bp.claimed_free_tiers as "bpClaimedFree",
@@ -431,6 +431,12 @@ export class PostgresDatabaseRepository {
           `,
           [userId, updates.username, updates.avatarIcon]
         );
+        if (updates.avatarIcon) {
+          await client.query(
+            `UPDATE public.player_cosmetics SET equipped_hat = $2, updated_at = NOW() WHERE user_id = $1`,
+            [userId, updates.avatarIcon]
+          );
+        }
       }
 
       if (updates.rankTier !== undefined || updates.rankPoints !== undefined || updates.mmr !== undefined) {
@@ -666,21 +672,31 @@ export class PostgresDatabaseRepository {
           [p.userId, won, p.tricksWon, p.euchres, p.marches, p.successfulLoners]
         );
 
-        // Update XP and Level
+        // Update XP and Level (1,000 XP per level; wraps xp modulo 1000 on level up)
         const xpEarned = won ? 350 : 120;
-        const xpRes = await client.query(
+        const curXpRes = await client.query(
+          `SELECT xp, level FROM public.player_xp WHERE user_id = $1 LIMIT 1`,
+          [p.userId]
+        );
+        const curRawXp = curXpRes.rows[0]?.xp ?? 0;
+        const curRawLevel = curXpRes.rows[0]?.level ?? 1;
+        const baseLevel = curRawXp >= 1000 ? Math.floor(curRawXp / 1000) + 1 : Math.max(1, curRawLevel);
+        const baseXp = curRawXp >= 1000 ? curRawXp % 1000 : Math.max(0, curRawXp);
+        const combinedXp = baseXp + xpEarned;
+        const newLevel = baseLevel + Math.floor(combinedXp / 1000);
+        const newXp = combinedXp % 1000;
+
+        await client.query(
           `
           UPDATE public.player_xp SET
-            xp = xp + $2,
-            level = level + (CASE WHEN (xp + $2) >= next_level_xp THEN 1 ELSE 0 END)
-          WHERE user_id = $1
-          RETURNING xp, level;
+            xp = $2,
+            level = $3,
+            next_level_xp = 1000,
+            updated_at = NOW()
+          WHERE user_id = $1;
           `,
-          [p.userId, xpEarned]
+          [p.userId, newXp, newLevel]
         );
-
-        const newXp = xpRes.rows[0]?.xp || 0;
-        const newLevel = xpRes.rows[0]?.level || 1;
 
         // Update Battle Pass
         const bpXpEarned = won ? 250 : 80;
@@ -1165,6 +1181,14 @@ export class PostgresDatabaseRepository {
        WHERE user_id = $2`,
       [itemId || null, userId]
     );
+    if (category === 'hat' && itemId) {
+      await this.queryWithRetry(
+        `UPDATE public.profiles
+         SET avatar_icon = $1, updated_at = NOW()
+         WHERE id = $2`,
+        [itemId, userId]
+      );
+    }
     return (res.rowCount || 0) > 0;
   }
 
@@ -1313,12 +1337,22 @@ export class PostgresDatabaseRepository {
   }
 
   private mapRowToUserAccount(row: any): UserAccount {
+    const rawXp = typeof row.xp === 'number' ? row.xp : 0;
+    const rawLevel = typeof row.level === 'number' ? row.level : 1;
+    const normalizedLevel = rawXp >= 1000 ? Math.floor(rawXp / 1000) + 1 : Math.max(1, rawLevel);
+    const normalizedXp = rawXp >= 1000 ? rawXp % 1000 : Math.max(0, rawXp);
+    const resolvedAvatar =
+      row.equipped_hat && row.equipped_hat !== '🤠' && (!row.avatarIcon || row.avatarIcon === '🤠')
+        ? row.equipped_hat
+        : row.avatarIcon || row.equipped_hat || '🤠';
+
     return {
       id: row.id,
       username: row.username,
-      avatarIcon: row.avatarIcon || '🤠',
-      level: row.level || 1,
-      xp: row.xp || 0,
+      avatarIcon: resolvedAvatar,
+      level: normalizedLevel,
+      xp: normalizedXp,
+      nextLevelXp: 1000,
       rankTier: (row.rankTier as RankTier) || '9',
       rankPoints: row.rankPoints ?? 0,
       mmr: row.mmr ?? 1200,

@@ -67,7 +67,7 @@ export const RANK_INFO: Record<RankTier, { name: string; title: string; color: s
 
 export const RankBadge: React.FC<RankBadgeProps> = ({
   tier,
-  points = 0,
+  points,
   size = 'md',
   showLabel = true,
 }) => {
@@ -125,7 +125,7 @@ export const RankBadge: React.FC<RankBadgeProps> = ({
           </div>
           {points !== undefined && (
             <div className="text-[10px] text-gray-400 font-mono mt-0.5">
-              {tier === 'BOWER_JJ' ? `${points} LP` : `${points}/100`}
+              {tier === 'BOWER_JJ' ? `${points} LP` : `${points}/100 LP`}
             </div>
           )}
         </div>

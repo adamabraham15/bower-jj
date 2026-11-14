@@ -44,6 +44,7 @@ interface MultiplayerGameTableProps {
   activeEmotes: Record<number, { text?: string; emoji?: string }>;
   isMuted: boolean;
   onToggleMute: () => void;
+  onPlayAgain?: () => void;
   onExitGame: () => void;
 }
 
@@ -57,12 +58,22 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
   activeEmotes,
   isMuted,
   onToggleMute,
+  onPlayAgain,
   onExitGame,
 }) => {
   const [aloneToggle, setAloneToggle] = useState(false);
   const [inspectedPlayer, setInspectedPlayer] = useState<PublicPlayerData | null>(null);
   const [mutedUsernames, setMutedUsernames] = useState<Set<string>>(new Set());
   const [autoDealCountdown, setAutoDealCountdown] = useState<number>(6);
+
+  useEffect(() => {
+    const unsubscribe = multiplayerClient.setCallbacks({
+      onProfile: (playerData) => {
+        setInspectedPlayer((prev) => (prev ? playerData : null));
+      },
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (serverState.phase !== 'hand_scored') {
@@ -162,21 +173,22 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
           onClick={() => {
             if (slot) {
               sounds.playUiClick();
+              const isMe = slot.position === serverState.yourPosition && Boolean(profile);
               setInspectedPlayer({
                 id: slot.userId || `bot_${slot.username}`,
                 username: slot.username,
-                avatarIcon: slot.avatarIcon,
-                level: slot.isAI ? 8 : 1,
-                rankTier: slot.rankTier || '9',
-                rankPoints: 50,
-                totalGames: slot.isAI ? 120 : 15,
-                wins: slot.isAI ? 68 : 9,
-                losses: slot.isAI ? 52 : 6,
-                bestStreak: 4,
+                avatarIcon: isMe ? (profile?.avatarIcon || slot.avatarIcon) : slot.avatarIcon,
+                level: isMe ? (profile?.level ?? 1) : (slot.isAI ? 8 : 1),
+                rankTier: isMe ? ((profile?.rankTier as RankTier) || slot.rankTier || '9') : (slot.rankTier || '9'),
+                rankPoints: isMe ? (profile?.rankPoints ?? 0) : 50,
+                totalGames: isMe ? (profile?.totalGames ?? 0) : (slot.isAI ? 120 : 15),
+                wins: isMe ? (profile?.wins ?? 0) : (slot.isAI ? 68 : 9),
+                losses: isMe ? (profile?.losses ?? 0) : (slot.isAI ? 52 : 6),
+                bestStreak: isMe ? (profile?.bestStreak ?? 0) : 4,
                 isFriend: false,
                 isOnline: slot.connected,
               });
-              if (slot.userId) {
+              if (slot.userId && !slot.isAI) {
                 multiplayerClient.fetchProfile(slot.userId, slot.username);
               }
             }
@@ -614,10 +626,10 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             oldTier={lastRankUpdate?.oldTier || (profile?.rankTier as any) || serverState.slots[yourPos]?.rankTier || '9'}
             newTier={lastRankUpdate?.newTier || (profile?.rankTier as any) || serverState.slots[yourPos]?.rankTier || '9'}
             currentPoints={lastRankUpdate?.newPoints ?? profile?.rankPoints ?? 0}
-            xpEarned={isVictory ? 475 : 250}
+            xpEarned={isVictory ? 350 : 120}
             playerLevel={profile?.level ?? 1}
-            playerXp={profile?.xp ?? 475}
-            nextLevelXp={profile?.nextLevelXp ?? 1000}
+            playerXp={(profile?.xp ?? 350) % 1000}
+            nextLevelXp={1000}
             players={serverState.slots.map(s => ({
               id: s.userId || `slot_${s.position}`,
               name: s.username,
@@ -628,8 +640,12 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             }))}
             yourPosition={serverState.yourPosition}
             onPlayAgain={() => {
-              multiplayerClient.leaveQueue();
-              onExitGame();
+              if (onPlayAgain) {
+                onPlayAgain();
+              } else {
+                multiplayerClient.leaveQueue();
+                onExitGame();
+              }
             }}
             onExit={onExitGame}
           />

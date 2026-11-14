@@ -253,7 +253,7 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
                           </div>
 
                           <div className="flex items-center space-x-2">
-                            <RankBadge tier={friend.rankTier} size="sm" />
+                            <RankBadge tier={friend.rankTier} points={friend.rankPoints} size="sm" />
                             <button
                               onClick={() => {
                                 multiplayerClient.sendPartyInvite(friend.userId, 'rivals');
@@ -305,7 +305,7 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
                           </div>
 
                           <div className="flex items-center space-x-2">
-                            <RankBadge tier={friend.rankTier} size="sm" />
+                            <RankBadge tier={friend.rankTier} points={friend.rankPoints} size="sm" />
                             <button
                               onClick={() => handleRemove(friend.userId)}
                               className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"

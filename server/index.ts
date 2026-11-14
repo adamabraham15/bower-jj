@@ -505,6 +505,18 @@ export async function createMultiplayerServer(
             break;
           }
 
+          case 'ROOM_RETURN_TO_LOBBY': {
+            const room = activeRm.returnRoomToLobby(uid, msg.mode);
+            const pos = room.slots.findIndex(s => s && s.userId === uid);
+            const response: ServerMessage = {
+              type: 'ROOM_UPDATE',
+              room,
+              yourPosition: pos !== -1 ? (pos as any) : 0,
+            };
+            ws.send(JSON.stringify(response));
+            break;
+          }
+
           case 'ROOM_UPDATE_RULES': {
             activeRm.updateRoomRules(uid, msg.rules);
             break;
@@ -638,6 +650,9 @@ export async function createMultiplayerServer(
             const u = await activeDb.getUserById(uid);
             if (u) {
               activeRm.setCachedUser(u);
+              if (msg.category === 'hat' && msg.itemId) {
+                activeRm.updateUserAvatar(uid, msg.itemId);
+              }
               ws.send(JSON.stringify({ type: 'USER_SYNC', user: u }));
             }
             break;

@@ -608,21 +608,9 @@ class Database {
 
     user.xp += xpAwarded;
 
-    // Level progression (level * 1000 XP)
-    let neededXp = user.level * 1000;
-    while (user.xp >= neededXp) {
-      user.xp -= neededXp;
-      user.level++;
-      neededXp = user.level * 1000;
-    }
-
     // Battle Pass Progression
     const passXp = Math.floor(xpAwarded * 0.8);
     user.battlePass.xp += passXp;
-    while (user.battlePass.xp >= user.battlePass.tierXpRequired && user.battlePass.tier < 30) {
-      user.battlePass.xp -= user.battlePass.tierXpRequired;
-      user.battlePass.tier++;
-    }
 
     // Challenges Progress
     user.challenges.forEach(ch => {
@@ -638,6 +626,17 @@ class Database {
         user.battlePass.xp += ch.xpReward;
       }
     });
+
+    // Level progression (1000 XP per level)
+    while (user.xp >= 1000) {
+      user.xp -= 1000;
+      user.level++;
+    }
+
+    while (user.battlePass.xp >= user.battlePass.tierXpRequired && user.battlePass.tier < 30) {
+      user.battlePass.xp -= user.battlePass.tierXpRequired;
+      user.battlePass.tier++;
+    }
 
     user.lastActive = Date.now();
     this.save();
@@ -834,6 +833,9 @@ class Database {
     if (!user) return false;
 
     user.equippedCosmetics[category] = itemId;
+    if (category === 'hat' && itemId) {
+      user.avatarIcon = itemId;
+    }
     this.save();
     return true;
   }

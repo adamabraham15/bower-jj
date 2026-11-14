@@ -61,6 +61,13 @@ import {
 
 interface GameTableProps {
   initialState: EuchreGameState;
+  profile?: {
+    rankTier?: RankTier;
+    rankPoints?: number;
+    level?: number;
+    xp?: number;
+    nextLevelXp?: number;
+  };
   onOpenRules: () => void;
   onOpenTutorial: () => void;
   onOpenEmotes: () => void;
@@ -83,6 +90,7 @@ interface GameTableProps {
 
 export const GameTable: React.FC<GameTableProps> = ({
   initialState,
+  profile,
   onOpenRules,
   onOpenTutorial,
   onOpenEmotes,
@@ -724,13 +732,13 @@ export const GameTable: React.FC<GameTableProps> = ({
             marches={state.scores[0] >= 2 ? 1 : 0}
             euchres={state.scores[0] >= 2 ? 1 : 0}
             loners={state.scores[0] >= 4 ? 1 : 0}
-            lpDelta={state.scores[0] >= state.rules.targetScore ? 24 : -14}
-            oldTier={(state.players[0].rankTier as RankTier) || '9'}
-            newTier={(state.players[0].rankTier as RankTier) || '9'}
-            currentPoints={55}
-            xpEarned={state.scores[0] >= state.rules.targetScore ? 450 : 250}
-            playerLevel={1}
-            playerXp={450}
+            lpDelta={0}
+            oldTier={profile?.rankTier || (state.players[0].rankTier as RankTier) || '9'}
+            newTier={profile?.rankTier || (state.players[0].rankTier as RankTier) || '9'}
+            currentPoints={profile?.rankPoints ?? 0}
+            xpEarned={state.scores[0] >= state.rules.targetScore ? 150 : 50}
+            playerLevel={profile?.level ?? 1}
+            playerXp={(profile?.xp ?? 150) % 1000}
             nextLevelXp={1000}
             players={state.players.map(p => ({
               id: p.id,

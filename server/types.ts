@@ -71,6 +71,7 @@ export interface UserAccount {
   avatarIcon: string;
   level: number;
   xp: number;
+  nextLevelXp?: number;
   
   // Competitive Ranking & MMR
   rankTier: RankTier;
@@ -228,6 +229,7 @@ export type ClientMessage =
   | { type: 'ROOM_JOIN'; roomCode: string }
   | { type: 'ROOM_FILL_AI'; difficulty?: AIDifficulty }
   | { type: 'ROOM_START' }
+  | { type: 'ROOM_RETURN_TO_LOBBY'; mode?: 'custom' | 'rivals' }
   | { type: 'ROOM_LEAVE' }
   | { type: 'QUEUE_ENTER'; mode: 'solo' | 'rivals' | 'duo' | 'casual' }
   | { type: 'QUEUE_LEAVE' }

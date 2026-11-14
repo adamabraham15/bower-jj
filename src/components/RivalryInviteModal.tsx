@@ -363,7 +363,7 @@ export const RivalryInviteModal: React.FC<RivalryInviteModalProps> = ({
                       </div>
 
                       <div className="flex items-center space-x-2">
-                        <RankBadge tier={friend.rankTier} size="sm" />
+                        <RankBadge tier={friend.rankTier} points={friend.rankPoints} size="sm" />
                         <button
                           onClick={() => handleInviteFriend(friend.userId, friend.username)}
                           disabled={!friend.isOnline}

@@ -285,4 +285,49 @@ describe('Public Profile Inspection, Moderation & Cosmetic Customization', () =>
 
     roomManager.cleanup();
   });
+
+  it('updates avatarIcon when equipping a hat cosmetic and returns finished rooms to lobby on Play Again', async () => {
+    const { roomManager } = await import('../roomManager');
+    const { user: host } = db.getOrCreateUser(genName('PlayAgainHost'), '🤠');
+    const { user: rival } = db.getOrCreateUser(genName('PlayAgainRival'), '🧝');
+
+    // Equip new avatar ('🤖') via equipCosmetic('hat')
+    db.equipCosmetic(host.id, 'hat', '🤖');
+    const updatedHost = db.getUserById(host.id)!;
+    expect(updatedHost.avatarIcon).toBe('🤖');
+    expect(updatedHost.equippedCosmetics.hat).toBe('🤖');
+
+    roomManager.registerConnection(host.id, {
+      ws: { readyState: 1, send: () => {} } as any,
+      userId: host.id,
+      username: host.username,
+      avatarIcon: updatedHost.avatarIcon,
+    });
+    roomManager.registerConnection(rival.id, {
+      ws: { readyState: 1, send: () => {} } as any,
+      userId: rival.id,
+      username: rival.username,
+      avatarIcon: rival.avatarIcon,
+    });
+
+    const room = roomManager.createRivalsRoom(host.id);
+    roomManager.joinRoom(rival.id, room.code);
+    roomManager.fillWithAI(host.id, 'medium');
+    roomManager.startGame(host.id);
+    expect(room.status).toBe('playing');
+
+    // Simulate match finishing
+    room.status = 'finished';
+    room.resultsRecorded = true;
+
+    // Host clicks Play Again -> room returns to lobby with both players still seated
+    const lobbyRoom = roomManager.returnRoomToLobby(host.id, 'rivals');
+    expect(lobbyRoom.code).toBe(room.code);
+    expect(lobbyRoom.status).toBe('lobby');
+    expect(lobbyRoom.resultsRecorded).toBe(false);
+    expect(lobbyRoom.slots[0]?.userId).toBe(host.id);
+    expect(lobbyRoom.slots[1]?.userId).toBe(rival.id);
+
+    roomManager.cleanup();
+  });
 });

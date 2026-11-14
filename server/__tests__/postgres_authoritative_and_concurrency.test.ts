@@ -172,6 +172,43 @@ describe('Stage 4.5: PostgreSQL Migration & Authoritative Database Cutover', () 
     expect(p1InDb.totalGames).toBe(1);
     expect(p1InDb.tricksWon).toBe(6);
 
+    // Equip new hat avatar and verify it persists to profiles.avatar_icon
+    await repoInstanceA.equipCosmetic(p1.id, 'hat', '🤖');
+    const p1WithHat = (await repoInstanceA.getUserById(p1.id))!;
+    expect(p1WithHat.avatarIcon).toBe('🤖');
+    expect(p1WithHat.equippedCosmetics.hat).toBe('🤖');
+
+    // Win two more matches (total 3 wins * 350 XP = 1050 XP -> Level 2 with 50 / 1000 XP)
+    for (let m = 2; m <= 3; m++) {
+      await repoInstanceA.recordMatchResult({
+        matchId: `match_xp_lvl_${m}`,
+        roomCode: `XPLV0${m}`,
+        mode: 'ranked_solo',
+        composition: '4H',
+        winningTeam: 0,
+        finalScore: '10 - 3',
+        humanPlayers: [
+          {
+            userId: p1.id,
+            position: 0,
+            team: 0,
+            username: p1.username,
+            rankTier: p1InDb.rankTier,
+            rankPoints: p1InDb.rankPoints,
+            mmr: p1InDb.mmr,
+            tricksWon: 6,
+            euchres: 0,
+            marches: 0,
+            successfulLoners: 0,
+          },
+        ],
+      });
+    }
+    const p1Leveled = (await repoInstanceA.getUserById(p1.id))!;
+    expect(p1Leveled.level).toBe(2);
+    expect(p1Leveled.xp).toBe(50);
+    expect(p1Leveled.nextLevelXp).toBe(1000);
+
     const p2InDb = (await repoInstanceA.getUserById(p2.id))!;
     expect(p2InDb.wins).toBe(0);
     expect(p2InDb.losses).toBe(1);

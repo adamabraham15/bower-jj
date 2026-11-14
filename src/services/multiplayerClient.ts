@@ -549,6 +549,18 @@ export class MultiplayerClient {
     this.send({ type: 'ROOM_START' });
   }
 
+  public returnRoomToLobby(mode?: 'custom' | 'rivals') {
+    this.isPendingPartyCreate = true;
+    if (this.currentRoom) {
+      this.currentRoom = { ...this.currentRoom, status: 'lobby' };
+    }
+    this.send({ type: 'ROOM_RETURN_TO_LOBBY', mode });
+  }
+
+  public setAvatarIcon(avatarIcon: string) {
+    this.avatarIcon = avatarIcon;
+  }
+
   public updateRoomRules(rules: Partial<EuchreHouseRules>) {
     this.send({ type: 'ROOM_UPDATE_RULES', rules });
   }
@@ -685,6 +697,9 @@ export class MultiplayerClient {
   }
 
   public equipCosmetic(category: 'hat' | 'cardBack' | 'banner' | 'title', itemId?: string) {
+    if (category === 'hat' && itemId) {
+      this.avatarIcon = itemId;
+    }
     this.send({ type: 'EQUIP_COSMETIC', category, itemId });
   }
 

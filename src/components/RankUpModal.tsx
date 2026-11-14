@@ -67,7 +67,7 @@ export const RankUpModal: React.FC<RankUpModalProps> = ({
         {/* Tier Transition Display */}
         <div className="flex items-center justify-center space-x-6 py-4">
           <div className="flex flex-col items-center opacity-60 scale-90">
-            <RankBadge tier={oldTier} size="md" />
+            <RankBadge tier={oldTier} size="md" showLabel={false} />
             <span className="text-[11px] font-bold text-gray-400 mt-1 uppercase">
               {oldTier} Rank
             </span>
@@ -78,13 +78,7 @@ export const RankUpModal: React.FC<RankUpModalProps> = ({
           </div>
 
           <div className="flex flex-col items-center scale-110 animate-bounce">
-            <RankBadge tier={newTier} size="lg" />
-            <span
-              className="text-xs font-black mt-2 uppercase tracking-wider"
-              style={{ color: info.color }}
-            >
-              {info.name}
-            </span>
+            <RankBadge tier={newTier} points={newPoints} size="lg" />
           </div>
         </div>
 

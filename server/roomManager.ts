@@ -583,6 +583,82 @@ export class RoomManager {
     return this.createRoom(userId, rules, 'rivals');
   }
 
+  public returnRoomToLobby(userId: string, fallbackMode: 'rivals' | 'custom' = 'custom'): Room {
+    const conn = this.connections.get(userId);
+    if (!conn) throw new Error('Not connected');
+
+    const roomCode = conn.roomCode;
+    const room = roomCode ? this.rooms.get(roomCode) : undefined;
+
+    if (room && !room.isMatchmade && (room.queueMode === 'custom' || room.queueMode === 'rivals' || !room.queueMode)) {
+      room.status = 'lobby';
+      room.resultsRecorded = false;
+      room.id = crypto.randomUUID();
+      room.abandonedUserIds = [];
+      room.lastActionAt = Date.now();
+      this.gameStates.delete(room.code);
+      this.clearActiveMatchSnapshot(room.code);
+
+      for (let i = 0; i < 4; i++) {
+        const slot = room.slots[i];
+        if (!slot) continue;
+        if (!slot.isAI && slot.userId) {
+          const slotConn = this.connections.get(slot.userId);
+          const slotUser = this.getCachedUser(slot.userId);
+          if (!slotConn || slotConn.roomCode !== room.code) {
+            room.slots[i] = null;
+          } else {
+            slot.abandoned = false;
+            slot.connected = true;
+            slot.avatarIcon = slotUser?.avatarIcon || slotConn.avatarIcon || slot.avatarIcon;
+            slot.rankTier = slotUser?.rankTier || slot.rankTier;
+          }
+        }
+      }
+
+      const hostSeated = room.slots.some(s => s && !s.isAI && s.userId === room.hostUserId);
+      if (!hostSeated) {
+        room.hostUserId = userId;
+      }
+
+      this.broadcastRoom(room.code, {
+        type: 'ROOM_UPDATE',
+        room,
+      });
+
+      return room;
+    }
+
+    return fallbackMode === 'rivals'
+      ? this.createRivalsRoom(userId)
+      : this.createRoom(userId, undefined, 'custom');
+  }
+
+  public updateUserAvatar(userId: string, avatarIcon: string): void {
+    const conn = this.connections.get(userId);
+    if (conn) {
+      conn.avatarIcon = avatarIcon;
+      if (conn.roomCode) {
+        const room = this.rooms.get(conn.roomCode);
+        if (room) {
+          let updated = false;
+          for (const slot of room.slots) {
+            if (slot && !slot.isAI && slot.userId === userId) {
+              slot.avatarIcon = avatarIcon;
+              updated = true;
+            }
+          }
+          if (updated) {
+            this.broadcastRoom(room.code, {
+              type: 'ROOM_UPDATE',
+              room,
+            });
+          }
+        }
+      }
+    }
+  }
+
   public joinRoom(userId: string, code: string): Room {
     const conn = this.connections.get(userId);
     if (!conn) throw new Error('Not connected');

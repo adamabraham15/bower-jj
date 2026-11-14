@@ -161,7 +161,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 
                   {/* Tier & LP */}
                   <div className="col-span-3 sm:col-span-3 flex items-center justify-center space-x-1 sm:space-x-1.5">
-                    <RankBadge tier={entry.rankTier} size="sm" />
+                    <RankBadge tier={entry.rankTier} points={entry.rankPoints} size="sm" showLabel={false} />
                     <div className="text-left leading-tight">
                       <div className="text-[11px] sm:text-xs font-black text-white">{entry.rankPoints} LP</div>
                       <div className="text-[8px] sm:text-[9px] text-gray-400 uppercase">
