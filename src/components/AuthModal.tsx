@@ -14,7 +14,9 @@ interface AuthModalProps {
   onClose: () => void;
   onAuthSuccess: (user: any, token?: string) => void;
   onContinueAsGuest: () => void;
+  onSignupActivated?: (user: any, token?: string) => void;
   initialTab?: 'login' | 'register';
+  initialEmail?: string;
   reason?: string;
 }
 
@@ -23,13 +25,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   onAuthSuccess,
   onContinueAsGuest,
+  onSignupActivated,
   initialTab = 'register',
+  initialEmail,
   reason,
 }) => {
-  const [tab, setTab] = useState<'login' | 'register' | 'forgot'>(initialTab);
-  const [email, setEmail] = useState('');
+  const [tab, setTab] = useState<'login' | 'register' | 'forgot' | 'confirm_email'>(initialTab);
+  const [email, setEmail] = useState(initialEmail || '');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -37,14 +43,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [isUsernameValidating, setIsUsernameValidating] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'available' | 'taken' | 'invalid' | null>(null);
 
-  // Sync initial tab when modal opens
+  // Sync initial tab & email when modal opens
   useEffect(() => {
     if (isOpen && initialTab) {
       setTab(initialTab);
+      if (initialEmail) {
+        setEmail(initialEmail);
+      }
       setErrorMessage(null);
       setSuccessMessage(null);
     }
-  }, [isOpen, initialTab]);
+  }, [isOpen, initialTab, initialEmail]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown(c => Math.max(0, c - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
 
   // Debounced username availability check
   useEffect(() => {
@@ -150,12 +165,61 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     if (user) {
       if (!session) {
-        setSuccessMessage('Account created! Please check your email to confirm your account before logging in.');
+        setOtpCode('');
+        setResendCooldown(30);
+        setTab('confirm_email');
+        setSuccessMessage('Account created! Click the link in your email or enter your verification code below to activate.');
       } else {
         sounds.playVictoryFanfare();
         onAuthSuccess(user, session.access_token);
         onClose();
       }
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    if (!otpCode.trim()) {
+      setErrorMessage('Enter the 6-digit verification code from your email.');
+      return;
+    }
+
+    setIsLoading(true);
+    sounds.playUiClick();
+
+    const { user, session, error } = await authService.verifyEmailOtpCode(email.trim(), otpCode.trim());
+    setIsLoading(false);
+
+    if (error) {
+      setErrorMessage(error);
+      return;
+    }
+
+    if (user) {
+      sounds.playVictoryFanfare();
+      onAuthSuccess(user, session?.access_token);
+      onClose();
+      onSignupActivated?.(user, session?.access_token);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    if (!email.trim() || resendCooldown > 0) return;
+    setErrorMessage(null);
+    setIsLoading(true);
+    sounds.playUiClick();
+
+    const { success, error } = await authService.resendConfirmationEmail(email.trim());
+    setIsLoading(false);
+
+    if (success) {
+      setResendCooldown(30);
+      setSuccessMessage(`A fresh confirmation email was sent to ${email.trim()}.`);
+    } else if (error) {
+      setErrorMessage(error);
     }
   };
 
@@ -193,13 +257,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-black text-slate-950 tracking-wide uppercase leading-tight">
-                {tab === 'login' ? 'Player Sign In' : tab === 'register' ? 'Create Account' : 'Account Recovery'}
+                {tab === 'login'
+                  ? 'Player Sign In'
+                  : tab === 'register'
+                  ? 'Create Account'
+                  : tab === 'confirm_email'
+                  ? 'Verify Your Email'
+                  : 'Account Recovery'}
               </h2>
               <p className="text-[11px] text-amber-950 font-bold">
                 {tab === 'login'
                   ? 'Access your permanent BOWER JJ profile & rank'
                   : tab === 'register'
                   ? 'Join competitive multiplayer & cloud saves'
+                  : tab === 'confirm_email'
+                  ? 'One quick step to activate your account'
                   : 'We will send you a secure password reset link'}
               </p>
             </div>
@@ -235,36 +307,38 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* Tab Selection */}
-        <div className="flex border-b border-slate-800 bg-slate-950/50 text-xs font-black">
-          <button
-            onClick={() => {
-              sounds.playUiClick();
-              setTab('login');
-              resetForm();
-            }}
-            className={`flex-1 py-3 text-center border-b-2 transition-all ${
-              tab === 'login'
-                ? 'border-amber-400 text-amber-400 bg-slate-800/40'
-                : 'border-transparent text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            SIGN IN
-          </button>
-          <button
-            onClick={() => {
-              sounds.playUiClick();
-              setTab('register');
-              resetForm();
-            }}
-            className={`flex-1 py-3 text-center border-b-2 transition-all ${
-              tab === 'register'
-                ? 'border-amber-400 text-amber-400 bg-slate-800/40'
-                : 'border-transparent text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            REGISTER
-          </button>
-        </div>
+        {tab !== 'confirm_email' && (
+          <div className="flex border-b border-slate-800 bg-slate-950/50 text-xs font-black">
+            <button
+              onClick={() => {
+                sounds.playUiClick();
+                setTab('login');
+                resetForm();
+              }}
+              className={`flex-1 py-3 text-center border-b-2 transition-all ${
+                tab === 'login'
+                  ? 'border-amber-400 text-amber-400 bg-slate-800/40'
+                  : 'border-transparent text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              SIGN IN
+            </button>
+            <button
+              onClick={() => {
+                sounds.playUiClick();
+                setTab('register');
+                resetForm();
+              }}
+              className={`flex-1 py-3 text-center border-b-2 transition-all ${
+                tab === 'register'
+                  ? 'border-amber-400 text-amber-400 bg-slate-800/40'
+                  : 'border-transparent text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              REGISTER
+            </button>
+          </div>
+        )}
 
         {/* Form Body */}
         <div className="p-6 space-y-4">
@@ -477,6 +551,68 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 ← Back to Sign In
               </button>
             </form>
+          )}
+
+          {tab === 'confirm_email' && (
+            <div className="space-y-4">
+              <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1.5 text-xs">
+                <div className="text-gray-400 font-semibold">Confirmation sent to:</div>
+                <div className="font-mono font-bold text-amber-300 break-all">{email}</div>
+                <p className="text-[11px] text-gray-400 leading-relaxed pt-1">
+                  Open the confirmation email and click the activation button—or enter the 6-digit verification code if shown in your email.
+                </p>
+              </div>
+
+              <form onSubmit={handleVerifyOtp} className="space-y-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-300 uppercase mb-1">
+                    6-Digit Verification Code (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={otpCode}
+                    onChange={e => setOtpCode(e.target.value)}
+                    placeholder="123456"
+                    maxLength={10}
+                    className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-2.5 text-center text-sm tracking-[0.3em] text-white placeholder-gray-600 focus:outline-none font-mono"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading || !otpCode.trim()}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
+                >
+                  <span>{isLoading ? 'Verifying...' : 'Activate Account with Code'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </form>
+
+              <div className="flex items-center justify-between gap-2 pt-1 text-xs">
+                <button
+                  type="button"
+                  disabled={isLoading || resendCooldown > 0}
+                  onClick={handleResendEmail}
+                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-bold text-amber-300 disabled:opacity-50"
+                >
+                  {resendCooldown > 0 ? `Resend (${resendCooldown}s)` : 'Resend Email'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playUiClick();
+                    setErrorMessage(null);
+                    setSuccessMessage(null);
+                    setTab('login');
+                  }}
+                  className="px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/40 font-bold text-amber-300"
+                >
+                  Already Confirmed? Sign In →
+                </button>
+              </div>
+            </div>
           )}
 
           {/* Divider */}

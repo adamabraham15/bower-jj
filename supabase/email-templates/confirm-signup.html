@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Activate Your BOWER JJ Account</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#020617;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f8fafc;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#020617;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;background-color:#0f172a;border:1px solid #334155;border-radius:20px;overflow:hidden;">
+            <tr>
+              <td style="background:linear-gradient(90deg,#d97706,#f59e0b,#eab308);padding:24px 28px;">
+                <div style="font-size:12px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:#0f172a;">
+                  BOWER JJ • COMPETITIVE EUCHRE
+                </div>
+                <h1 style="margin:6px 0 0;font-size:22px;font-weight:900;color:#020617;letter-spacing:-0.01em;">
+                  Confirm &amp; Activate Your Account
+                </h1>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:28px;">
+                <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#e2e8f0;">
+                  Welcome to the table! Click the button below to activate your BOWER JJ profile, unlock Ranked Play &amp; LP, and save your match history.
+                </p>
+
+                <table role="presentation" cellspacing="0" cellpadding="0" style="margin:24px 0;">
+                  <tr>
+                    <td align="center" style="border-radius:12px;background-color:#10b981;">
+                      <a
+                        href="{{ .SiteURL }}/?token_hash={{ .TokenHash }}&type=signup"
+                        target="_blank"
+                        style="display:inline-block;padding:14px 28px;font-size:14px;font-weight:800;color:#020617;text-decoration:none;letter-spacing:0.03em;text-transform:uppercase;"
+                      >
+                        Activate My Account
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+
+                <div style="margin:20px 0;padding:16px;background-color:#020617;border:1px solid #1e293b;border-radius:12px;text-align:center;">
+                  <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8;margin-bottom:6px;">
+                    Or enter this 6-digit verification code in the app
+                  </div>
+                  <div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:26px;font-weight:900;letter-spacing:0.25em;color:#fbbf24;">
+                    {{ .Token }}
+                  </div>
+                </div>
+
+                <p style="margin:16px 0 0;font-size:12px;line-height:1.5;color:#64748b;">
+                  If you didn't create a BOWER JJ account, you can safely ignore this email.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

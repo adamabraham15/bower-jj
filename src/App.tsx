@@ -18,9 +18,15 @@ import { RankUpModal } from './components/RankUpModal';
 import { GameLobbyModal, LobbyGameMode } from './components/GameLobbyModal';
 import { AchievementsModal } from './components/AchievementsModal';
 import { AuthModal } from './components/AuthModal';
+import { AccountActivationModal, AccountActivationState } from './components/AccountActivationModal';
 import { EmoteWheel } from './components/EmoteWheel';
 import { RankTier } from './components/RankBadge';
 import { authService } from './services/supabaseClient';
+import {
+  getCapturedAuthRedirect,
+  clearCapturedAuthRedirect,
+  cleanAuthParamsFromBrowserUrl,
+} from './services/authCallback';
 import {
   Player,
   EuchreGameState,
@@ -160,9 +166,12 @@ export const App: React.FC = () => {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authModalReason, setAuthModalReason] = useState<string | undefined>();
   const [authModalInitialTab, setAuthModalInitialTab] = useState<'login' | 'register'>('register');
+  const [authModalInitialEmail, setAuthModalInitialEmail] = useState<string | undefined>();
+  const [activationState, setActivationState] = useState<AccountActivationState | null>(null);
   const [authUser, setAuthUser] = useState<any | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
   const authUserRef = useRef<any | null>(null);
+  const pendingSignupActivationRef = useRef<boolean>(false);
 
   useEffect(() => {
     authUserRef.current = authUser;
@@ -338,36 +347,118 @@ export const App: React.FC = () => {
     if (user.challenges) setChallenges(user.challenges);
   };
 
-  // 1. Restore Supabase Authentication Session & Listen to Auth Events
+  // 1. Restore Supabase Authentication Session, Handle Confirmation Redirects & Listen to Auth Events
   useEffect(() => {
-    authService.getSession().then((session) => {
-      if (session?.user && session.access_token) {
-        authUserRef.current = session.user;
-        setAuthUser(session.user);
-        setAuthToken(session.access_token);
-        syncAuthoritativeProfile(session.user.id);
+    const authRedirect = getCapturedAuthRedirect();
+    const isReturningFromAuthLink = authRedirect.kind !== 'none';
 
-        // Reconnect/authenticate with verified access token
-        multiplayerClient.connect(
-          session.user.user_metadata?.username || profile.username,
-          session.user.user_metadata?.avatar_icon || profile.avatarIcon,
-          session.access_token
-        );
-      } else {
-        // Unauthenticated visitor: prompt new players to register or sign in (skip if joining via direct invite)
-        try {
-          const hasPrompted = localStorage.getItem('bower_jj_auth_prompted');
-          const isDirectInvite = Boolean(extractInviteCodeFromUrl());
-          if (!hasPrompted && !isDirectInvite) {
-            setTimeout(() => {
-              setAuthModalInitialTab('register');
-              setAuthModalReason('Create a free account or sign in to track your competitive rank, battle pass, and match history!');
-              setIsAuthOpen(true);
-            }, 600);
+    const showActivatedModal = (user: any) => {
+      sounds.playVictoryFanfare();
+      setIsAuthOpen(false);
+      setActivationState({
+        status: 'activated',
+        username: user?.user_metadata?.username,
+        email: user?.email,
+      });
+      clearCapturedAuthRedirect();
+      cleanAuthParamsFromBrowserUrl();
+      pendingSignupActivationRef.current = false;
+    };
+
+    if (authRedirect.kind === 'signup_confirmed' || authRedirect.kind === 'pkce_code') {
+      pendingSignupActivationRef.current = true;
+    }
+
+    if (authRedirect.kind === 'token_hash' && authRedirect.tokenHash) {
+      setActivationState({ status: 'verifying' });
+      cleanAuthParamsFromBrowserUrl();
+      authService
+        .verifyTokenHash(authRedirect.tokenHash, authRedirect.otpType === 'email' ? 'email' : 'signup')
+        .then(async ({ user, session, error }) => {
+          clearCapturedAuthRedirect();
+          if (user) {
+            showActivatedModal(user);
+            if (session?.access_token) {
+              authUserRef.current = user;
+              setAuthUser(user);
+              setAuthToken(session.access_token);
+              syncAuthoritativeProfile(user.id);
+              multiplayerClient.reauthenticate(
+                session.access_token,
+                user.user_metadata?.username || profile.username,
+                user.user_metadata?.avatar_icon || profile.avatarIcon
+              );
+            }
+            return;
           }
-        } catch {}
-      }
-    });
+
+          const existingSession = await authService.getSession();
+          if (existingSession?.user) {
+            showActivatedModal(existingSession.user);
+            return;
+          }
+
+          setActivationState({
+            status: 'link_used_or_expired',
+            errorMessage: error || undefined,
+          });
+        });
+    } else if (authRedirect.kind === 'link_error') {
+      cleanAuthParamsFromBrowserUrl();
+      clearCapturedAuthRedirect();
+      authService.getSession().then((session) => {
+        if (session?.user && session.access_token) {
+          authUserRef.current = session.user;
+          setAuthUser(session.user);
+          setAuthToken(session.access_token);
+          syncAuthoritativeProfile(session.user.id);
+          multiplayerClient.connect(
+            session.user.user_metadata?.username || profile.username,
+            session.user.user_metadata?.avatar_icon || profile.avatarIcon,
+            session.access_token
+          );
+          showActivatedModal(session.user);
+        } else {
+          setActivationState({
+            status: 'link_used_or_expired',
+            errorMessage: authRedirect.errorDescription,
+          });
+        }
+      });
+    } else {
+      authService.getSession().then((session) => {
+        if (session?.user && session.access_token) {
+          authUserRef.current = session.user;
+          setAuthUser(session.user);
+          setAuthToken(session.access_token);
+          syncAuthoritativeProfile(session.user.id);
+
+          // Reconnect/authenticate with verified access token
+          multiplayerClient.connect(
+            session.user.user_metadata?.username || profile.username,
+            session.user.user_metadata?.avatar_icon || profile.avatarIcon,
+            session.access_token
+          );
+
+          if (pendingSignupActivationRef.current || authRedirect.kind === 'signup_confirmed') {
+            showActivatedModal(session.user);
+          }
+        } else if (!isReturningFromAuthLink) {
+          // Unauthenticated visitor: prompt new players to register or sign in (skip if joining via direct invite)
+          try {
+            const hasPrompted = localStorage.getItem('bower_jj_auth_prompted');
+            const isDirectInvite = Boolean(extractInviteCodeFromUrl());
+            if (!hasPrompted && !isDirectInvite) {
+              setTimeout(() => {
+                setAuthModalInitialTab('register');
+                setAuthModalReason('Create a free account or sign in to track your competitive rank, battle pass, and match history!');
+                setIsAuthOpen(true);
+              }, 600);
+            }
+          } catch {}
+        }
+      });
+    }
 
     const unsubscribe = authService.onAuthStateChange((session, user) => {
       if (session && user) {
@@ -384,6 +475,9 @@ export const App: React.FC = () => {
           user.user_metadata?.username || profile.username,
           user.user_metadata?.avatar_icon || profile.avatarIcon
         );
+        if (pendingSignupActivationRef.current) {
+          showActivatedModal(user);
+        }
       } else {
         authUserRef.current = null;
         setAuthUser(null);
@@ -1052,11 +1146,25 @@ export const App: React.FC = () => {
         onToggleMute={handleToggleMute}
       />
 
+      {/* Account Activation Status Screen */}
+      <AccountActivationModal
+        activation={activationState}
+        onClose={() => setActivationState(null)}
+        onOpenSignIn={(prefillEmail) => {
+          setActivationState(null);
+          setAuthModalInitialTab('login');
+          setAuthModalInitialEmail(prefillEmail);
+          setAuthModalReason('Sign in below with your email and password to enter your activated account.');
+          setIsAuthOpen(true);
+        }}
+      />
+
       {/* Cloud Authentication Modal */}
       <AuthModal
         isOpen={isAuthOpen}
         onClose={handleAuthDismissOrContinue}
         initialTab={authModalInitialTab}
+        initialEmail={authModalInitialEmail}
         reason={authModalReason}
         onAuthSuccess={(user, token) => {
           setAuthUser(user);
@@ -1064,6 +1172,13 @@ export const App: React.FC = () => {
           if (user?.id) syncAuthoritativeProfile(user.id);
           handleAuthDismissOrContinue();
           showToast(`Signed in as ${user.user_metadata?.username || user.email}. Cloud sync active.`, 'Welcome Back!');
+        }}
+        onSignupActivated={(user) => {
+          setActivationState({
+            status: 'activated',
+            username: user?.user_metadata?.username,
+            email: user?.email,
+          });
         }}
         onContinueAsGuest={() => {
           handleAuthDismissOrContinue();

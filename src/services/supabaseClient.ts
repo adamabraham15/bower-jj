@@ -4,6 +4,10 @@
  */
 
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js';
+import { captureInitialAuthRedirect } from './authCallback';
+
+// Capture auth redirect parameters before Supabase client initializes and scrubs URL fragments
+captureInitialAuthRedirect();
 
 const env = (import.meta as any).env || {};
 const SUPABASE_URL = env.VITE_SUPABASE_URL || 'https://luqyiarxemhreuxfuzwz.supabase.co';
@@ -37,6 +41,11 @@ export interface AuthUserProfile {
 }
 
 class AuthService {
+  private tokenHashVerifyCache = new Map<
+    string,
+    Promise<{ user: User | null; session: Session | null; error: string | null }>
+  >();
+
   /**
    * Check if username is already taken
    */
@@ -199,6 +208,94 @@ class AuthService {
       return { success: true, error: null };
     } catch (err: any) {
       return { success: false, error: err.message || 'Password reset request failed' };
+    }
+  }
+
+  /**
+   * Verify a scanner-proof signup token_hash link from confirmation email
+   */
+  public async verifyTokenHash(
+    tokenHash: string,
+    type: 'signup' | 'email' = 'signup'
+  ): Promise<{ user: User | null; session: Session | null; error: string | null }> {
+    if (!supabase) {
+      return { user: null, session: null, error: 'Supabase is not configured.' };
+    }
+
+    const cacheKey = `${type}:${tokenHash}`;
+    const existing = this.tokenHashVerifyCache.get(cacheKey);
+    if (existing) return existing;
+
+    const promise = (async () => {
+      try {
+        const { data, error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type,
+        });
+        if (error) {
+          return { user: null, session: null, error: error.message };
+        }
+        return { user: data.user, session: data.session, error: null };
+      } catch (err: any) {
+        return { user: null, session: null, error: err.message || 'Account verification failed.' };
+      }
+    })();
+
+    this.tokenHashVerifyCache.set(cacheKey, promise);
+    return promise;
+  }
+
+  /**
+   * Verify a 6-digit email confirmation OTP code entered directly by the player
+   */
+  public async verifyEmailOtpCode(
+    email: string,
+    token: string
+  ): Promise<{ user: User | null; session: Session | null; error: string | null }> {
+    if (!supabase) {
+      return { user: null, session: null, error: 'Supabase is not configured.' };
+    }
+
+    try {
+      const cleanToken = token.replace(/\s+/g, '').trim();
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: cleanToken,
+        type: 'signup',
+      });
+      if (error) {
+        return { user: null, session: null, error: error.message };
+      }
+      return { user: data.user, session: data.session, error: null };
+    } catch (err: any) {
+      return { user: null, session: null, error: err.message || 'Verification code invalid or expired.' };
+    }
+  }
+
+  /**
+   * Resend account confirmation email to the specified address
+   */
+  public async resendConfirmationEmail(
+    email: string
+  ): Promise<{ success: boolean; error: string | null }> {
+    if (!supabase) {
+      return { success: false, error: 'Supabase is not configured.' };
+    }
+
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim(),
+        options: {
+          emailRedirectTo: this.getPublicAppUrl(),
+        },
+      });
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true, error: null };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Could not resend confirmation email.' };
     }
   }
 
