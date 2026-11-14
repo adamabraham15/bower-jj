@@ -5,6 +5,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   initializeGame,
+  pickRandomDealer,
+  isCanadianLonerForced,
+  isHandCardInteractive,
   dealNewHand,
   handleBid,
   handleDealerDiscard,
@@ -293,5 +296,64 @@ describe('Euchre Game State Machine', () => {
     expect(getWinningTeam([5, 3], 5)).toBe(0);
     expect(getWinningTeam([7, 4], 7)).toBe(0);
     expect(getWinningTeam([4, 7], 7)).toBe(1);
+  });
+
+  it('allows benched dealer to discard when partner orders dealer up alone under Canadian Loner', () => {
+    const players = createMockPlayers();
+    let game = initializeGame(players, { ...DEFAULT_RULES, partnerOrderUpGoesAlone: true }, 0);
+
+    // Seat 1 passes, Seat 2 (partner bot) orders up Seat 0 (human dealer)
+    game = handleBid(game, { player: 1, type: 'pass', alone: false });
+    game = handleBid(game, { player: 2, type: 'order_up', alone: true });
+
+    expect(game.phase).toBe('dealer_discard');
+    expect(game.currentTurn).toBe(0);
+    expect(game.benchedPlayer).toBe(0);
+    expect(game.hands[0]).toHaveLength(6);
+
+    // Card tray must stay interactive for the benched dealer specifically while discarding
+    expect(
+      isHandCardInteractive({
+        isDealerDiscardPhase: true,
+        isBenched: true,
+        isYourTurn: true,
+        isLegal: true,
+      })
+    ).toBe(true);
+
+    // Dealer discards 1 card -> game transitions cleanly to playing and skips benched dealer
+    game = handleDealerDiscard(game, game.hands[0][0]);
+    expect(game.phase).toBe('playing');
+    expect(game.hands[0]).toHaveLength(5);
+    expect(game.currentTurn).toBe(1);
+
+    // Once playing starts, the benched dealer's cards cannot be played
+    expect(
+      isHandCardInteractive({
+        isDealerDiscardPhase: false,
+        isBenched: true,
+        isYourTurn: false,
+        isLegal: false,
+      })
+    ).toBe(false);
+  });
+
+  it('correctly identifies when Canadian Loner forces going alone', () => {
+    expect(isCanadianLonerForced({ allowAloneCalls: true, partnerOrderUpGoesAlone: true }, true)).toBe(true);
+    expect(isCanadianLonerForced({ allowAloneCalls: true, partnerOrderUpGoesAlone: true }, false)).toBe(false);
+    expect(isCanadianLonerForced({ allowAloneCalls: true, partnerOrderUpGoesAlone: false }, true)).toBe(false);
+    expect(isCanadianLonerForced({ allowAloneCalls: false, partnerOrderUpGoesAlone: true }, true)).toBe(false);
+  });
+
+  it('randomizes initial starting dealer when firstDealer is omitted', () => {
+    const players = createMockPlayers();
+    const seenDealers = new Set<PlayerPosition>();
+    for (let i = 0; i < 40; i++) {
+      const game = initializeGame(players, DEFAULT_RULES);
+      seenDealers.add(game.dealer);
+      expect([0, 1, 2, 3]).toContain(game.dealer);
+    }
+    expect(seenDealers.size).toBeGreaterThan(1);
+    expect([0, 1, 2, 3]).toContain(pickRandomDealer());
   });
 });

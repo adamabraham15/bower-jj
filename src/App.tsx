@@ -28,7 +28,7 @@ import {
   EuchreHouseRules,
   DEFAULT_RULES,
 } from './engine/types';
-import { initializeGame, getWinningTeam } from './engine/game';
+import { initializeGame, pickRandomDealer, getWinningTeam } from './engine/game';
 import { sounds } from './audio/sound';
 import { multiplayerClient } from './services/multiplayerClient';
 import {
@@ -680,7 +680,7 @@ export const App: React.FC = () => {
       },
     ];
 
-    const initialGame = initializeGame(players, rules, 0);
+    const initialGame = initializeGame(players, rules, pickRandomDealer());
     setActiveGameState(initialGame);
     setCurrentView('ai_game');
   };

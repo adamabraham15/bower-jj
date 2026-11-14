@@ -150,4 +150,54 @@ describe('Multiplayer Server & Anti-Cheat Architecture', () => {
 
     roomMgr.cleanup();
   });
+
+  it('randomizes starting dealer across new multiplayer games and allows benched dealer discard', () => {
+    const roomMgr = new RoomManager();
+    const mockWs: any = { readyState: 1, send: () => {} };
+    const users = ['u0', 'u1', 'u2', 'u3'];
+    users.forEach((uid, idx) => {
+      roomMgr.registerConnection(uid, { ws: mockWs, userId: uid, username: `Player${idx}`, avatarIcon: '🤠' });
+    });
+
+    const dealersSeen = new Set<number>();
+    for (let trial = 0; trial < 32; trial++) {
+      const room = roomMgr.createRoom('u0', 'custom');
+      roomMgr.joinRoom('u1', room.code);
+      roomMgr.joinRoom('u2', room.code);
+      roomMgr.joinRoom('u3', room.code);
+      roomMgr.startGame('u0');
+      const state = roomMgr.getGameState(room.code)!;
+      dealersSeen.add(state.dealer);
+      expect(state.currentTurn).toBe((state.dealer + 1) % 4);
+      users.forEach(uid => roomMgr.leaveRoom(uid));
+      roomMgr.clearActiveMatchSnapshot(room.code);
+    }
+    expect(dealersSeen.size).toBeGreaterThan(1);
+
+    // Verify partner ordering up dealer alone allows dealer discard to proceed without stalling
+    const room = roomMgr.createRoom('u0', 'custom');
+    roomMgr.joinRoom('u1', room.code);
+    roomMgr.joinRoom('u2', room.code);
+    roomMgr.joinRoom('u3', room.code);
+    roomMgr.startGame('u0', 0); // Deterministic dealer seat 0 for Canadian Loner flow test
+
+    roomMgr.handleClientBid('u1', 'pass');
+    roomMgr.handleClientBid('u2', 'order_up', undefined, true); // Partner orders up Seat 0 alone
+
+    const discardState = roomMgr.getGameState(room.code)!;
+    expect(discardState.phase).toBe('dealer_discard');
+    expect(discardState.benchedPlayer).toBe(0);
+    expect(discardState.currentTurn).toBe(0);
+    expect(discardState.hands[0]).toHaveLength(6);
+
+    roomMgr.handleClientDiscard('u0', discardState.hands[0][0].id);
+
+    const playingState = roomMgr.getGameState(room.code)!;
+    expect(playingState.phase).toBe('playing');
+    expect(playingState.hands[0]).toHaveLength(5);
+    expect(playingState.currentTurn).toBe(1);
+
+    roomMgr.clearActiveMatchSnapshot(room.code);
+    roomMgr.cleanup();
+  });
 });

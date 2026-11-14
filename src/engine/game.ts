@@ -40,12 +40,49 @@ import {
 } from './cards';
 
 /**
+ * Picks a randomized initial dealer seat (0-3) so starting dealer and first bidder vary each game.
+ */
+export function pickRandomDealer(): PlayerPosition {
+  return Math.floor(Math.random() * 4) as PlayerPosition;
+}
+
+/**
+ * Returns true when Canadian Loner rules automatically require going alone upon ordering up a partner.
+ */
+export function isCanadianLonerForced(
+  rules: Partial<EuchreHouseRules> | undefined,
+  isPartnerOfDealer: boolean
+): boolean {
+  const allowAloneCalls = rules?.allowAloneCalls ?? true;
+  const partnerOrderUpGoesAlone = rules?.partnerOrderUpGoesAlone ?? rules?.canadianLoner ?? true;
+  return Boolean(allowAloneCalls && isPartnerOfDealer && partnerOrderUpGoesAlone);
+}
+
+/**
+ * Determines whether a card in the player's hand tray can currently be tapped.
+ * Dealer discards remain interactive even if the partner's alone call benched the dealer for trick play.
+ */
+export function isHandCardInteractive({
+  isDealerDiscardPhase,
+  isBenched,
+  isYourTurn,
+  isLegal,
+}: {
+  isDealerDiscardPhase: boolean;
+  isBenched: boolean;
+  isYourTurn: boolean;
+  isLegal: boolean;
+}): boolean {
+  return isDealerDiscardPhase || (!isBenched && isYourTurn && isLegal);
+}
+
+/**
  * Initializes a new Euchre game with 4 players.
  */
 export function initializeGame(
   players: Player[],
   rules: EuchreHouseRules = DEFAULT_RULES,
-  firstDealer: PlayerPosition = 0
+  firstDealer: PlayerPosition = pickRandomDealer()
 ): EuchreGameState {
   if (players.length !== 4) {
     throw new Error('Euchre requires exactly 4 players');

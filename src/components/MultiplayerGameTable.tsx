@@ -5,11 +5,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { SanitizedGameState, PlayerSlot, RankTier } from '../../server/types';
-import { Card, Suit, PlayerPosition, getPlayerTeam } from '../engine/types';
-import { getWinningTeam } from '../engine/game';
+import { Card, Suit, PlayerPosition, getPlayerTeam, getPlayerPartner } from '../engine/types';
+import { getWinningTeam, isCanadianLonerForced, isHandCardInteractive } from '../engine/game';
 import { isCardPlayLegal, formatCardName, ALL_SUITS } from '../engine/cards';
 import { CardView, SuitIcon } from './CardView';
 import { TrumpBanner, MakerBadge } from './TrumpBanner';
+import { DealerAvatarBadge, ModalDealerBanner, GoAloneControl } from './BiddingModalHelpers';
 import { PostMatchModal } from './PostMatchModal';
 import { PublicProfileModal, PublicPlayerData } from './PublicProfileModal';
 import { PlayerProfileData } from './ProfileModal';
@@ -97,6 +98,10 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
   const isVictory = winningTeam === yourTeam;
   const isYourTurn = serverState.currentTurn === yourPos;
   const isDealer = serverState.dealer === yourPos;
+  const isPartnerOfDealer = serverState.dealer === getPlayerPartner(yourPos);
+  const allowAloneCalls = serverState.rules?.allowAloneCalls ?? true;
+  const stickTheDealer = serverState.rules?.stickTheDealer ?? true;
+  const forcesCanadianLoner = isCanadianLonerForced(serverState.rules, isPartnerOfDealer);
   const isDealerDiscardPhase = serverState.phase === 'dealer_discard' && isDealer;
   const isBenched = serverState.benchedPlayer === yourPos;
   const isTrickResolving = serverState.phase === 'trick_resolving';
@@ -120,6 +125,9 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
   const getSlot = (pos: PlayerPosition): PlayerSlot | undefined => {
     return serverState.slots.find(s => s.position === pos);
   };
+
+  const dealerSlot = getSlot(serverState.dealer);
+  const dealerName = isDealer ? 'You' : dealerSlot?.username || `Seat ${serverState.dealer}`;
 
   const renderPlayerPod = (pos: PlayerPosition) => {
     const slot = getSlot(pos);
@@ -179,7 +187,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
           <div
             className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 transition-all duration-300 flex items-center justify-center
               ${isBlueTeam ? 'bg-gradient-to-tr from-blue-600 to-cyan-400' : 'bg-gradient-to-tr from-red-600 to-amber-500'}
-              ${isCurrentTurn ? 'ring-4 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : 'opacity-90'}
+              ${isCurrentTurn ? 'ring-4 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : isPlayerDealer ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/30' : 'opacity-90'}
               ${isSlotBenched ? 'grayscale opacity-50' : ''}`}
           >
             <div className="w-full h-full bg-slate-900 rounded-[14px] flex flex-col items-center justify-center overflow-hidden">
@@ -188,14 +196,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
           </div>
 
           {/* Dealer Chip */}
-          {isPlayerDealer && (
-            <div
-              title="Dealer"
-              className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-amber-400 border-2 border-slate-900 text-slate-950 font-black text-[11px] flex items-center justify-center shadow-md animate-pulse"
-            >
-              D
-            </div>
-          )}
+          {isPlayerDealer && <DealerAvatarBadge />}
 
           {/* Trump Maker Chip */}
           {isTrumpCaller && serverState.trumpSuit && (
@@ -426,22 +427,26 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 <div className="text-xs text-gray-300 mt-0.5">Turn the kitty card into Trump?</div>
               </div>
 
+              <ModalDealerBanner
+                dealerName={dealerName}
+                dealerAvatar={dealerSlot?.avatarIcon}
+                isSelfDealer={isDealer}
+                isPartnerDealer={isPartnerOfDealer}
+              />
+
               {serverState.upCard && (
                 <div className="my-1 flex flex-col items-center p-2.5 bg-slate-950/70 rounded-2xl border border-amber-500/40 shadow-inner">
                   <CardView card={serverState.upCard} size="md" isPlayable={false} />
                 </div>
               )}
 
-              {/* Alone Toggle */}
-              <label className="flex items-center space-x-2 cursor-pointer bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 hover:border-amber-400">
-                <input
-                  type="checkbox"
-                  checked={aloneToggle}
-                  onChange={e => setAloneToggle(e.target.checked)}
-                  className="rounded text-amber-500 focus:ring-0"
-                />
-                <span className="text-xs font-bold text-amber-300">Go Alone! 🚀 (+4 Pts)</span>
-              </label>
+              <GoAloneControl
+                allowAloneCalls={allowAloneCalls}
+                checked={aloneToggle}
+                forcedCanadianLoner={forcesCanadianLoner}
+                onChange={setAloneToggle}
+                pointsLabel=" (+4 Pts)"
+              />
 
               <div className="flex space-x-3 w-full pt-1">
                 <button
@@ -457,12 +462,12 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 <button
                   onClick={() => {
                     sounds.playTrumpCall();
-                    multiplayerClient.bid(isDealer ? 'pick_up' : 'order_up', undefined, aloneToggle);
+                    multiplayerClient.bid(isDealer ? 'pick_up' : 'order_up', undefined, aloneToggle || forcesCanadianLoner);
                     setAloneToggle(false);
                   }}
                   className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/30 transition-all active:scale-95"
                 >
-                  {isDealer ? 'Pick Up' : 'Order Up'}
+                  {isDealer ? 'Pick Up' : forcesCanadianLoner ? 'Order Up Alone 🚀' : 'Order Up'}
                 </button>
               </div>
             </div>
@@ -478,16 +483,19 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 <div className="text-xs text-gray-300 mt-0.5">Select a new trump suit:</div>
               </div>
 
-              {/* Alone Toggle */}
-              <label className="flex items-center space-x-2 cursor-pointer bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 hover:border-amber-400">
-                <input
-                  type="checkbox"
-                  checked={aloneToggle}
-                  onChange={e => setAloneToggle(e.target.checked)}
-                  className="rounded text-amber-500 focus:ring-0"
-                />
-                <span className="text-xs font-bold text-amber-300">Go Alone! 🚀</span>
-              </label>
+              <ModalDealerBanner
+                dealerName={dealerName}
+                dealerAvatar={dealerSlot?.avatarIcon}
+                isSelfDealer={isDealer}
+                isPartnerDealer={isPartnerOfDealer}
+              />
+
+              <GoAloneControl
+                allowAloneCalls={allowAloneCalls}
+                checked={aloneToggle}
+                onChange={setAloneToggle}
+                pointsLabel=""
+              />
 
               <div className="grid grid-cols-3 gap-2 w-full">
                 {ALL_SUITS.filter(s => s !== serverState.upCard?.suit).map(suit => (
@@ -506,27 +514,41 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 ))}
               </div>
 
-              <button
-                onClick={() => {
-                  sounds.playUiClick();
-                  multiplayerClient.bid('pass', undefined, false);
-                  setAloneToggle(false);
-                }}
-                className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-gray-400"
-              >
-                Pass
-              </button>
+              {!(isDealer && stickTheDealer) ? (
+                <button
+                  onClick={() => {
+                    sounds.playUiClick();
+                    multiplayerClient.bid('pass', undefined, false);
+                    setAloneToggle(false);
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-gray-400"
+                >
+                  Pass
+                </button>
+              ) : (
+                <div className="text-[10px] text-amber-300 font-bold uppercase tracking-wider">
+                  Stick The Dealer: You must name a trump!
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* Dealer Discard Prompt */}
-        {isDealerDiscardPhase && (
-          <div className="absolute top-16 z-40 bg-amber-500 text-slate-950 px-4 py-2 rounded-2xl shadow-2xl font-black text-xs animate-bounce flex items-center space-x-2">
+        {isDealerDiscardPhase ? (
+          <div className="absolute top-16 z-40 bg-amber-500 text-slate-950 px-4 py-2 rounded-2xl shadow-2xl font-black text-xs animate-bounce flex items-center space-x-2 text-center max-w-md mx-2">
             <span>👇</span>
-            <span>Dealer Discard: Tap 1 card from your hand below to discard it to the kitty!</span>
+            <span>
+              {isBenched
+                ? 'Partner Ordered You Up Alone! Tap 1 card below to discard to the kitty before sitting out.'
+                : 'Dealer Discard: Tap 1 card from your hand below to discard it to the kitty!'}
+            </span>
           </div>
-        )}
+        ) : isBenched ? (
+          <div className="absolute top-16 z-40 bg-cyan-950/90 border-2 border-cyan-400 text-cyan-200 px-4 py-2 rounded-2xl shadow-2xl font-bold text-xs text-center mx-2">
+            🚀 Your partner is GOING ALONE! You sit this hand out.
+          </div>
+        ) : null}
 
         {/* Hand Scored Overlay */}
         {serverState.phase === 'hand_scored' && serverState.lastHandResult && (
@@ -626,6 +648,12 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
               <span className="text-amber-400 font-bold">Hand Scored — Next Deal Starting in {autoDealCountdown}s...</span>
             ) : serverState.phase === 'trick_resolving' ? (
               <span className="text-amber-400 font-bold animate-pulse">Resolving Trick...</span>
+            ) : isDealerDiscardPhase ? (
+              <span className="text-amber-400 font-black animate-pulse">
+                {isBenched
+                  ? 'Partner Going Alone — Tap a card to discard before sitting out'
+                  : 'Tap a card to discard it to the kitty'}
+              </span>
             ) : isBenched ? (
               <span className="text-gray-400">Partner is going alone. Your hand is sitting out.</span>
             ) : isYourTurn && (serverState.phase === 'bidding_round_1' || serverState.phase === 'bidding_round_2') ? (
@@ -639,8 +667,6 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                   <span>Must follow {leadSuit.toUpperCase()} if you have it!</span>
                 )}
               </span>
-            ) : isDealerDiscardPhase ? (
-              <span className="text-amber-400 font-black animate-pulse">Tap a card to discard it to the kitty</span>
             ) : (
               <span className="text-gray-400">Waiting for other players...</span>
             )}
@@ -662,7 +688,12 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                   <CardView
                     card={card}
                     trumpSuit={serverState.trumpSuit}
-                    isPlayable={!isBenched && isYourTurn && isLegal}
+                    isPlayable={isHandCardInteractive({
+                      isDealerDiscardPhase,
+                      isBenched,
+                      isYourTurn,
+                      isLegal,
+                    })}
                     size="md"
                     onClick={() => {
                       sounds.playCardSnap();

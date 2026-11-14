@@ -30,6 +30,9 @@ import {
 } from '../engine/ai';
 import {
   initializeGame,
+  pickRandomDealer,
+  isCanadianLonerForced,
+  isHandCardInteractive,
   handleBid,
   handleDealerDiscard,
   playCard,
@@ -38,6 +41,7 @@ import {
 } from '../engine/game';
 import { CardView, SuitIcon } from './CardView';
 import { TrumpBanner, MakerBadge } from './TrumpBanner';
+import { DealerAvatarBadge, ModalDealerBanner, GoAloneControl } from './BiddingModalHelpers';
 import { RankBadge, RankTier } from './RankBadge';
 import { PostMatchModal } from './PostMatchModal';
 import { PublicProfileModal, PublicPlayerData } from './PublicProfileModal';
@@ -193,19 +197,17 @@ export const GameTable: React.FC<GameTableProps> = ({
 
   // Human player actions
   const isHumanPartnerOfDealer = state.dealer === 2; // North is dealer, South (0) is partner
+  const forcesCanadianLoner = isCanadianLonerForced(state.rules, isHumanPartnerOfDealer);
 
   const handleHumanRound1Bid = (type: 'pass' | 'order_up' | 'pick_up') => {
     if (state.currentTurn !== 0 || state.phase !== 'bidding_round_1') return;
     sounds.playUiClick();
     if (type !== 'pass') sounds.playTrumpCall();
 
-    // If partner is dealer, ordering up forces alone
-    const forcesAlone = isHumanPartnerOfDealer && state.rules.partnerOrderUpGoesAlone;
-
     const next = handleBid(state, {
       player: 0,
       type,
-      alone: aloneToggle || forcesAlone,
+      alone: aloneToggle || forcesCanadianLoner,
     });
     setState(next);
     setAloneToggle(false);
@@ -298,7 +300,7 @@ export const GameTable: React.FC<GameTableProps> = ({
           <div
             className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 transition-all duration-300 flex items-center justify-center
               ${isTeamBlue ? 'bg-gradient-to-tr from-blue-600 to-cyan-400' : 'bg-gradient-to-tr from-red-600 to-amber-500'}
-              ${isCurrentTurn ? 'ring-4 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : 'opacity-90'}
+              ${isCurrentTurn ? 'ring-4 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : isDealer ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/30' : 'opacity-90'}
               ${isBenched ? 'grayscale opacity-50' : ''}`}
           >
             <div className="w-full h-full bg-slate-900 rounded-[14px] flex flex-col items-center justify-center overflow-hidden">
@@ -309,14 +311,7 @@ export const GameTable: React.FC<GameTableProps> = ({
           </div>
 
           {/* Dealer Chip */}
-          {isDealer && (
-            <div
-              title="Dealer"
-              className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-amber-400 border-2 border-slate-900 text-slate-950 font-black text-[11px] flex items-center justify-center shadow-md animate-pulse"
-            >
-              D
-            </div>
-          )}
+          {isDealer && <DealerAvatarBadge />}
 
           {/* Trump Maker Chip */}
           {isTrumpCaller && state.trumpSuit && (
@@ -364,6 +359,8 @@ export const GameTable: React.FC<GameTableProps> = ({
     ? (state.callingPlayer === 0 ? 'You' : callerPlayer?.name || `Seat ${state.callingPlayer}`)
     : undefined;
   const callerTeam = state.callingTeam ?? (state.callingPlayer !== undefined ? getPlayerTeam(state.callingPlayer) : undefined);
+  const dealerPlayer = state.players[state.dealer];
+  const dealerAvatar = state.dealer === 0 ? '🤠' : state.dealer === 1 ? '🤖' : state.dealer === 2 ? '🧝' : '👽';
 
   return (
     <div className="relative w-full h-[100dvh] bg-slate-950 text-white flex flex-col overflow-hidden select-none">
@@ -562,6 +559,13 @@ export const GameTable: React.FC<GameTableProps> = ({
                 <div className="text-xs text-gray-300 mt-0.5">Turn the kitty card into Trump?</div>
               </div>
 
+              <ModalDealerBanner
+                dealerName={dealerPlayer?.name || `Seat ${state.dealer}`}
+                dealerAvatar={dealerAvatar}
+                isSelfDealer={state.dealer === 0}
+                isPartnerDealer={isHumanPartnerOfDealer}
+              />
+
               {/* Prominent Turned-Up Card Display */}
               {state.upCard && (
                 <div className="my-1 flex flex-col items-center p-2.5 bg-slate-950/70 rounded-2xl border border-amber-500/40 shadow-inner">
@@ -569,25 +573,13 @@ export const GameTable: React.FC<GameTableProps> = ({
                 </div>
               )}
 
-              {/* Note if ordering partner forces alone */}
-              {isHumanPartnerOfDealer && state.rules.partnerOrderUpGoesAlone && (
-                <div className="p-2 bg-amber-500/10 border border-amber-500/40 rounded-xl text-[10px] text-amber-200 text-center font-bold">
-                  ⚠️ Ordering your partner dealer requires you to <strong>Go Alone!</strong>
-                </div>
-              )}
-
-              {/* Alone Toggle (if not forced) */}
-              {state.rules.allowAloneCalls && (!isHumanPartnerOfDealer || !state.rules.partnerOrderUpGoesAlone) && (
-                <label className="flex items-center space-x-2 cursor-pointer bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 hover:border-amber-400">
-                  <input
-                    type="checkbox"
-                    checked={aloneToggle}
-                    onChange={e => setAloneToggle(e.target.checked)}
-                    className="rounded text-amber-500 focus:ring-0"
-                  />
-                  <span className="text-xs font-bold text-amber-300">Go Alone! 🚀 (+4 Pts)</span>
-                </label>
-              )}
+              <GoAloneControl
+                allowAloneCalls={state.rules.allowAloneCalls}
+                checked={aloneToggle}
+                forcedCanadianLoner={forcesCanadianLoner}
+                onChange={setAloneToggle}
+                pointsLabel=" (+4 Pts)"
+              />
 
               <div className="flex space-x-3 w-full pt-1">
                 <button
@@ -600,7 +592,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                   onClick={() => handleHumanRound1Bid(state.dealer === 0 ? 'pick_up' : 'order_up')}
                   className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/30 transition-all active:scale-95"
                 >
-                  {state.dealer === 0 ? 'Pick Up' : isHumanPartnerOfDealer ? 'Order Up (Alone 🚀)' : 'Order Up'}
+                  {state.dealer === 0 ? 'Pick Up' : forcesCanadianLoner ? 'Order Up Alone 🚀' : 'Order Up'}
                 </button>
               </div>
             </div>
@@ -615,18 +607,19 @@ export const GameTable: React.FC<GameTableProps> = ({
                 <div className="text-xs text-gray-300 mt-0.5">Select a new trump suit:</div>
               </div>
 
-              {/* Alone Toggle */}
-              {state.rules.allowAloneCalls && (
-                <label className="flex items-center space-x-2 cursor-pointer bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 hover:border-amber-400">
-                  <input
-                    type="checkbox"
-                    checked={aloneToggle}
-                    onChange={e => setAloneToggle(e.target.checked)}
-                    className="rounded text-amber-500 focus:ring-0"
-                  />
-                  <span className="text-xs font-bold text-amber-300">Go Alone! 🚀</span>
-                </label>
-              )}
+              <ModalDealerBanner
+                dealerName={dealerPlayer?.name || `Seat ${state.dealer}`}
+                dealerAvatar={dealerAvatar}
+                isSelfDealer={state.dealer === 0}
+                isPartnerDealer={isHumanPartnerOfDealer}
+              />
+
+              <GoAloneControl
+                allowAloneCalls={state.rules.allowAloneCalls}
+                checked={aloneToggle}
+                onChange={setAloneToggle}
+                pointsLabel=""
+              />
 
               {/* Suit Selection Buttons with Crisp SVG Icons */}
               <div className="grid grid-cols-3 gap-2 w-full">
@@ -661,20 +654,21 @@ export const GameTable: React.FC<GameTableProps> = ({
           </div>
         )}
 
-        {/* Dealer Discard Prompt */}
-        {isDealerDiscardPhase && (
-          <div className="absolute top-16 z-40 bg-amber-500 text-slate-950 px-4 py-2 rounded-2xl shadow-2xl font-black text-xs animate-bounce flex items-center space-x-2">
+        {/* Dealer Discard Prompt & Benched Notification */}
+        {isDealerDiscardPhase ? (
+          <div className="absolute top-16 z-40 bg-amber-500 text-slate-950 px-4 py-2 rounded-2xl shadow-2xl font-black text-xs animate-bounce flex items-center space-x-2 text-center max-w-md mx-2">
             <span>👇</span>
-            <span>Dealer Discard: Tap 1 card from your hand below to discard it to the kitty!</span>
+            <span>
+              {isHumanBenched
+                ? 'Partner Ordered You Up Alone! Tap 1 card below to discard to the kitty before sitting out.'
+                : 'Dealer Discard: Tap 1 card from your hand below to discard it to the kitty!'}
+            </span>
           </div>
-        )}
-
-        {/* Benched Notification if Partner Ordered Dealer */}
-        {isHumanBenched && (
-          <div className="absolute top-16 z-40 bg-cyan-950/90 border-2 border-cyan-400 text-cyan-200 px-4 py-2 rounded-2xl shadow-2xl font-bold text-xs">
+        ) : isHumanBenched ? (
+          <div className="absolute top-16 z-40 bg-cyan-950/90 border-2 border-cyan-400 text-cyan-200 px-4 py-2 rounded-2xl shadow-2xl font-bold text-xs text-center mx-2">
             🚀 Your partner ordered you up and is GOING ALONE! You sit this hand out.
           </div>
-        )}
+        ) : null}
 
         {/* Hand Scored Fullscreen Overlay */}
         {state.phase === 'hand_scored' && state.lastHandResult && (
@@ -748,7 +742,7 @@ export const GameTable: React.FC<GameTableProps> = ({
             }))}
             yourPosition={0}
             onPlayAgain={() => {
-              const newGame = initializeGame(state.players, state.rules, ((state.dealer + 1) % 4) as PlayerPosition);
+              const newGame = initializeGame(state.players, state.rules, pickRandomDealer());
               setState(newGame);
             }}
             onExit={onExitGame}
@@ -770,6 +764,12 @@ export const GameTable: React.FC<GameTableProps> = ({
               <span className="text-amber-400 font-bold">Hand Scored — Ready for Next Deal</span>
             ) : state.phase === 'trick_resolving' ? (
               <span className="text-amber-400 font-bold animate-pulse">Resolving Trick...</span>
+            ) : isDealerDiscardPhase ? (
+              <span className="text-amber-400 font-black animate-pulse">
+                {isHumanBenched
+                  ? 'Partner Going Alone — Tap a card to discard before sitting out'
+                  : 'Tap a card to discard it to the kitty'}
+              </span>
             ) : isHumanBenched ? (
               <span className="text-gray-400">Partner is going alone. Your hand is sitting out.</span>
             ) : isHumanTurn && (state.phase === 'bidding_round_1' || state.phase === 'bidding_round_2') ? (
@@ -783,8 +783,6 @@ export const GameTable: React.FC<GameTableProps> = ({
                   <span>Must follow {leadSuit.toUpperCase()} if you have it!</span>
                 )}
               </span>
-            ) : isDealerDiscardPhase ? (
-              <span className="text-amber-400 font-black animate-pulse">Tap a card to discard it to the kitty</span>
             ) : (
               <span className="text-gray-400">Waiting for {state.players[state.currentTurn]?.name || 'Opponent'}...</span>
             )}
@@ -806,7 +804,12 @@ export const GameTable: React.FC<GameTableProps> = ({
                   <CardView
                     card={card}
                     trumpSuit={state.trumpSuit}
-                    isPlayable={!isHumanBenched && isHumanTurn && isLegal}
+                    isPlayable={isHandCardInteractive({
+                      isDealerDiscardPhase,
+                      isBenched: isHumanBenched,
+                      isYourTurn: isHumanTurn,
+                      isLegal,
+                    })}
                     size="md"
                     onClick={() => {
                       if (isDealerDiscardPhase) {

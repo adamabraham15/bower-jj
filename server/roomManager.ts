@@ -29,6 +29,7 @@ import {
 } from '../src/engine/types';
 import {
   initializeGame,
+  pickRandomDealer,
   handleBid,
   handleDealerDiscard,
   playCard,
@@ -737,7 +738,7 @@ export class RoomManager {
     return room;
   }
 
-  public startGame(userId: string): Room {
+  public startGame(userId: string, initialDealer?: PlayerPosition): Room {
     const conn = this.connections.get(userId);
     if (!conn || !conn.roomCode) throw new Error('Not in a room');
 
@@ -770,7 +771,8 @@ export class RoomManager {
       room.id = crypto.randomUUID();
     }
     room.resultsRecorded = false;
-    const initialState = initializeGame(players, room.rules, 0);
+    const firstDealer = initialDealer ?? pickRandomDealer();
+    const initialState = initializeGame(players, room.rules, firstDealer);
     this.gameStates.set(room.code, initialState);
     room.status = 'playing';
     this.persistActiveMatch(room.code);
