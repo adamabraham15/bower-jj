@@ -37,6 +37,7 @@ import {
   startNextHand,
 } from '../engine/game';
 import { CardView, SuitIcon } from './CardView';
+import { TrumpBanner, MakerBadge } from './TrumpBanner';
 import { RankBadge, RankTier } from './RankBadge';
 import { PostMatchModal } from './PostMatchModal';
 import { PublicProfileModal, PublicPlayerData } from './PublicProfileModal';
@@ -92,6 +93,13 @@ export const GameTable: React.FC<GameTableProps> = ({
   const [isProcessingAI, setIsProcessingAI] = useState(false);
   const [inspectedPlayer, setInspectedPlayer] = useState<PublicPlayerData | null>(null);
   const [matchReported, setMatchReported] = useState(false);
+
+  // Ensure "Go Alone!" checkbox resets between hands or outside bidding phases
+  useEffect(() => {
+    if (state.phase !== 'bidding_round_1' && state.phase !== 'bidding_round_2') {
+      setAloneToggle(false);
+    }
+  }, [state.phase, state.dealer]);
 
   // Trigger celebration on match victory
   useEffect(() => {
@@ -241,6 +249,7 @@ export const GameTable: React.FC<GameTableProps> = ({
   const renderPlayerPod = (pos: PlayerPosition, positionStyle: string) => {
     const player = state.players[pos];
     const isDealer = state.dealer === pos;
+    const isTrumpCaller = state.trumpSuit !== undefined && state.callingPlayer === pos;
     const isCurrentTurn = state.currentTurn === pos && state.phase === 'playing';
     const isBenched = state.benchedPlayer === pos;
     const isTeamBlue = getPlayerTeam(pos) === 0;
@@ -309,6 +318,11 @@ export const GameTable: React.FC<GameTableProps> = ({
             </div>
           )}
 
+          {/* Trump Maker Chip */}
+          {isTrumpCaller && state.trumpSuit && (
+            <MakerBadge trumpSuit={state.trumpSuit} isBlueTeam={isTeamBlue} />
+          )}
+
           {/* Card Count Badge */}
           {pos !== 0 && (
             <div className="absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-mono font-bold text-gray-200 shadow-sm">
@@ -345,6 +359,11 @@ export const GameTable: React.FC<GameTableProps> = ({
   const trickCards = state.currentTrick.cards;
   const leadSuit = state.currentTrick.leadSuit;
   const isTrickResolving = state.phase === 'trick_resolving';
+  const callerPlayer = state.callingPlayer !== undefined ? state.players[state.callingPlayer] : undefined;
+  const callerName = state.callingPlayer !== undefined
+    ? (state.callingPlayer === 0 ? 'You' : callerPlayer?.name || `Seat ${state.callingPlayer}`)
+    : undefined;
+  const callerTeam = state.callingTeam ?? (state.callingPlayer !== undefined ? getPlayerTeam(state.callingPlayer) : undefined);
 
   return (
     <div className="relative w-full h-[100dvh] bg-slate-950 text-white flex flex-col overflow-hidden select-none">
@@ -390,18 +409,12 @@ export const GameTable: React.FC<GameTableProps> = ({
 
         {/* Trump Banner (Header) */}
         {state.trumpSuit && (
-          <div className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-950 border border-amber-400 shadow-md">
-            <span className="text-[10px] text-amber-400 uppercase font-black tracking-wide">TRUMP:</span>
-            <SuitIcon suit={state.trumpSuit} className="w-4 h-4" />
-            <span className={`text-xs font-black uppercase tracking-wider ${state.trumpSuit === 'hearts' || state.trumpSuit === 'diamonds' ? 'text-red-400' : 'text-slate-100'}`}>
-              {state.trumpSuit}
-            </span>
-            {state.isAlone && (
-              <span className="text-[8px] bg-red-600 text-white font-black px-1.5 rounded-sm ml-0.5 animate-pulse">
-                ALONE
-              </span>
-            )}
-          </div>
+          <TrumpBanner
+            trumpSuit={state.trumpSuit}
+            callerName={callerName}
+            callerTeam={callerTeam}
+            isAlone={state.isAlone}
+          />
         )}
 
         {/* Action Controls */}

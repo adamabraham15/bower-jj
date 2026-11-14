@@ -82,11 +82,17 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
         </div>
 
         {/* Column Headers */}
-        <div className="grid grid-cols-12 gap-2 px-4 py-2.5 bg-slate-950/60 border-b border-slate-800 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+        <div className="grid grid-cols-12 gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 bg-slate-950/60 border-b border-slate-800 text-[10px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-wider">
           <div className="col-span-2 sm:col-span-1 text-center">Rank</div>
-          <div className="col-span-6 sm:col-span-5">Player</div>
-          <div className="col-span-4 sm:col-span-3 text-center">Tier & LP</div>
-          <div className="hidden sm:block sm:col-span-3 text-right">Win Rate / Games</div>
+          <div className="col-span-4 sm:col-span-5">Player</div>
+          <div className="col-span-3 sm:col-span-3 text-center">
+            <span className="hidden sm:inline">Tier & LP</span>
+            <span className="sm:hidden">Rank/LP</span>
+          </div>
+          <div className="col-span-3 sm:col-span-3 text-right">
+            <span className="hidden sm:inline">Win Rate / Games</span>
+            <span className="sm:hidden">Win %</span>
+          </div>
         </div>
 
         {/* Leaderboard Table Rows */}
@@ -108,7 +114,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
               return (
                 <div
                   key={entry.userId || `leaderboard_row_${idx}`}
-                  className={`grid grid-cols-12 gap-2 items-center p-2.5 sm:p-3 rounded-2xl transition-all ${
+                  className={`grid grid-cols-12 gap-1.5 sm:gap-2 items-center p-2 sm:p-3 rounded-2xl transition-all ${
                     isCurrentUser
                       ? 'bg-amber-500/20 border border-amber-400/60 ring-1 ring-amber-400/40'
                       : isTop1
@@ -136,39 +142,42 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                   </div>
 
                   {/* Player Name & Avatar */}
-                  <div className="col-span-6 sm:col-span-5 flex items-center space-x-2.5 truncate">
-                    <span className="text-2xl flex-shrink-0">{entry.avatarIcon}</span>
-                    <div className="truncate">
-                      <div className="font-black text-white text-sm truncate flex items-center space-x-1.5">
-                        <span>{entry.username}</span>
+                  <div className="col-span-4 sm:col-span-5 flex items-center space-x-1.5 sm:space-x-2.5 min-w-0">
+                    <span className="text-xl sm:text-2xl flex-shrink-0">{entry.avatarIcon}</span>
+                    <div className="min-w-0 truncate">
+                      <div className="font-black text-white text-xs sm:text-sm truncate flex items-center space-x-1 sm:space-x-1.5">
+                        <span className="truncate">{entry.username}</span>
                         {isCurrentUser && (
-                          <span className="text-[10px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.2 rounded-full">
+                          <span className="text-[9px] sm:text-[10px] bg-amber-400 text-slate-950 font-black px-1 sm:px-1.5 py-0.2 rounded-full flex-shrink-0">
                             YOU
                           </span>
                         )}
                       </div>
-                      <div className="text-[10px] text-gray-400 font-mono">
+                      <div className="text-[9px] sm:text-[10px] text-gray-400 font-mono">
                         MMR {entry.mmr}
                       </div>
                     </div>
                   </div>
 
                   {/* Tier & LP */}
-                  <div className="col-span-4 sm:col-span-3 flex items-center justify-center space-x-1.5">
+                  <div className="col-span-3 sm:col-span-3 flex items-center justify-center space-x-1 sm:space-x-1.5">
                     <RankBadge tier={entry.rankTier} size="sm" />
                     <div className="text-left leading-tight">
-                      <div className="text-xs font-black text-white">{entry.rankPoints} LP</div>
-                      <div className="text-[9px] text-gray-400 uppercase">{entry.rankTier} Rank</div>
+                      <div className="text-[11px] sm:text-xs font-black text-white">{entry.rankPoints} LP</div>
+                      <div className="text-[8px] sm:text-[9px] text-gray-400 uppercase">
+                        {entry.rankTier} <span className="hidden sm:inline">Rank</span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Win Rate / Games */}
-                  <div className="hidden sm:block sm:col-span-3 text-right">
-                    <div className="text-xs font-black text-emerald-400">
-                      {entry.winRate}% Win Rate
+                  <div className="col-span-3 sm:col-span-3 text-right">
+                    <div className="text-[11px] sm:text-xs font-black text-emerald-400">
+                      {entry.winRate}% <span className="hidden sm:inline">Win Rate</span>
                     </div>
-                    <div className="text-[10px] text-gray-400">
-                      {entry.wins}W - {entry.losses}L ({entry.totalGames} played)
+                    <div className="text-[9px] sm:text-[10px] text-gray-400 whitespace-nowrap">
+                      {entry.wins}W-{entry.losses}L{' '}
+                      <span className="hidden sm:inline">({entry.totalGames} played)</span>
                     </div>
                   </div>
                 </div>

@@ -9,6 +9,7 @@ import { Card, Suit, PlayerPosition, getPlayerTeam } from '../engine/types';
 import { getWinningTeam } from '../engine/game';
 import { isCardPlayLegal, formatCardName, ALL_SUITS } from '../engine/cards';
 import { CardView, SuitIcon } from './CardView';
+import { TrumpBanner, MakerBadge } from './TrumpBanner';
 import { PostMatchModal } from './PostMatchModal';
 import { PublicProfileModal, PublicPlayerData } from './PublicProfileModal';
 import { PlayerProfileData } from './ProfileModal';
@@ -82,6 +83,13 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
     return () => clearInterval(timer);
   }, [serverState.phase]);
 
+  // Reset "Go Alone!" checkbox when leaving bidding or when a new hand is dealt
+  useEffect(() => {
+    if (serverState.phase !== 'bidding_round_1' && serverState.phase !== 'bidding_round_2') {
+      setAloneToggle(false);
+    }
+  }, [serverState.phase, serverState.dealer]);
+
   const yourPos = serverState.yourPosition;
   const yourTeam = yourPos % 2;
   const targetScore = serverState.rules?.targetScore ?? 10;
@@ -118,6 +126,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
     const relPos = getRelativePosition(pos);
     const isCurrentTurn = serverState.currentTurn === pos && serverState.phase === 'playing';
     const isPlayerDealer = serverState.dealer === pos;
+    const isTrumpCaller = serverState.trumpSuit !== undefined && serverState.callingPlayer === pos;
     const isSlotBenched = serverState.benchedPlayer === pos;
     const isBlueTeam = getPlayerTeam(pos) === 0;
     const cardCount = serverState.handCounts[pos] || 0;
@@ -188,6 +197,11 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             </div>
           )}
 
+          {/* Trump Maker Chip */}
+          {isTrumpCaller && serverState.trumpSuit && (
+            <MakerBadge trumpSuit={serverState.trumpSuit} isBlueTeam={isBlueTeam} />
+          )}
+
           {/* Online/Offline connection status */}
           {slot && !slot.isAI && (
             <div
@@ -224,6 +238,11 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
 
   const trickCards = serverState.currentTrick.cards;
   const leadSuit = serverState.currentTrick.leadSuit;
+  const callerSlot = serverState.callingPlayer !== undefined ? getSlot(serverState.callingPlayer) : undefined;
+  const callerName = serverState.callingPlayer !== undefined
+    ? (serverState.callingPlayer === yourPos ? 'You' : callerSlot?.username || `Seat ${serverState.callingPlayer}`)
+    : undefined;
+  const callerTeam = serverState.callingTeam ?? (serverState.callingPlayer !== undefined ? getPlayerTeam(serverState.callingPlayer) : undefined);
 
   return (
     <div className="relative w-full h-[100dvh] bg-slate-950 text-white flex flex-col overflow-hidden select-none">
@@ -269,18 +288,12 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
 
         {/* Trump Banner (Header) */}
         {serverState.trumpSuit && (
-          <div className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-950 border border-amber-400 shadow-md">
-            <span className="text-[10px] text-amber-400 uppercase font-black tracking-wide">TRUMP:</span>
-            <SuitIcon suit={serverState.trumpSuit} className="w-4 h-4" />
-            <span className={`text-xs font-black uppercase tracking-wider ${serverState.trumpSuit === 'hearts' || serverState.trumpSuit === 'diamonds' ? 'text-red-400' : 'text-slate-100'}`}>
-              {serverState.trumpSuit}
-            </span>
-            {serverState.isAlone && (
-              <span className="text-[8px] bg-red-600 text-white font-black px-1.5 rounded-sm ml-0.5 animate-pulse">
-                ALONE
-              </span>
-            )}
-          </div>
+          <TrumpBanner
+            trumpSuit={serverState.trumpSuit}
+            callerName={callerName}
+            callerTeam={callerTeam}
+            isAlone={serverState.isAlone}
+          />
         )}
 
         {/* Controls */}
@@ -435,6 +448,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                   onClick={() => {
                     sounds.playUiClick();
                     multiplayerClient.bid('pass', undefined, false);
+                    setAloneToggle(false);
                   }}
                   className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-gray-300 transition-all active:scale-95"
                 >
@@ -444,6 +458,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                   onClick={() => {
                     sounds.playTrumpCall();
                     multiplayerClient.bid(isDealer ? 'pick_up' : 'order_up', undefined, aloneToggle);
+                    setAloneToggle(false);
                   }}
                   className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/30 transition-all active:scale-95"
                 >
@@ -481,6 +496,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                     onClick={() => {
                       sounds.playTrumpCall();
                       multiplayerClient.bid('call_trump', suit, aloneToggle);
+                      setAloneToggle(false);
                     }}
                     className="py-3 rounded-xl bg-slate-800 hover:bg-amber-500 hover:text-slate-950 border border-slate-700 font-black text-sm flex items-center justify-center space-x-1.5 transition-all active:scale-95 group"
                   >
@@ -494,6 +510,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 onClick={() => {
                   sounds.playUiClick();
                   multiplayerClient.bid('pass', undefined, false);
+                  setAloneToggle(false);
                 }}
                 className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-gray-400"
               >
