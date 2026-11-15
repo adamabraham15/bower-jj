@@ -3,11 +3,52 @@
  * Step-by-step interactive walkthrough with hands-on practice hand.
  */
 
-import React, { useState } from 'react';
-import { ChevronRight, ChevronLeft, CheckCircle2, Zap, HelpCircle, X, Sparkles } from 'lucide-react';
-import { CardView, SuitIcon } from './CardView';
-import { Card, Suit } from '../engine/types';
+import React, { useEffect, useState } from 'react';
+import { ChevronRight, ChevronLeft, Zap, X } from 'lucide-react';
+import { CardView } from './CardView';
+import { Card } from '../engine/types';
 import { sounds } from '../audio/sound';
+
+export interface PracticeEvaluation {
+  cardId: 'spades-9' | 'spades-A' | 'hearts-9';
+  isSuccess: boolean;
+  type: 'error' | 'warn' | 'success';
+  text: string;
+}
+
+const PRACTICE_HAND: Card[] = [
+  { id: 'spades-9', suit: 'spades', rank: '9' },
+  { id: 'spades-A', suit: 'spades', rank: 'A' },
+  { id: 'hearts-9', suit: 'hearts', rank: '9' },
+];
+
+/**
+ * Evaluates a card click in Tutorial Step 4 (West led K♠, Trump is Hearts ♥).
+ */
+export function evaluateTutorialPracticeCard(cardId: string): PracticeEvaluation {
+  if (cardId === 'spades-A') {
+    return {
+      cardId: 'spades-A',
+      isSuccess: true,
+      type: 'success',
+      text: '🎉 WINNING MOVE! You legally followed suit with the Ace of Spades (A♠), beating the King of Spades to win the trick!',
+    };
+  }
+  if (cardId === 'hearts-9') {
+    return {
+      cardId: 'hearts-9',
+      isSuccess: false,
+      type: 'error',
+      text: '❌ ILLEGAL MOVE! Although 9♥ is Trump, West led Spades and you still hold Spades (9♠ and A♠). You MUST follow suit!',
+    };
+  }
+  return {
+    cardId: 'spades-9',
+    isSuccess: false,
+    type: 'warn',
+    text: '⚠️ 9♠ is a legal play (it follows Spades), but King beats 9! This would lose the trick to West.',
+  };
+}
 
 interface TutorialModalProps {
   isOpen: boolean;
@@ -24,6 +65,38 @@ export const TutorialModal: React.FC<TutorialModalProps> = ({
   const [selectedPracticeCard, setSelectedPracticeCard] = useState<string | null>(null);
   const [practiceFeedback, setPracticeFeedback] = useState<{ type: 'error' | 'warn' | 'success'; text: string } | null>(null);
   const [practiceSuccess, setPracticeSuccess] = useState(false);
+
+  const resetPracticeState = () => {
+    setSelectedPracticeCard(null);
+    setPracticeFeedback(null);
+    setPracticeSuccess(false);
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      setStep(0);
+      resetPracticeState();
+    }
+  }, [isOpen]);
+
+  const handleSelectPracticeCard = (card: Card) => {
+    const result = evaluateTutorialPracticeCard(card.id);
+    setSelectedPracticeCard(card.id);
+    setPracticeSuccess(result.isSuccess);
+    setPracticeFeedback({ type: result.type, text: result.text });
+
+    try {
+      if (result.type === 'success') {
+        sounds.playTrickWin(true);
+      } else if (result.type === 'warn') {
+        sounds.playCardSnap();
+      } else {
+        sounds.playUiClick();
+      }
+    } catch {
+      // Ignore Web Audio errors so card selection always succeeds visually
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -114,91 +187,102 @@ export const TutorialModal: React.FC<TutorialModalProps> = ({
     {
       title: 'Interactive Drill: Following Suit & Winning 🎯',
       subtitle: 'Tap the winning card below to play!',
-      content: (
-        <div className="space-y-3 text-sm text-gray-300">
-          <div className="p-2.5 bg-slate-800 rounded-xl border border-slate-700 text-xs">
-            <strong>Scenario:</strong> Trump is <span className="text-red-400 font-black">Hearts ♥</span>.
-            West leads the <span className="text-amber-300 font-black">King of Spades (K♠)</span>.
-            Which card in your hand should you play to <strong>win the trick</strong>?
-          </div>
+      content: (() => {
+        const selectedCardObj = PRACTICE_HAND.find(c => c.id === selectedPracticeCard);
+        return (
+          <div className="space-y-3 text-sm text-gray-300">
+            <div className="p-2.5 bg-slate-800 rounded-xl border border-slate-700 text-xs">
+              <strong>Scenario:</strong> Trump is <span className="text-red-400 font-black">Hearts ♥</span>.
+              West leads the <span className="text-amber-300 font-black">King of Spades (K♠)</span>.
+              Which card in your hand should you play to <strong>win the trick</strong>?
+            </div>
 
-          {/* West's Led Card */}
-          <div className="flex flex-col items-center py-1">
-            <span className="text-[10px] text-amber-400 font-bold uppercase mb-1">
-              West Led:
-            </span>
-            <CardView card={{ id: 'spades-K', suit: 'spades', rank: 'K' }} trumpSuit="hearts" size="sm" isPlayable={false} />
-          </div>
+            {/* Trick Preview: West Led vs Your Play */}
+            <div className="grid grid-cols-2 gap-3 py-1 px-2 bg-emerald-950/35 border border-emerald-500/25 rounded-2xl">
+              <div className="flex flex-col items-center py-1">
+                <span className="text-[10px] text-amber-400 font-bold uppercase mb-1">
+                  West Led:
+                </span>
+                <CardView card={{ id: 'spades-K', suit: 'spades', rank: 'K' }} trumpSuit="hearts" size="sm" isPlayable={false} />
+              </div>
 
-          {/* Your Selectable Hand */}
-          <div className="border-t border-slate-700 pt-2">
-            <span className="text-xs font-black text-amber-300 block mb-2 text-center uppercase tracking-wider">
-              Your Hand (Tap a card to test):
-            </span>
-            <div className="flex justify-center items-center space-x-3">
-              <CardView
-                card={{ id: 'spades-9', suit: 'spades', rank: '9' }}
-                trumpSuit="hearts"
-                size="md"
-                isSelected={selectedPracticeCard === 'spades-9'}
-                onClick={() => {
-                  sounds.playCardSnap();
-                  setSelectedPracticeCard('spades-9');
-                  setPracticeSuccess(false);
-                  setPracticeFeedback({
-                    type: 'warn',
-                    text: '⚠️ 9♠ is a legal play (it follows Spades), but King beats 9! This would lose the trick to West.',
-                  });
-                }}
-              />
-              <CardView
-                card={{ id: 'spades-A', suit: 'spades', rank: 'A' }}
-                trumpSuit="hearts"
-                size="md"
-                isSelected={selectedPracticeCard === 'spades-A'}
-                onClick={() => {
-                  sounds.playTrickWin(true);
-                  setSelectedPracticeCard('spades-A');
-                  setPracticeSuccess(true);
-                  setPracticeFeedback({
-                    type: 'success',
-                    text: '🎉 WINNING MOVE! You legally followed suit with the Ace of Spades (A♠), beating the King of Spades to win the trick!',
-                  });
-                }}
-              />
-              <CardView
-                card={{ id: 'hearts-9', suit: 'hearts', rank: '9' }}
-                trumpSuit="hearts"
-                size="md"
-                isSelected={selectedPracticeCard === 'hearts-9'}
-                onClick={() => {
-                  sounds.playUiClick();
-                  setSelectedPracticeCard('hearts-9');
-                  setPracticeSuccess(false);
-                  setPracticeFeedback({
-                    type: 'error',
-                    text: '❌ ILLEGAL MOVE! Although 9♥ is Trump, West led Spades and you still hold Spades in your hand (9♠ and A♠). You MUST follow suit!',
-                  });
-                }}
-              />
+              <div className="flex flex-col items-center py-1">
+                <span className="text-[10px] text-cyan-300 font-bold uppercase mb-1">
+                  Your Play:
+                </span>
+                {selectedCardObj ? (
+                  <div className="animate-in zoom-in-95 duration-150">
+                    <CardView
+                      card={selectedCardObj}
+                      trumpSuit="hearts"
+                      size="sm"
+                      isPlayable={false}
+                      isSelected={practiceSuccess}
+                      badge={
+                        practiceSuccess
+                          ? 'WIN!'
+                          : practiceFeedback?.type === 'error'
+                          ? 'ILLEGAL'
+                          : 'LOSES'
+                      }
+                    />
+                  </div>
+                ) : (
+                  <div className="w-[64px] h-[92px] rounded-xl border-2 border-dashed border-slate-600 bg-slate-900/60 flex items-center justify-center text-center px-1 text-[10px] font-bold text-slate-400">
+                    Tap a card below
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Always-visible feedback banner directly above your hand */}
+            {practiceFeedback ? (
+              <div
+                role="status"
+                className={`p-2.5 rounded-xl text-xs font-bold transition-all shadow-md ${
+                  practiceFeedback.type === 'success'
+                    ? 'bg-emerald-950/85 text-emerald-200 border-2 border-emerald-500'
+                    : practiceFeedback.type === 'error'
+                    ? 'bg-red-950/85 text-red-200 border-2 border-red-500'
+                    : 'bg-amber-950/85 text-amber-200 border-2 border-amber-500'
+                }`}
+              >
+                {practiceFeedback.text}
+              </div>
+            ) : (
+              <div className="p-2.5 rounded-xl text-xs text-slate-300 bg-slate-800/70 border border-slate-700 text-center">
+                Tap any card in your hand below to test what happens when you play it!
+              </div>
+            )}
+
+            {/* Your Selectable Hand */}
+            <div className="border-t border-slate-700 pt-2">
+              <span className="text-xs font-black text-amber-300 block mb-2 text-center uppercase tracking-wider">
+                Your Hand (Tap a card to test):
+              </span>
+              <div className="flex justify-center items-center space-x-3">
+                {PRACTICE_HAND.map((card) => (
+                  <button
+                    key={card.id}
+                    type="button"
+                    aria-pressed={selectedPracticeCard === card.id}
+                    onClick={() => handleSelectPracticeCard(card)}
+                    className="rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    <CardView
+                      card={card}
+                      trumpSuit="hearts"
+                      size="md"
+                      isPlayable={true}
+                      isSelected={selectedPracticeCard === card.id}
+                    />
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-
-          {practiceFeedback && (
-            <div
-              className={`p-3 rounded-xl text-xs font-bold transition-all shadow-md ${
-                practiceFeedback.type === 'success'
-                  ? 'bg-emerald-950/80 text-emerald-200 border-2 border-emerald-500'
-                  : practiceFeedback.type === 'error'
-                  ? 'bg-red-950/80 text-red-200 border-2 border-red-500'
-                  : 'bg-amber-950/80 text-amber-200 border-2 border-amber-500'
-              }`}
-            >
-              {practiceFeedback.text}
-            </div>
-          )}
-        </div>
-      ),
+        );
+      })(),
     },
     {
       title: 'Scoring & Going Alone 🏆',
@@ -267,7 +351,7 @@ export const TutorialModal: React.FC<TutorialModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="p-5 flex-1 overflow-y-auto max-h-[65vh]">
+        <div className="p-4 sm:p-5 flex-1 overflow-y-auto max-h-[75vh]">
           <h3 className="text-lg font-black text-white">{current.title}</h3>
           <h4 className="text-xs font-bold text-amber-400 mb-3">{current.subtitle}</h4>
           {current.content}
@@ -291,9 +375,7 @@ export const TutorialModal: React.FC<TutorialModalProps> = ({
                 onClick={() => {
                   sounds.playUiClick();
                   setStep(s => s - 1);
-                  setSelectedPracticeCard(null);
-                  setPracticeFeedback(null);
-                  setPracticeSuccess(false);
+                  resetPracticeState();
                 }}
                 className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-gray-300"
               >
@@ -311,14 +393,16 @@ export const TutorialModal: React.FC<TutorialModalProps> = ({
                   onClose();
                 } else {
                   setStep(s => s + 1);
-                  setSelectedPracticeCard(null);
-                  setPracticeFeedback(null);
-                  setPracticeSuccess(false);
+                  resetPracticeState();
                 }
               }}
-              className="flex items-center space-x-1 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/30"
+              className={`flex items-center space-x-1 px-4 py-2 rounded-xl font-black text-xs shadow-lg transition-all ${
+                step === 3 && practiceSuccess
+                  ? 'bg-gradient-to-r from-emerald-400 to-amber-400 hover:from-emerald-300 hover:to-amber-300 text-slate-950 shadow-emerald-500/30 animate-pulse'
+                  : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-amber-500/30'
+              }`}
             >
-              <span>{isLast ? "Let's Play Euchre!" : 'Next Step'}</span>
+              <span>{isLast ? "Let's Play Euchre!" : step === 3 && practiceSuccess ? 'Awesome! Next Step' : 'Next Step'}</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>

@@ -127,7 +127,9 @@ export const CardView: React.FC<CardViewProps> = ({
           minHeight: `${cfg.h}px`,
           maxWidth: `${cfg.w}px`,
           maxHeight: `${cfg.h}px`,
-          transform: `rotate(${rotation}deg) ${elevated ? 'translateY(-12px)' : ''}`,
+          ...(rotation !== 0 || elevated
+            ? { transform: `rotate(${rotation}deg) ${elevated ? 'translateY(-12px)' : ''}`.trim() }
+            : {}),
           boxShadow:
             size === 'xs'
               ? '0 3px 8px rgba(0,0,0,0.65)'
@@ -198,7 +200,9 @@ export const CardView: React.FC<CardViewProps> = ({
           minHeight: `${cfg.h}px`,
           maxWidth: `${cfg.w}px`,
           maxHeight: `${cfg.h}px`,
-          transform: `rotate(${rotation}deg) ${elevated ? 'translateY(-14px)' : ''}`,
+          ...(rotation !== 0 || elevated
+            ? { transform: `rotate(${rotation}deg) ${elevated ? 'translateY(-14px)' : ''}`.trim() }
+            : {}),
           boxShadow: isRight
             ? '0 0 20px rgba(245, 158, 11, 0.7), 0 8px 16px rgba(0,0,0,0.5)'
             : isLeft

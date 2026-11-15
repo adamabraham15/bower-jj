@@ -1,5 +1,21 @@
 import React from 'react';
+import { Card, GamePhase } from '../engine/types';
+import { formatCardName } from '../engine/cards';
 import { AvatarPortrait } from './AvatarPortrait';
+import { CardView, SuitIcon } from './CardView';
+
+/**
+ * Returns true when a player seat is actively making a turn decision
+ * (calling trump in Round 1/2, discarding as dealer, or playing a card).
+ */
+export function isActiveDecisionPhase(phase: GamePhase): boolean {
+  return (
+    phase === 'bidding_round_1' ||
+    phase === 'bidding_round_2' ||
+    phase === 'dealer_discard' ||
+    phase === 'playing'
+  );
+}
 
 /**
  * Prominent pill badge placed on the current dealer's table avatar so it stands out immediately.
@@ -116,3 +132,132 @@ export const GoAloneControl: React.FC<GoAloneControlProps> = ({
     </div>
   );
 };
+
+/**
+ * Flashing amber turn indicator placed next to the player whose turn it is to bid or play.
+ */
+export const TurnActiveDot: React.FC = () => (
+  <span title="Active Turn" className="relative inline-flex h-2 w-2 flex-shrink-0">
+    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-300 opacity-90" />
+    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400 shadow-sm shadow-amber-400/80" />
+  </span>
+);
+
+interface CenterKittyDisplayProps {
+  phase: GamePhase;
+  upCard?: Card;
+  canCallTurnedDownSuit?: boolean;
+}
+
+/**
+ * Displays either the active Turned-Up Card (Round 1) or the Turned-Down Card (Round 2)
+ * in the center of the table felt.
+ */
+export const CenterKittyDisplay: React.FC<CenterKittyDisplayProps> = ({
+  phase,
+  upCard,
+  canCallTurnedDownSuit = false,
+}) => {
+  if (!upCard) return null;
+
+  if (phase === 'bidding_round_1') {
+    return (
+      <div className="flex flex-col items-center animate-in zoom-in-95 duration-200">
+        <span className="text-[11px] text-amber-300 font-black uppercase mb-1.5 tracking-wider bg-slate-900/80 px-2.5 py-0.5 rounded-full border border-amber-500/40">
+          Turned-Up Card
+        </span>
+        <CardView card={upCard} size="md" isPlayable={false} />
+      </div>
+    );
+  }
+
+  if (phase === 'bidding_round_2') {
+    return (
+      <div className="flex flex-col items-center animate-in fade-in zoom-in-95 duration-200">
+        <span className="text-[11px] text-rose-300 font-black uppercase mb-1.5 tracking-wider bg-slate-900/90 px-2.5 py-0.5 rounded-full border border-rose-500/50 shadow-md">
+          Turned Down
+        </span>
+        <CardView card={upCard} size="md" isPlayable={false} badge="TURNED DOWN" />
+        <span className="mt-1.5 text-[10px] font-bold text-rose-200/90 bg-slate-950/85 border border-rose-500/30 px-2.5 py-0.5 rounded-full">
+          {formatCardName(upCard)}
+          {!canCallTurnedDownSuit ? ' • Suit Blocked' : ' • Passed'}
+        </span>
+      </div>
+    );
+  }
+
+  return null;
+};
+
+interface TurnedDownNoticeChipProps {
+  upCard?: Card;
+  canCallTurnedDownSuit?: boolean;
+}
+
+/**
+ * Compact banner inside Round 2 bidding modals showing which card was turned down in Round 1.
+ */
+export const TurnedDownNoticeChip: React.FC<TurnedDownNoticeChipProps> = ({
+  upCard,
+  canCallTurnedDownSuit = false,
+}) => {
+  if (!upCard) return null;
+
+  return (
+    <div className="w-full px-3 py-1.5 rounded-xl bg-rose-950/50 border border-rose-500/40 flex items-center justify-between gap-2 text-xs">
+      <div className="flex items-center space-x-1.5 min-w-0">
+        <span className="text-[10px] font-black uppercase tracking-wider text-rose-300 flex-shrink-0">
+          Turned Down:
+        </span>
+        <SuitIcon suit={upCard.suit} className="w-3.5 h-3.5 flex-shrink-0" />
+        <span className="font-black text-white truncate">{formatCardName(upCard)}</span>
+      </div>
+      {!canCallTurnedDownSuit && (
+        <span className="text-[9px] font-bold uppercase tracking-wide text-rose-300/90 flex-shrink-0">
+          Blocked
+        </span>
+      )}
+    </div>
+  );
+};
+
+interface DealerDeckStackProps {
+  relativePos: 'top' | 'left' | 'right' | 'bottom';
+  cardBackSkin?: string;
+}
+
+const DEALER_DECK_POSITION_CLASSES: Record<'top' | 'left' | 'right' | 'bottom', string> = {
+  top: 'left-full ml-4 sm:ml-5 -top-0.5',
+  bottom: 'left-full ml-4 sm:ml-5 -top-0.5',
+  left: '-top-[68px] left-1/2 -translate-x-1/2 md:top-0 md:translate-x-0 md:left-full md:ml-5',
+  right: '-top-[68px] left-1/2 -translate-x-1/2 md:top-0 md:left-auto md:translate-x-0 md:right-full md:mr-5',
+};
+
+/**
+ * Renders the remaining facedown kitty deck next to the current dealer seat so the deck
+ * physically moves around the table with the deal.
+ */
+export const DealerDeckStack: React.FC<DealerDeckStackProps> = ({
+  relativePos,
+  cardBackSkin = 'classic_blue',
+}) => (
+  <div
+    title="Dealer's Kitty Deck"
+    className={`pointer-events-none absolute ${DEALER_DECK_POSITION_CLASSES[relativePos]} flex flex-col items-center z-10 animate-in fade-in zoom-in-95 duration-200`}
+  >
+    <div className="relative w-[40px] h-[56px] flex items-end justify-start">
+      <div className="absolute top-0 left-1 opacity-75">
+        <CardView isFacedown size="xs" cardBackSkin={cardBackSkin} />
+      </div>
+      <div className="absolute top-0.5 left-0.5 opacity-90">
+        <CardView isFacedown size="xs" cardBackSkin={cardBackSkin} />
+      </div>
+      <div className="relative z-10 top-1 left-0">
+        <CardView isFacedown size="xs" cardBackSkin={cardBackSkin} />
+      </div>
+    </div>
+    <span className="mt-0.5 px-1.5 py-0.5 rounded-full bg-slate-900/95 border border-amber-400/60 text-[8px] font-black text-amber-300 tracking-wider uppercase shadow-md whitespace-nowrap">
+      DECK
+    </span>
+  </div>
+);

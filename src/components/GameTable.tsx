@@ -41,7 +41,16 @@ import {
 } from '../engine/game';
 import { CardView, SuitIcon } from './CardView';
 import { TrumpBanner, MakerBadge } from './TrumpBanner';
-import { DealerAvatarBadge, ModalDealerBanner, GoAloneControl } from './BiddingModalHelpers';
+import {
+  DealerAvatarBadge,
+  DealerDeckStack,
+  ModalDealerBanner,
+  GoAloneControl,
+  TurnActiveDot,
+  CenterKittyDisplay,
+  TurnedDownNoticeChip,
+  isActiveDecisionPhase,
+} from './BiddingModalHelpers';
 import { RankBadge, RankTier } from './RankBadge';
 import { PostMatchModal } from './PostMatchModal';
 import { PublicProfileModal, PublicPlayerData } from './PublicProfileModal';
@@ -273,11 +282,13 @@ export const GameTable: React.FC<GameTableProps> = ({
     const player = state.players[pos];
     const isDealer = state.dealer === pos;
     const isTrumpCaller = state.trumpSuit !== undefined && state.callingPlayer === pos;
-    const isCurrentTurn = state.currentTurn === pos && state.phase === 'playing';
+    const isCurrentTurn = state.currentTurn === pos && isActiveDecisionPhase(state.phase);
     const isBenched = state.benchedPlayer === pos;
     const isTeamBlue = getPlayerTeam(pos) === 0;
     const hand = state.hands[pos];
     const emote = activeEmotes[pos];
+    const relPos: 'bottom' | 'left' | 'top' | 'right' =
+      pos === 0 ? 'bottom' : pos === 1 ? 'left' : pos === 2 ? 'top' : 'right';
 
     return (
       <div className={`absolute ${positionStyle} flex flex-col items-center z-20 pointer-events-auto`}>
@@ -302,64 +313,71 @@ export const GameTable: React.FC<GameTableProps> = ({
           );
           return (
             <>
-              <div
-                onClick={() => {
-                  sounds.playUiClick();
-                  const tier = (player.rankTier as RankTier) || (pos === 0 ? '9' : player.aiDifficulty === 'hard' ? 'K' : player.aiDifficulty === 'medium' ? '10' : '9');
-                  setInspectedPlayer({
-                    id: player.id || `bot_${player.name}`,
-                    username: player.name,
-                    avatarIcon: resolvedAvatar,
-                    level: pos === 0 ? (profile?.level ?? 1) : 8,
-                    rankTier: tier,
-                    rankPoints: pos === 0 ? (profile?.rankPoints ?? 0) : 50,
-                    totalGames: pos === 0 ? 12 : 95,
-                    wins: pos === 0 ? 9 : 52,
-                    losses: pos === 0 ? 3 : 43,
-                    bestStreak: 4,
-                    isFriend: pos === 2,
-                    isOnline: true,
-                    equippedCosmetics: {
-                      hat: resolvedAvatar,
-                      cardBack: resolvedCardBack,
-                      banner: 'default_navy',
-                      title: player.isAI ? `Tactical AI (${player.aiDifficulty})` : 'Competitor',
-                    },
-                  });
-                }}
-                title={`Inspect ${player.name}`}
-                className="relative cursor-pointer hover:scale-105 active:scale-95 transition-transform"
-              >
-                {/* Avatar Container */}
+              <div className="relative">
                 <div
-                  className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 transition-all duration-300 flex items-center justify-center
-                    ${isTeamBlue ? 'bg-gradient-to-tr from-blue-600 to-cyan-400' : 'bg-gradient-to-tr from-red-600 to-amber-500'}
-                    ${isCurrentTurn ? 'ring-4 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : isDealer ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/30' : 'opacity-90'}
-                    ${isBenched ? 'grayscale opacity-50' : ''}`}
+                  onClick={() => {
+                    sounds.playUiClick();
+                    const tier = (player.rankTier as RankTier) || (pos === 0 ? '9' : player.aiDifficulty === 'hard' ? 'K' : player.aiDifficulty === 'medium' ? '10' : '9');
+                    setInspectedPlayer({
+                      id: player.id || `bot_${player.name}`,
+                      username: player.name,
+                      avatarIcon: resolvedAvatar,
+                      level: pos === 0 ? (profile?.level ?? 1) : 8,
+                      rankTier: tier,
+                      rankPoints: pos === 0 ? (profile?.rankPoints ?? 0) : 50,
+                      totalGames: pos === 0 ? 12 : 95,
+                      wins: pos === 0 ? 9 : 52,
+                      losses: pos === 0 ? 3 : 43,
+                      bestStreak: 4,
+                      isFriend: pos === 2,
+                      isOnline: true,
+                      equippedCosmetics: {
+                        hat: resolvedAvatar,
+                        cardBack: resolvedCardBack,
+                        banner: 'default_navy',
+                        title: player.isAI ? `Tactical AI (${player.aiDifficulty})` : 'Competitor',
+                      },
+                    });
+                  }}
+                  title={`Inspect ${player.name}`}
+                  className="relative cursor-pointer hover:scale-105 active:scale-95 transition-transform"
                 >
-                  <div className="w-full h-full bg-slate-900 rounded-[14px] flex flex-col items-center justify-center overflow-hidden">
-                    <AvatarPortrait
-                      avatarId={resolvedAvatar}
-                      size="md"
-                      showRarityRing={false}
-                      className="!w-full !h-full !rounded-[14px]"
-                    />
+                  {/* Avatar Container */}
+                  <div
+                    className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 transition-all duration-300 flex items-center justify-center
+                      ${isTeamBlue ? 'bg-gradient-to-tr from-blue-600 to-cyan-400' : 'bg-gradient-to-tr from-red-600 to-amber-500'}
+                      ${isCurrentTurn ? 'ring-4 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : isDealer ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/30' : 'opacity-90'}
+                      ${isBenched ? 'grayscale opacity-50' : ''}`}
+                  >
+                    <div className="w-full h-full bg-slate-900 rounded-[14px] flex flex-col items-center justify-center overflow-hidden">
+                      <AvatarPortrait
+                        avatarId={resolvedAvatar}
+                        size="md"
+                        showRarityRing={false}
+                        className="!w-full !h-full !rounded-[14px]"
+                      />
+                    </div>
                   </div>
+
+                  {/* Dealer Chip */}
+                  {isDealer && <DealerAvatarBadge />}
+
+                  {/* Trump Maker Chip */}
+                  {isTrumpCaller && state.trumpSuit && (
+                    <MakerBadge trumpSuit={state.trumpSuit} isBlueTeam={isTeamBlue} />
+                  )}
+
+                  {/* Card Count Badge */}
+                  {pos !== 0 && (
+                    <div className="absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-mono font-bold text-gray-200 shadow-sm z-10">
+                      {isBenched ? 'BENCHED' : `${hand.length} 🂠`}
+                    </div>
+                  )}
                 </div>
 
-                {/* Dealer Chip */}
-                {isDealer && <DealerAvatarBadge />}
-
-                {/* Trump Maker Chip */}
-                {isTrumpCaller && state.trumpSuit && (
-                  <MakerBadge trumpSuit={state.trumpSuit} isBlueTeam={isTeamBlue} />
-                )}
-
-                {/* Card Count Badge */}
-                {pos !== 0 && (
-                  <div className="absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-mono font-bold text-gray-200 shadow-sm z-10">
-                    {isBenched ? 'BENCHED' : `${hand.length} 🂠`}
-                  </div>
+                {/* Deck of Cards / Kitty Stack follows the current dealer */}
+                {isDealer && (
+                  <DealerDeckStack relativePos={relPos} cardBackSkin={resolvedCardBack} />
                 )}
               </div>
 
@@ -367,7 +385,7 @@ export const GameTable: React.FC<GameTableProps> = ({
               <div className="mt-1 flex flex-col items-center">
                 <div className="text-[11px] sm:text-xs font-bold text-white flex items-center space-x-1">
                   <span>{player.name}</span>
-                  {isCurrentTurn && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />}
+                  {isCurrentTurn && <TurnActiveDot />}
                 </div>
                 {isBenched ? (
                   <span className="text-[9px] uppercase font-bold text-red-400 bg-red-950/80 px-1.5 rounded-sm">
@@ -519,15 +537,12 @@ export const GameTable: React.FC<GameTableProps> = ({
 
         {/* Center Trick Arena & Table Hub */}
         <div className="relative w-72 h-72 sm:w-84 sm:h-84 rounded-full border border-emerald-500/25 bg-emerald-950/25 backdrop-blur-xs flex items-center justify-center shadow-2xl">
-          {/* Bidding Round 1 Kitty Display */}
-          {state.phase === 'bidding_round_1' && state.upCard && (
-            <div className="flex flex-col items-center animate-in zoom-in-95 duration-200">
-              <span className="text-[11px] text-amber-300 font-black uppercase mb-1.5 tracking-wider bg-slate-900/80 px-2.5 py-0.5 rounded-full border border-amber-500/40">
-                Turned-Up Card
-              </span>
-              <CardView card={state.upCard} size="md" isPlayable={false} />
-            </div>
-          )}
+          {/* Bidding Round 1 & Round 2 Kitty Display */}
+          <CenterKittyDisplay
+            phase={state.phase}
+            upCard={state.upCard}
+            canCallTurnedDownSuit={state.rules.canCallTurnedDownSuit}
+          />
 
           {/* Active Lead Suit Indicator in center */}
           {(state.phase === 'playing' || isTrickResolving) && leadSuit && (
@@ -669,6 +684,11 @@ export const GameTable: React.FC<GameTableProps> = ({
                 dealerAvatar={dealerAvatar}
                 isSelfDealer={state.dealer === 0}
                 isPartnerDealer={isHumanPartnerOfDealer}
+              />
+
+              <TurnedDownNoticeChip
+                upCard={state.upCard}
+                canCallTurnedDownSuit={state.rules.canCallTurnedDownSuit}
               />
 
               <GoAloneControl
