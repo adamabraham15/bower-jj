@@ -13,7 +13,9 @@ import { ProfileModal, PlayerProfileData, MatchHistoryItem } from './components/
 import { MatchmakingModal, QueueType } from './components/MatchmakingModal';
 import { FriendsModal } from './components/FriendsModal';
 import { LeaderboardModal } from './components/LeaderboardModal';
-import { BowerPassModal } from './components/BowerPassModal';
+import { CollectionModal } from './components/CollectionModal';
+import { PackOpeningModal } from './components/PackOpeningModal';
+import { AvatarPortrait } from './components/AvatarPortrait';
 import { RankUpModal } from './components/RankUpModal';
 import { GameLobbyModal, LobbyGameMode } from './components/GameLobbyModal';
 import { AchievementsModal } from './components/AchievementsModal';
@@ -41,10 +43,16 @@ import {
   SanitizedGameState,
   FriendSummary,
   LeaderboardEntry,
-  BattlePassState,
-  Challenge,
+  PlayerCollectionState,
+  PackOpenResult,
   UserAccount,
 } from '../server/types';
+import {
+  resolveAvatarId,
+  resolveCardBackId,
+  BOT_AVATAR_BY_DIFFICULTY,
+  BOT_CARD_BACK_BY_DIFFICULTY,
+} from './config/collectiblesCatalog';
 
 const STORAGE_KEY = 'bower_jj_player_profile';
 
@@ -74,7 +82,7 @@ function formatMatchMode(mode?: string): string {
 const DEFAULT_PROFILE: PlayerProfileData = {
   username: 'BowerKing',
   playerId: 'JJ-7892',
-  avatarIcon: '🤠',
+  avatarIcon: 'the_outlaw',
   level: 1,
   xp: 350,
   nextLevelXp: 1000,
@@ -90,6 +98,12 @@ const DEFAULT_PROFILE: PlayerProfileData = {
   currentStreak: 3,
   bestStreak: 5,
   favTrumpSuit: 'hearts',
+  equippedCosmetics: {
+    hat: 'the_outlaw',
+    cardBack: 'classic_blue',
+    banner: 'default_navy',
+    title: 'Recruit',
+  },
 };
 
 export function extractInviteCodeFromUrl(): string | null {
@@ -163,8 +177,16 @@ export const App: React.FC = () => {
       if (!saved) return DEFAULT_PROFILE;
       const parsed = JSON.parse(saved) as PlayerProfileData;
       const norm = normalizeXpProgress(parsed.xp, parsed.level);
+      const normAvatar = resolveAvatarId(parsed.avatarIcon);
+      const normCardBack = resolveCardBackId(parsed.equippedCosmetics?.cardBack);
       return {
         ...parsed,
+        avatarIcon: normAvatar,
+        equippedCosmetics: {
+          ...(parsed.equippedCosmetics || {}),
+          hat: normAvatar,
+          cardBack: normCardBack,
+        },
         xp: norm.xp,
         level: norm.level,
         nextLevelXp: norm.nextLevelXp,
@@ -184,7 +206,11 @@ export const App: React.FC = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isFriendsOpen, setIsFriendsOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
-  const [isBowerPassOpen, setIsBowerPassOpen] = useState(false);
+  const [isCollectionOpen, setIsCollectionOpen] = useState(false);
+  const [collectionInitialTab, setCollectionInitialTab] = useState<'packs' | 'collections' | 'avatars'>('packs');
+  const [isPackOpeningOpen, setIsPackOpeningOpen] = useState(false);
+  const [isOpeningPack, setIsOpeningPack] = useState(false);
+  const [pendingPackResult, setPendingPackResult] = useState<PackOpenResult | null>(null);
   const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
   const [matchmakingQueue, setMatchmakingQueue] = useState<QueueType | null>(null);
   const [isLobbyOpen, setIsLobbyOpen] = useState(false);
@@ -218,8 +244,7 @@ export const App: React.FC = () => {
   const [incomingFriendRequests, setIncomingFriendRequests] = useState<UserAccount['friendRequests']>([]);
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const [userRankPosition, setUserRankPosition] = useState<number | undefined>();
-  const [battlePassState, setBattlePassState] = useState<BattlePassState | undefined>();
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [collectionState, setCollectionState] = useState<PlayerCollectionState | undefined>();
   const lastRecordedGameOverRoomRef = useRef<string | null>(null);
 
   // Rank Promotion Fanfare Modal
@@ -255,16 +280,19 @@ export const App: React.FC = () => {
 
   // Synchronize full authoritative profile, lifetime statistics, and match history
   const syncAuthoritativeProfile = (userId: string) => {
+    multiplayerClient.fetchCollectionState();
     authService.fetchFullProfile(userId).then(sync => {
       if (sync) {
         setProfile(prev => {
           const normXp = normalizeXpProgress(sync.xp?.xp ?? prev.xp, sync.xp?.level ?? prev.level);
           const hatIcon = sync.cosmetics?.equipped_hat;
           const profileAvatar = sync.profile?.avatar_icon;
-          const resolvedAvatar =
-            hatIcon && hatIcon !== '🤠' && (!profileAvatar || profileAvatar === '🤠')
-              ? hatIcon
-              : profileAvatar || hatIcon || prev.avatarIcon;
+          const resolvedAvatar = resolveAvatarId(
+            profileAvatar || hatIcon || prev.avatarIcon
+          );
+          const resolvedCardBack = resolveCardBackId(
+            sync.cosmetics?.equipped_card_back || prev.equippedCosmetics?.cardBack
+          );
 
           return {
             ...prev,
@@ -287,8 +315,8 @@ export const App: React.FC = () => {
             bestStreak: sync.statistics?.best_streak ?? prev.bestStreak,
             favTrumpSuit: sync.statistics?.favorite_suit || prev.favTrumpSuit,
             equippedCosmetics: {
-              hat: hatIcon || resolvedAvatar || prev.equippedCosmetics?.hat || '🤠',
-              cardBack: sync.cosmetics?.equipped_card_back || prev.equippedCosmetics?.cardBack || 'classic_blue',
+              hat: resolvedAvatar,
+              cardBack: resolvedCardBack,
               banner: sync.cosmetics?.equipped_banner || prev.equippedCosmetics?.banner || 'default_navy',
               title: sync.cosmetics?.equipped_title || prev.equippedCosmetics?.title || 'Recruit',
             },
@@ -382,9 +410,10 @@ export const App: React.FC = () => {
 
       const resolvedAvatar = keepPrevRank
         ? prev.avatarIcon
-        : user.equippedCosmetics?.hat && user.equippedCosmetics.hat !== '🤠' && user.avatarIcon === '🤠'
-        ? user.equippedCosmetics.hat
-        : user.avatarIcon || prev.avatarIcon;
+        : resolveAvatarId(user.avatarIcon || user.equippedCosmetics?.hat || prev.avatarIcon);
+      const resolvedCardBack = keepPrevRank
+        ? resolveCardBackId(prev.equippedCosmetics?.cardBack)
+        : resolveCardBackId(user.equippedCosmetics?.cardBack || prev.equippedCosmetics?.cardBack);
 
       return {
         ...prev,
@@ -407,8 +436,8 @@ export const App: React.FC = () => {
         bestStreak: typeof user.bestWinStreak === 'number' && !keepPrevRank ? user.bestWinStreak : prev.bestStreak,
         equippedCosmetics: !keepPrevRank && user.equippedCosmetics
           ? {
-              hat: user.equippedCosmetics.hat || resolvedAvatar || prev.equippedCosmetics?.hat || '🤠',
-              cardBack: user.equippedCosmetics.cardBack || prev.equippedCosmetics?.cardBack || 'classic_blue',
+              hat: resolvedAvatar,
+              cardBack: resolvedCardBack,
               banner: user.equippedCosmetics.banner || prev.equippedCosmetics?.banner || 'default_navy',
               title: user.equippedCosmetics.title || prev.equippedCosmetics?.title || 'Recruit',
             }
@@ -417,8 +446,9 @@ export const App: React.FC = () => {
       };
     });
 
-    if (user.battlePass) setBattlePassState(user.battlePass);
-    if (user.challenges) setChallenges(user.challenges);
+    if (user.collectionState) {
+      setCollectionState(user.collectionState);
+    }
   };
 
   // 1. Restore Supabase Authentication Session, Handle Confirmation Redirects & Listen to Auth Events
@@ -525,7 +555,7 @@ export const App: React.FC = () => {
             if (!hasPrompted && !isDirectInvite) {
               setTimeout(() => {
                 setAuthModalInitialTab('register');
-                setAuthModalReason('Create a free account or sign in to track your competitive rank, battle pass, and match history!');
+                setAuthModalReason('Create a free account or sign in to track your competitive rank, card packs, collections, and match history!');
                 setIsAuthOpen(true);
               }, 600);
             }
@@ -664,9 +694,28 @@ export const App: React.FC = () => {
         setLeaderboardEntries(entries);
         setUserRankPosition(rank);
       },
-      onBattlePass: (bp, chs) => {
-        setBattlePassState(bp);
-        setChallenges(chs);
+      onCollection: (cs) => {
+        setCollectionState(cs);
+      },
+      onPackOpened: (result) => {
+        setIsOpeningPack(false);
+        setPendingPackResult(result);
+        if (result.collectionState) {
+          setCollectionState(result.collectionState);
+        }
+        if (authUserRef.current?.id) {
+          syncAuthoritativeProfile(authUserRef.current.id);
+        }
+      },
+      onPackEarned: (info) => {
+        sounds.playVictoryFanfare();
+        showToast(
+          info.level
+            ? `Level ${info.level} reached! +${info.count} Collectible Card Pack added to your vault!`
+            : `+${info.count} Collectible Card Pack added to your vault!`,
+          'Level Up Reward!'
+        );
+        multiplayerClient.fetchCollectionState();
       },
       onRankUpdate: (update) => {
         setLastMatchRankUpdate(update);
@@ -696,6 +745,7 @@ export const App: React.FC = () => {
         showToast(message, title);
       },
       onError: (msg) => {
+        setIsOpeningPack(false);
         console.warn('Multiplayer notice:', msg);
         if (msg && !msg.includes('Connection error')) {
           showToast(msg, 'Notice');
@@ -813,13 +863,16 @@ export const App: React.FC = () => {
 
   // Launch Local AI Match
   const handleStartAIMatch = (difficulty: AIDifficulty, rules: EuchreHouseRules) => {
+    const botAvatars = BOT_AVATAR_BY_DIFFICULTY[difficulty];
+    const botCardBack = BOT_CARD_BACK_BY_DIFFICULTY[difficulty];
     const players: Player[] = [
       {
         id: 'p0',
         name: profile.username,
         position: 0,
         isAI: false,
-        avatarId: profile.avatarIcon,
+        avatarId: resolveAvatarId(profile.avatarIcon),
+        cardBack: resolveCardBackId(profile.equippedCosmetics?.cardBack),
         rankTier: profile.rankTier,
       },
       {
@@ -828,7 +881,8 @@ export const App: React.FC = () => {
         position: 1,
         isAI: true,
         aiDifficulty: difficulty,
-        avatarId: '🤖',
+        avatarId: botAvatars[0],
+        cardBack: botCardBack,
       },
       {
         id: 'p2',
@@ -836,7 +890,8 @@ export const App: React.FC = () => {
         position: 2,
         isAI: true,
         aiDifficulty: difficulty,
-        avatarId: '🧝',
+        avatarId: botAvatars[1 % botAvatars.length],
+        cardBack: botCardBack,
       },
       {
         id: 'p3',
@@ -844,7 +899,8 @@ export const App: React.FC = () => {
         position: 3,
         isAI: true,
         aiDifficulty: difficulty,
-        avatarId: '👽',
+        avatarId: botAvatars[2 % botAvatars.length],
+        cardBack: botCardBack,
       },
     ];
 
@@ -966,18 +1022,18 @@ export const App: React.FC = () => {
   };
 
   const handleUpdateAvatar = (avatar: string) => {
+    const canonical = resolveAvatarId(avatar);
     setProfile(p => ({
       ...p,
-      avatarIcon: avatar,
+      avatarIcon: canonical,
       equippedCosmetics: {
         ...(p.equippedCosmetics || {}),
-        hat: avatar,
+        hat: canonical,
       },
     }));
-    multiplayerClient.setAvatarIcon(avatar);
-    multiplayerClient.equipCosmetic('hat', avatar);
+    multiplayerClient.equipAvatar(canonical);
     if (authUserRef.current?.id) {
-      authService.updateUserAvatar(authUserRef.current.id, avatar);
+      authService.updateUserAvatar(authUserRef.current.id, canonical);
     }
   };
 
@@ -987,17 +1043,25 @@ export const App: React.FC = () => {
   };
 
   const handleUpdateCosmetic = (category: 'hat' | 'cardBack' | 'banner' | 'title', id: string) => {
+    if (category === 'hat') {
+      handleUpdateAvatar(id);
+      return;
+    }
+    const finalId = category === 'cardBack' ? resolveCardBackId(id) : id;
     setProfile(prev => ({
       ...prev,
-      ...(category === 'hat' ? { avatarIcon: id } : {}),
       equippedCosmetics: {
         ...(prev.equippedCosmetics || {}),
-        [category]: id,
+        [category]: finalId,
       },
     }));
-    multiplayerClient.equipCosmetic(category, id);
+    if (category === 'cardBack') {
+      multiplayerClient.equipCardBack(finalId);
+    } else {
+      multiplayerClient.equipCosmetic(category, finalId);
+    }
     if (authUserRef.current?.id) {
-      authService.updateUserCosmetic(authUserRef.current.id, category, id);
+      authService.updateUserCosmetic(authUserRef.current.id, category, finalId);
     }
   };
 
@@ -1024,7 +1088,7 @@ export const App: React.FC = () => {
       {partyInvite && (
         <div className="fixed bottom-6 right-6 z-[100] p-4 rounded-3xl bg-slate-900 border-2 border-cyan-400 shadow-2xl animate-in slide-in-from-bottom-4 max-w-xs space-y-2">
           <div className="flex items-center space-x-2.5">
-            <span className="text-2xl">{partyInvite.fromAvatar}</span>
+            <AvatarPortrait avatarId={partyInvite.fromAvatar} size="sm" />
             <div>
               <div className="text-xs font-black text-white">{partyInvite.fromUsername}</div>
               <div className="text-[10px] text-cyan-300">
@@ -1145,7 +1209,18 @@ export const App: React.FC = () => {
             multiplayerClient.fetchLeaderboard();
             setIsLeaderboardOpen(true);
           }}
-          onOpenBowerPass={() => setIsBowerPassOpen(true)}
+          unopenedPacksCount={collectionState?.unopenedPacksCount ?? 0}
+          onOpenCollection={(tab = 'packs') => {
+            setCollectionInitialTab(tab);
+            multiplayerClient.fetchCollectionState();
+            setIsCollectionOpen(true);
+          }}
+          onOpenPackOpener={() => {
+            setPendingPackResult(null);
+            setIsOpeningPack(false);
+            multiplayerClient.fetchCollectionState();
+            setIsPackOpeningOpen(true);
+          }}
           onOpenRivalryInvite={() => {
             setLobbyInitialMode('rivals');
             setIsLobbyOpen(true);
@@ -1183,6 +1258,14 @@ export const App: React.FC = () => {
         onUpdateAvatar={handleUpdateAvatar}
         onUpdateUsername={handleUpdateUsername}
         onUpdateCosmetic={handleUpdateCosmetic}
+        unlockedAvatars={collectionState?.unlockedAvatars}
+        unlockedCardBacks={collectionState?.unlockedCardBacks}
+        onOpenCollection={() => {
+          setIsProfileOpen(false);
+          setCollectionInitialTab('packs');
+          multiplayerClient.fetchCollectionState();
+          setIsCollectionOpen(true);
+        }}
       />
 
       <FriendsModal
@@ -1207,11 +1290,49 @@ export const App: React.FC = () => {
         currentUserId={authUser?.id || profile.playerId}
       />
 
-      <BowerPassModal
-        isOpen={isBowerPassOpen}
-        onClose={() => setIsBowerPassOpen(false)}
-        battlePass={battlePassState}
-        challenges={challenges}
+      <CollectionModal
+        isOpen={isCollectionOpen}
+        onClose={() => setIsCollectionOpen(false)}
+        initialTab={collectionInitialTab}
+        collectionState={collectionState}
+        equippedAvatarId={resolveAvatarId(profile.avatarIcon)}
+        equippedCardBackId={resolveCardBackId(profile.equippedCosmetics?.cardBack)}
+        playerLevel={profile.level}
+        playerWins={profile.wins}
+        onOpenPackModal={() => {
+          setIsCollectionOpen(false);
+          setPendingPackResult(null);
+          setIsOpeningPack(false);
+          setIsPackOpeningOpen(true);
+        }}
+        onEquipAvatar={handleUpdateAvatar}
+        onEquipCardBack={(cardBackId) => handleUpdateCosmetic('cardBack', cardBackId)}
+      />
+
+      <PackOpeningModal
+        isOpen={isPackOpeningOpen}
+        onClose={() => {
+          setIsPackOpeningOpen(false);
+          setPendingPackResult(null);
+          setIsOpeningPack(false);
+        }}
+        unopenedCount={collectionState?.unopenedPacksCount ?? 0}
+        isOpening={isOpeningPack}
+        packResult={pendingPackResult}
+        onRequestOpenPack={() => {
+          setIsOpeningPack(true);
+          multiplayerClient.openCardPack();
+        }}
+        onResetPackResult={() => {
+          setPendingPackResult(null);
+          setIsOpeningPack(false);
+        }}
+        onEquipCardBack={(cardBackId) => handleUpdateCosmetic('cardBack', cardBackId)}
+        onOpenCollection={() => {
+          setCollectionInitialTab('collections');
+          multiplayerClient.fetchCollectionState();
+          setIsCollectionOpen(true);
+        }}
       />
 
       <GameLobbyModal

@@ -62,21 +62,24 @@ export async function createPostgresBackup(targetPoolOrUrl?: pg.Pool | string): 
       fs.mkdirSync(BACKUP_DIR, { recursive: true });
     }
 
-    const [profiles, ranks, stats, xp, cosmetics, inventory, battlePass, friendships, matches, matchHistory] = await Promise.all([
+    const [profiles, ranks, stats, xp, cosmetics, inventory, cardPacks, cardInventory, cardBacks, avatars, friendships, matches, matchHistory] = await Promise.all([
       pool.query(`SELECT * FROM public.profiles ORDER BY created_at ASC`),
       pool.query(`SELECT * FROM public.player_ranks`),
       pool.query(`SELECT * FROM public.player_statistics`),
       pool.query(`SELECT * FROM public.player_xp`),
       pool.query(`SELECT * FROM public.player_cosmetics`),
       pool.query(`SELECT * FROM public.cosmetic_inventory`),
-      pool.query(`SELECT * FROM public.player_battle_pass`),
+      pool.query(`SELECT * FROM public.player_card_packs`),
+      pool.query(`SELECT * FROM public.player_card_inventory`),
+      pool.query(`SELECT * FROM public.player_card_backs`),
+      pool.query(`SELECT * FROM public.player_avatars`),
       pool.query(`SELECT * FROM public.friendships`),
       pool.query(`SELECT * FROM public.matches ORDER BY created_at ASC`),
       pool.query(`SELECT * FROM public.player_match_history ORDER BY created_at ASC`),
     ]);
 
     const backupPayload = {
-      version: 1,
+      version: 2,
       format: 'bower-jj-postgres-snapshot',
       createdAt: new Date().toISOString(),
       counts: {
@@ -92,7 +95,10 @@ export async function createPostgresBackup(targetPoolOrUrl?: pg.Pool | string): 
         xp: xp.rows,
         cosmetics: cosmetics.rows,
         inventory: inventory.rows,
-        battlePass: battlePass.rows,
+        cardPacks: cardPacks.rows,
+        cardInventory: cardInventory.rows,
+        cardBacks: cardBacks.rows,
+        avatars: avatars.rows,
         friendships: friendships.rows,
         matches: matches.rows,
         matchHistory: matchHistory.rows,

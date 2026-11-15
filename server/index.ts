@@ -30,6 +30,7 @@ const MIME_TYPES: Record<string, string> = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
+  '.webp': 'image/webp',
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2',
 };
@@ -413,6 +414,7 @@ export async function createMultiplayerServer(
             userId: user.id,
             username: user.username,
             avatarIcon: user.avatarIcon,
+            equippedCardBack: user.equippedCosmetics?.cardBack,
           };
 
           activeRm.setCachedUser(user);
@@ -427,9 +429,9 @@ export async function createMultiplayerServer(
 
           telemetry.recordAuthLatency(Date.now() - authStart);
 
-          // Send initial social and battle pass data
+          // Send initial social and collectible progression data
           await activeRm.sendFriendListUpdate(user.id);
-          await activeRm.sendBattlePass(user.id);
+          await activeRm.sendCollectionState(user.id);
 
           // Drain any messages pipelined while AUTH was in flight
           while (preAuthQueue.length > 0) {
@@ -629,31 +631,88 @@ export async function createMultiplayerServer(
             break;
           }
 
-          case 'CLAIM_PASS_REWARD': {
-            const claimRes = await activeDb.claimPassReward(uid, msg.tier, msg.isPremium);
-            if (claimRes.success) {
-              await activeRm.sendBattlePass(uid);
-              ws.send(JSON.stringify({
-                type: 'NOTICE',
-                message: `Claimed: ${claimRes.item || `Tier ${msg.tier} reward`}!`,
-                title: 'Reward Unlocked!',
-              }));
-            } else {
+          case 'GET_COLLECTION_STATE': {
+            await activeRm.sendCollectionState(uid);
+            break;
+          }
+
+          case 'OPEN_CARD_PACK': {
+            const openRes = await activeDb.openCardPack(uid, msg.packId);
+            if (!openRes.success || !openRes.result) {
               telemetry.duplicateRewardAttemptsBlocked++;
-              sendError(ws, 'Unable to claim reward');
+              sendError(ws, openRes.error || 'Unable to open card pack');
+              break;
+            }
+            const freshUser = await activeDb.getUserById(uid);
+            if (freshUser) {
+              activeRm.setCachedUser(freshUser);
+              ws.send(JSON.stringify({ type: 'USER_SYNC', user: freshUser }));
+            }
+            ws.send(JSON.stringify({
+              type: 'PACK_OPENED',
+              result: openRes.result,
+            }));
+            ws.send(JSON.stringify({
+              type: 'COLLECTION_STATE',
+              collection: openRes.result.collectionState,
+            }));
+            break;
+          }
+
+          case 'EQUIP_AVATAR': {
+            const equipRes = await activeDb.equipAvatar(uid, msg.avatarId);
+            if (!equipRes.success || !equipRes.avatarId) {
+              sendError(ws, equipRes.error || 'Unable to equip avatar');
+              break;
+            }
+            activeRm.updateUserAvatar(uid, equipRes.avatarId);
+            const u = await activeDb.getUserById(uid);
+            if (u) {
+              activeRm.setCachedUser(u);
+              ws.send(JSON.stringify({ type: 'USER_SYNC', user: u }));
+              if (u.collectionState) {
+                ws.send(JSON.stringify({ type: 'COLLECTION_STATE', collection: u.collectionState }));
+              }
+            }
+            break;
+          }
+
+          case 'EQUIP_CARD_BACK': {
+            const equipRes = await activeDb.equipCardBack(uid, msg.cardBackId);
+            if (!equipRes.success || !equipRes.cardBackId) {
+              sendError(ws, equipRes.error || 'Unable to equip card back');
+              break;
+            }
+            activeRm.updateUserCardBack(uid, equipRes.cardBackId);
+            const u = await activeDb.getUserById(uid);
+            if (u) {
+              activeRm.setCachedUser(u);
+              ws.send(JSON.stringify({ type: 'USER_SYNC', user: u }));
+              if (u.collectionState) {
+                ws.send(JSON.stringify({ type: 'COLLECTION_STATE', collection: u.collectionState }));
+              }
             }
             break;
           }
 
           case 'EQUIP_COSMETIC': {
-            await activeDb.equipCosmetic(uid, msg.category, msg.itemId);
+            const ok = await activeDb.equipCosmetic(uid, msg.category, msg.itemId);
+            if (!ok) {
+              sendError(ws, 'Cosmetic is locked or unavailable');
+              break;
+            }
             const u = await activeDb.getUserById(uid);
             if (u) {
               activeRm.setCachedUser(u);
               if (msg.category === 'hat' && msg.itemId) {
-                activeRm.updateUserAvatar(uid, msg.itemId);
+                activeRm.updateUserAvatar(uid, u.avatarIcon);
+              } else if (msg.category === 'cardBack' && msg.itemId) {
+                activeRm.updateUserCardBack(uid, u.equippedCosmetics?.cardBack || msg.itemId);
               }
               ws.send(JSON.stringify({ type: 'USER_SYNC', user: u }));
+              if (u.collectionState) {
+                ws.send(JSON.stringify({ type: 'COLLECTION_STATE', collection: u.collectionState }));
+              }
             }
             break;
           }
@@ -705,7 +764,8 @@ export async function createMultiplayerServer(
                 profile: {
                   id: msg.targetUserId || `bot_${botName.toLowerCase().replace(/\s+/g, '_')}`,
                   username: botName,
-                  avatarIcon: '🤖',
+                  avatarIcon: 'cyber_bot',
+                  equippedCardBack: 'cybernetic',
                   level: 8,
                   rankTier: '10',
                   rankPoints: 60,
@@ -716,8 +776,8 @@ export async function createMultiplayerServer(
                   isFriend: false,
                   isOnline: true,
                   equippedCosmetics: {
-                    hat: '🤖',
-                    cardBack: 'classic_blue',
+                    hat: 'cyber_bot',
+                    cardBack: 'cybernetic',
                     banner: 'default_navy',
                     title: 'Tactical AI',
                   },

@@ -16,9 +16,31 @@ import {
   MatchmakingStats,
   PublicPlayerData,
   Room,
+  PlayerCollectionState,
+  PackOpenResult,
+  DrawnCardResult,
+  OwnedCardItem,
+  UnopenedPackItem,
+  PackHistoryEntry,
 } from '../types';
 import { EuchreGameState, PlayerPosition } from '../../src/engine/types';
-import { POSTGRES_TABLE_DEFINITIONS } from './schema';
+import { POSTGRES_TABLE_DEFINITIONS, COLLECTIBLE_SCHEMA_DEFINITIONS } from './schema';
+import {
+  AVATAR_CATALOG,
+  CARD_BACK_CATALOG,
+  CARD_COLLECTIONS,
+  COLLECTIBLE_CARDS,
+  DEFAULT_AVATAR_ID,
+  DEFAULT_CARD_BACK_ID,
+  CardIdentity,
+  RarityTier,
+  getAvatarDefinition,
+  getCardBackDefinition,
+  getEligibleMilestoneAvatars,
+  resolveAvatarId,
+  resolveCardBackId,
+} from '../../src/config/collectiblesCatalog';
+import { PROGRESSION_CONFIG, rollPackCards } from '../config/progressionConfig';
 
 const { Pool } = pg;
 
@@ -129,28 +151,352 @@ export class PostgresDatabaseRepository {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      const statements = POSTGRES_TABLE_DEFINITIONS
+      const statements = `${POSTGRES_TABLE_DEFINITIONS}\n${COLLECTIBLE_SCHEMA_DEFINITIONS}`
         .replace(/--.*$/gm, '')
         .split(';')
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
 
+      const existingTablesRes = await client.query(
+        `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`
+      );
+      const existingTables = new Set<string>(existingTablesRes.rows.map((r) => String(r.table_name)));
+
       for (const sql of statements) {
+        const createMatch = sql.match(/^CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+(?:public\.)?([a-zA-Z0-9_]+)/i);
+        if (createMatch && existingTables.has(createMatch[1].toLowerCase())) {
+          continue;
+        }
         await client.query(sql);
       }
-      await client.query(
-        `
-        INSERT INTO schema_migrations (version, description, applied_at)
-        VALUES ('4.5.0', 'Authoritative PostgreSQL Cutover & Clustered Tables', NOW())
-        ON CONFLICT (version) DO NOTHING;
-        `
+
+      // Fast-path skip if schema + catalogs + 4.6.0 migration are already cleanly applied
+      const migRes = await client.query(
+        `SELECT version FROM schema_migrations WHERE version IN ('4.5.0', '4.6.0')`
       );
+      const appliedVersions = new Set(migRes.rows.map((r) => String(r.version)));
+      const bpStillExistsRes = await client.query(
+        `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'player_battle_pass') AS exists`
+      );
+      const bpStillExists = Boolean(bpStillExistsRes.rows[0]?.exists);
+      const catCountsRes = await client.query(
+        `SELECT (SELECT COUNT(*)::int FROM public.avatar_catalog) AS avatars, (SELECT COUNT(*)::int FROM public.card_collections) AS cols, (SELECT COUNT(*)::int FROM public.collectible_cards) AS cards`
+      );
+      const catCounts = catCountsRes.rows[0] || {};
+      const catalogsComplete =
+        Number(catCounts.avatars) >= AVATAR_CATALOG.length &&
+        Number(catCounts.cols) >= CARD_COLLECTIONS.length &&
+        Number(catCounts.cards) >= COLLECTIBLE_CARDS.length;
+
+      if (!catalogsComplete) {
+        // Seed Avatar Catalog
+        for (const av of AVATAR_CATALOG) {
+          await client.query(
+            `
+            INSERT INTO public.avatar_catalog (id, name, theme, rarity, image_url, unlocked_by_default, unlock_hint)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (id) DO UPDATE SET
+              name = EXCLUDED.name,
+              theme = EXCLUDED.theme,
+              rarity = EXCLUDED.rarity,
+              image_url = EXCLUDED.image_url,
+              unlocked_by_default = EXCLUDED.unlocked_by_default,
+              unlock_hint = EXCLUDED.unlock_hint;
+            `,
+            [av.id, av.name, av.theme, av.rarity, av.imageUrl, av.unlockedByDefault, av.unlockHint]
+          );
+        }
+
+        // Seed Card Collections & Collectible Cards
+        for (const col of CARD_COLLECTIONS) {
+          await client.query(
+            `
+            INSERT INTO public.card_collections (id, name, theme, description, rarity, card_back_id, card_back_image_url)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (id) DO UPDATE SET
+              name = EXCLUDED.name,
+              theme = EXCLUDED.theme,
+              description = EXCLUDED.description,
+              rarity = EXCLUDED.rarity,
+              card_back_id = EXCLUDED.card_back_id,
+              card_back_image_url = EXCLUDED.card_back_image_url;
+            `,
+            [col.id, col.name, col.theme, col.description, col.rarity, col.cardBackId, col.cardBackImageUrl]
+          );
+        }
+
+        for (const card of COLLECTIBLE_CARDS) {
+          await client.query(
+            `
+            INSERT INTO public.collectible_cards (id, collection_id, identity, name, rarity, image_url)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (id) DO UPDATE SET
+              collection_id = EXCLUDED.collection_id,
+              identity = EXCLUDED.identity,
+              name = EXCLUDED.name,
+              rarity = EXCLUDED.rarity,
+              image_url = EXCLUDED.image_url;
+            `,
+            [card.id, card.collectionId, card.identity, card.name, card.rarity, card.imageUrl]
+          );
+        }
+      }
+
+      if (!appliedVersions.has('4.5.0')) {
+        await client.query(
+          `
+          INSERT INTO schema_migrations (version, description, applied_at)
+          VALUES ('4.5.0', 'Authoritative PostgreSQL Cutover & Clustered Tables', NOW())
+          ON CONFLICT (version) DO NOTHING;
+          `
+        );
+      }
+
+      // Run Migration 4.6.0 only when not yet applied (or if player_battle_pass still needs retirement)
+      if (!appliedVersions.has('4.6.0') || bpStillExists) {
+        await this.runCollectibleOverhaulMigrationTx(client);
+        await client.query(
+          `
+          INSERT INTO schema_migrations (version, description, applied_at)
+          VALUES ('4.6.0', 'Collectible Card Packs, Card Backs, Illustrated Avatars & Battle Pass Retirement', NOW())
+          ON CONFLICT (version) DO NOTHING;
+          `
+        );
+      }
+
       await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
     } finally {
       client.release();
+    }
+  }
+
+  private async grantAvatarTx(client: pg.PoolClient, userId: string, avatarId: string, source: string): Promise<boolean> {
+    const canonical = resolveAvatarId(avatarId);
+    const existsRes = await client.query(
+      `SELECT 1 FROM public.player_avatars WHERE user_id = $1 AND avatar_id = $2 LIMIT 1`,
+      [userId, canonical]
+    );
+    const isNew = existsRes.rows.length === 0;
+    if (isNew) {
+      await client.query(
+        `
+        INSERT INTO public.player_avatars (id, user_id, avatar_id, source, unlocked_at)
+        VALUES ($1, $2, $3, $4, NOW())
+        ON CONFLICT (user_id, avatar_id) DO NOTHING;
+        `,
+        [crypto.randomUUID(), userId, canonical, source]
+      );
+    }
+    await client.query(
+      `
+      INSERT INTO public.cosmetic_inventory (id, user_id, category, item_id, unlocked_at)
+      VALUES ($1, $2, 'hat', $3, NOW())
+      ON CONFLICT (user_id, category, item_id) DO NOTHING;
+      `,
+      [crypto.randomUUID(), userId, canonical]
+    );
+    return isNew;
+  }
+
+  private async grantCardBackTx(
+    client: pg.PoolClient,
+    userId: string,
+    cardBackId: string,
+    collectionId: string | null,
+    source: string
+  ): Promise<boolean> {
+    const canonical = resolveCardBackId(cardBackId);
+    const existsRes = await client.query(
+      `SELECT 1 FROM public.player_card_backs WHERE user_id = $1 AND card_back_id = $2 LIMIT 1`,
+      [userId, canonical]
+    );
+    const isNew = existsRes.rows.length === 0;
+    if (isNew) {
+      await client.query(
+        `
+        INSERT INTO public.player_card_backs (id, user_id, card_back_id, collection_id, source, unlocked_at)
+        VALUES ($1, $2, $3, $4, $5, NOW())
+        ON CONFLICT (user_id, card_back_id) DO NOTHING;
+        `,
+        [crypto.randomUUID(), userId, canonical, collectionId, source]
+      );
+    }
+    await client.query(
+      `
+      INSERT INTO public.cosmetic_inventory (id, user_id, category, item_id, unlocked_at)
+      VALUES ($1, $2, 'cardBack', $3, NOW())
+      ON CONFLICT (user_id, category, item_id) DO NOTHING;
+      `,
+      [crypto.randomUUID(), userId, canonical]
+    );
+    return isNew;
+  }
+
+  private async seedStarterProgressionTx(client: pg.PoolClient, userId: string): Promise<void> {
+    for (const av of AVATAR_CATALOG) {
+      if (av.unlockedByDefault) {
+        await this.grantAvatarTx(client, userId, av.id, 'starter');
+      }
+    }
+    for (const cb of CARD_BACK_CATALOG) {
+      if (cb.unlockedByDefault) {
+        await this.grantCardBackTx(client, userId, cb.id, cb.collectionId || null, 'starter');
+      }
+    }
+  }
+
+  private async evaluateMilestoneAvatarsTx(
+    client: pg.PoolClient,
+    userId: string,
+    level: number,
+    wins: number
+  ): Promise<string[]> {
+    const cbRes = await client.query(
+      `SELECT collection_id FROM public.player_card_backs WHERE user_id = $1 AND collection_id IS NOT NULL`,
+      [userId]
+    );
+    const completedCols = cbRes.rows.map((r) => r.collection_id as string);
+    const eligible = getEligibleMilestoneAvatars({
+      level,
+      wins,
+      unlockedCollectionIds: completedCols,
+    });
+    const newlyUnlocked: string[] = [];
+    for (const av of eligible) {
+      if (av.unlockedByDefault) continue;
+      const added = await this.grantAvatarTx(client, userId, av.id, 'milestone');
+      if (added) newlyUnlocked.push(av.id);
+    }
+    return newlyUnlocked;
+  }
+
+  private async runCollectibleOverhaulMigrationTx(client: pg.PoolClient): Promise<void> {
+    // 1. Check & migrate any Battle Pass tier rewards before dropping player_battle_pass
+    const bpTableCheck = await client.query(
+      `
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'player_battle_pass'
+      ) AS exists;
+      `
+    );
+    const bpExists = Boolean(bpTableCheck.rows[0]?.exists);
+    if (bpExists) {
+      const bpRows = await client.query(
+        `SELECT user_id, tier, claimed_free_tiers FROM public.player_battle_pass`
+      );
+      for (const row of bpRows.rows) {
+        const uid = row.user_id as string;
+        const claimedFree: number[] = Array.isArray(row.claimed_free_tiers) ? row.claimed_free_tiers : [];
+        if (claimedFree.includes(3) || (row.tier && row.tier >= 3)) {
+          await this.grantAvatarTx(client, uid, 'velvet_gentleman', 'migrated_battle_pass');
+        }
+        if (claimedFree.includes(5)) {
+          await this.grantCardBackTx(client, uid, 'dark_royalty', 'dark_royalty', 'migrated_battle_pass');
+        }
+        if (claimedFree.includes(15)) {
+          await this.grantAvatarTx(client, uid, 'bower_king', 'migrated_battle_pass');
+        }
+      }
+    }
+
+    // 2. Migrate existing users' starter collectibles, legacy cosmetics, normalized avatars, and level-up packs
+    const usersRes = await client.query(
+      `
+      SELECT
+        p.id, p.avatar_icon,
+        x.level, x.xp,
+        s.wins,
+        c.equipped_hat, c.equipped_card_back
+      FROM public.profiles p
+      LEFT JOIN public.player_xp x ON p.id = x.user_id
+      LEFT JOIN public.player_statistics s ON p.id = s.user_id
+      LEFT JOIN public.player_cosmetics c ON p.id = c.user_id
+      `
+    );
+
+    for (const u of usersRes.rows) {
+      const uid = u.id as string;
+      await this.seedStarterProgressionTx(client, uid);
+
+      // Migrate any previously owned cosmetic_inventory items
+      const invRes = await client.query(
+        `SELECT category, item_id FROM public.cosmetic_inventory WHERE user_id = $1`,
+        [uid]
+      );
+      for (const inv of invRes.rows) {
+        if (inv.category === 'hat' && inv.item_id) {
+          await this.grantAvatarTx(client, uid, inv.item_id, 'migrated_legacy');
+        } else if (inv.category === 'cardBack' && inv.item_id) {
+          const resolvedCb = resolveCardBackId(inv.item_id);
+          await this.grantCardBackTx(
+            client,
+            uid,
+            resolvedCb,
+            getCardBackDefinition(resolvedCb).collectionId || null,
+            'migrated_legacy'
+          );
+        }
+      }
+
+      // Preserve currently equipped avatar & card back across profiles + player_cosmetics
+      const rawAv =
+        u.equipped_hat && u.equipped_hat !== '🤠' && (!u.avatar_icon || u.avatar_icon === '🤠')
+          ? u.equipped_hat
+          : u.avatar_icon || u.equipped_hat;
+      const resolvedAvatar = resolveAvatarId(rawAv);
+      await this.grantAvatarTx(client, uid, resolvedAvatar, 'migrated_equipped');
+
+      const resolvedCb = resolveCardBackId(u.equipped_card_back);
+      await this.grantCardBackTx(
+        client,
+        uid,
+        resolvedCb,
+        getCardBackDefinition(resolvedCb).collectionId || null,
+        'migrated_equipped'
+      );
+
+      if (u.avatar_icon !== resolvedAvatar) {
+        await client.query(`UPDATE public.profiles SET avatar_icon = $2 WHERE id = $1`, [uid, resolvedAvatar]);
+      }
+      if (u.equipped_hat !== resolvedAvatar || u.equipped_card_back !== resolvedCb) {
+        await client.query(
+          `UPDATE public.player_cosmetics SET equipped_hat = $2, equipped_card_back = $3 WHERE user_id = $1`,
+          [uid, resolvedAvatar, resolvedCb]
+        );
+      }
+
+      // Normalize XP & grant 1 unopened pack per previously achieved level (>= 2)
+      const rawXp = typeof u.xp === 'number' ? u.xp : 0;
+      const rawLevel = typeof u.level === 'number' ? u.level : 1;
+      const normLevel = rawXp >= 1000 ? Math.floor(rawXp / 1000) + 1 : Math.max(1, rawLevel);
+      const normXp = rawXp >= 1000 ? rawXp % 1000 : Math.max(0, rawXp);
+      if (normLevel !== rawLevel || normXp !== rawXp) {
+        await client.query(
+          `UPDATE public.player_xp SET level = $2, xp = $3, next_level_xp = 1000 WHERE user_id = $1`,
+          [uid, normLevel, normXp]
+        );
+      }
+
+      for (let lvl = 2; lvl <= normLevel; lvl++) {
+        await client.query(
+          `
+          INSERT INTO public.player_card_packs (id, user_id, source, source_ref, earned_level, status, earned_at)
+          VALUES ($1, $2, 'level_up_backfill', $3, $4, 'unopened', NOW())
+          ON CONFLICT (user_id, source_ref) DO NOTHING;
+          `,
+          [crypto.randomUUID(), uid, `level_${lvl}`, lvl]
+        );
+      }
+
+      await this.evaluateMilestoneAvatarsTx(client, uid, normLevel, u.wins || 0);
+    }
+
+    if (bpExists) {
+      await client.query(`DROP TABLE IF EXISTS public.player_battle_pass;`);
     }
   }
 
@@ -196,16 +542,12 @@ export class PostgresDatabaseRepository {
         s.euchres, s.marches, s.successful_loners as "successfulLoners",
         s.current_streak as "winStreak", s.best_streak as "bestWinStreak",
         x.level, x.xp, x.next_level_xp as "nextLevelXp",
-        c.equipped_hat, c.equipped_card_back, c.equipped_banner, c.equipped_title,
-        bp.tier as "bpTier", bp.xp as "bpXp", bp.tier_xp_required as "bpTierReq",
-        bp.is_premium as "bpIsPremium", bp.claimed_free_tiers as "bpClaimedFree",
-        bp.claimed_premium_tiers as "bpClaimedPrem"
+        c.equipped_hat, c.equipped_card_back, c.equipped_banner, c.equipped_title
       FROM public.profiles p
       LEFT JOIN public.player_ranks r ON p.id = r.user_id
       LEFT JOIN public.player_statistics s ON p.id = s.user_id
       LEFT JOIN public.player_xp x ON p.id = x.user_id
       LEFT JOIN public.player_cosmetics c ON p.id = c.user_id
-      LEFT JOIN public.player_battle_pass bp ON p.id = bp.user_id AND bp.season_id = 1
       WHERE p.id::text = $1 OR p.player_id = $1
       LIMIT 1;
       `,
@@ -215,6 +557,7 @@ export class PostgresDatabaseRepository {
     if (res.rows.length === 0) return null;
     const user = this.mapRowToUserAccount(res.rows[0]);
     await this.attachMatchHistory(user);
+    await this.attachProgressionData(user);
     return user;
   }
 
@@ -258,16 +601,12 @@ export class PostgresDatabaseRepository {
         s.euchres, s.marches, s.successful_loners as "successfulLoners",
         s.current_streak as "winStreak", s.best_streak as "bestWinStreak",
         x.level, x.xp, x.next_level_xp as "nextLevelXp",
-        c.equipped_hat, c.equipped_card_back, c.equipped_banner, c.equipped_title,
-        bp.tier as "bpTier", bp.xp as "bpXp", bp.tier_xp_required as "bpTierReq",
-        bp.is_premium as "bpIsPremium", bp.claimed_free_tiers as "bpClaimedFree",
-        bp.claimed_premium_tiers as "bpClaimedPrem"
+        c.equipped_hat, c.equipped_card_back, c.equipped_banner, c.equipped_title
       FROM public.profiles p
       LEFT JOIN public.player_ranks r ON p.id = r.user_id
       LEFT JOIN public.player_statistics s ON p.id = s.user_id
       LEFT JOIN public.player_xp x ON p.id = x.user_id
       LEFT JOIN public.player_cosmetics c ON p.id = c.user_id
-      LEFT JOIN public.player_battle_pass bp ON p.id = bp.user_id AND bp.season_id = 1
       WHERE LOWER(p.username) = LOWER($1)
       LIMIT 1;
       `,
@@ -277,6 +616,7 @@ export class PostgresDatabaseRepository {
     if (res.rows.length === 0) return null;
     const user = this.mapRowToUserAccount(res.rows[0]);
     await this.attachMatchHistory(user);
+    await this.attachProgressionData(user);
     return user;
   }
 
@@ -335,6 +675,11 @@ export class PostgresDatabaseRepository {
           finalUsername = `${username}_${Math.floor(100 + Math.random() * 900)}`;
         }
 
+        const requestedAvatar = resolveAvatarId(avatarIcon);
+        const initialAvatar = getAvatarDefinition(requestedAvatar).unlockedByDefault
+          ? requestedAvatar
+          : DEFAULT_AVATAR_ID;
+
         // Insert profile
         await client.query(
           `
@@ -342,7 +687,7 @@ export class PostgresDatabaseRepository {
           VALUES ($1, $2, $3, $4, NOW(), NOW(), NOW())
           ON CONFLICT (id) DO UPDATE SET last_active = NOW();
           `,
-          [targetId, playerId, finalUsername, avatarIcon || '🤠']
+          [targetId, playerId, finalUsername, initialAvatar]
         );
 
         // Insert default rank
@@ -379,22 +724,14 @@ export class PostgresDatabaseRepository {
         await client.query(
           `
           INSERT INTO public.player_cosmetics (user_id, equipped_hat, equipped_card_back, equipped_banner, equipped_title)
-          VALUES ($1, '🤠', 'classic_blue', 'default_navy', 'Recruit')
+          VALUES ($1, $2, $3, 'default_navy', 'Recruit')
           ON CONFLICT (user_id) DO NOTHING;
           `,
-          [targetId]
+          [targetId, initialAvatar, DEFAULT_CARD_BACK_ID]
         );
 
-        // Insert default battle pass
-        const bpUuid = crypto.randomUUID();
-        await client.query(
-          `
-          INSERT INTO public.player_battle_pass (id, user_id, season_id, tier, xp, tier_xp_required, is_premium)
-          VALUES ($1, $2, 1, 1, 0, 500, false)
-          ON CONFLICT (user_id, season_id) DO NOTHING;
-          `,
-          [bpUuid, targetId]
-        );
+        // Seed starter illustrated avatars and starter card backs
+        await this.seedStarterProgressionTx(client, targetId);
       } else {
         // Update last_active
         await client.query(`UPDATE public.profiles SET last_active = NOW() WHERE id = $1`, [targetId]);
@@ -421,6 +758,7 @@ export class PostgresDatabaseRepository {
       await client.query('BEGIN');
 
       if (updates.username || updates.avatarIcon) {
+        const resolvedAvatar = updates.avatarIcon ? resolveAvatarId(updates.avatarIcon) : undefined;
         await client.query(
           `
           UPDATE public.profiles SET
@@ -429,12 +767,13 @@ export class PostgresDatabaseRepository {
             updated_at = NOW()
           WHERE id = $1
           `,
-          [userId, updates.username, updates.avatarIcon]
+          [userId, updates.username, resolvedAvatar]
         );
-        if (updates.avatarIcon) {
+        if (resolvedAvatar) {
+          await this.grantAvatarTx(client, userId, resolvedAvatar, 'admin_update');
           await client.query(
             `UPDATE public.player_cosmetics SET equipped_hat = $2, updated_at = NOW() WHERE user_id = $1`,
-            [userId, updates.avatarIcon]
+            [userId, resolvedAvatar]
           );
         }
       }
@@ -467,6 +806,21 @@ export class PostgresDatabaseRepository {
       }
 
       if (updates.equippedCosmetics) {
+        const resolvedHat = updates.equippedCosmetics.hat
+          ? resolveAvatarId(updates.equippedCosmetics.hat)
+          : undefined;
+        const resolvedCb = updates.equippedCosmetics.cardBack
+          ? resolveCardBackId(updates.equippedCosmetics.cardBack)
+          : undefined;
+        if (resolvedCb) {
+          await this.grantCardBackTx(
+            client,
+            userId,
+            resolvedCb,
+            getCardBackDefinition(resolvedCb).collectionId || null,
+            'admin_update'
+          );
+        }
         await client.query(
           `
           UPDATE public.player_cosmetics SET
@@ -479,8 +833,8 @@ export class PostgresDatabaseRepository {
           `,
           [
             userId,
-            updates.equippedCosmetics.hat,
-            updates.equippedCosmetics.cardBack,
+            resolvedHat,
+            resolvedCb,
             updates.equippedCosmetics.banner,
             updates.equippedCosmetics.title,
           ]
@@ -512,8 +866,13 @@ export class PostgresDatabaseRepository {
       newPoints: number;
       lpChange: number;
       mmrChange: number;
+      newMmr: number;
       newXp: number;
       newLevel: number;
+      levelsGained: number;
+      packsAwarded: number;
+      totalUnopenedPacks: number;
+      newlyUnlockedAvatars: string[];
     }[];
   }> {
     const client = await this.pool.connect();
@@ -674,42 +1033,70 @@ export class PostgresDatabaseRepository {
 
         // Update XP and Level (1,000 XP per level; wraps xp modulo 1000 on level up)
         const xpEarned = won ? 350 : 120;
+        const xpPerLvl = PROGRESSION_CONFIG.xpPerLevel;
         const curXpRes = await client.query(
           `SELECT xp, level FROM public.player_xp WHERE user_id = $1 LIMIT 1`,
           [p.userId]
         );
         const curRawXp = curXpRes.rows[0]?.xp ?? 0;
         const curRawLevel = curXpRes.rows[0]?.level ?? 1;
-        const baseLevel = curRawXp >= 1000 ? Math.floor(curRawXp / 1000) + 1 : Math.max(1, curRawLevel);
-        const baseXp = curRawXp >= 1000 ? curRawXp % 1000 : Math.max(0, curRawXp);
+        const baseLevel = curRawXp >= xpPerLvl ? Math.floor(curRawXp / xpPerLvl) + 1 : Math.max(1, curRawLevel);
+        const baseXp = curRawXp >= xpPerLvl ? curRawXp % xpPerLvl : Math.max(0, curRawXp);
         const combinedXp = baseXp + xpEarned;
-        const newLevel = baseLevel + Math.floor(combinedXp / 1000);
-        const newXp = combinedXp % 1000;
+        const newLevel = baseLevel + Math.floor(combinedXp / xpPerLvl);
+        const newXp = combinedXp % xpPerLvl;
+        const levelsGained = Math.max(0, newLevel - baseLevel);
 
         await client.query(
           `
           UPDATE public.player_xp SET
             xp = $2,
             level = $3,
-            next_level_xp = 1000,
+            next_level_xp = $4,
             updated_at = NOW()
           WHERE user_id = $1;
           `,
-          [p.userId, newXp, newLevel]
+          [p.userId, newXp, newLevel, xpPerLvl]
         );
 
-        // Update Battle Pass
-        const bpXpEarned = won ? 250 : 80;
-        await client.query(
-          `
-          UPDATE public.player_battle_pass SET
-            xp = xp + $2,
-            tier = LEAST(30, tier + (CASE WHEN (xp + $2) >= tier_xp_required THEN 1 ELSE 0 END)),
-            updated_at = NOW()
-          WHERE user_id = $1 AND season_id = 1;
-          `,
-          [p.userId, bpXpEarned]
+        // Grant exactly ONE unopened card pack for EVERY level gained (idempotent per level)
+        const packStartLevel = Math.max(1, Math.min(curRawLevel, baseLevel));
+        let packsAwarded = 0;
+        for (let lvl = packStartLevel + 1; lvl <= newLevel; lvl++) {
+          const existsPack = await client.query(
+            `SELECT 1 FROM public.player_card_packs WHERE user_id = $1 AND source_ref = $2 LIMIT 1`,
+            [p.userId, `level_${lvl}`]
+          );
+          if (existsPack.rows.length === 0) {
+            await client.query(
+              `
+              INSERT INTO public.player_card_packs (id, user_id, source, source_ref, earned_level, status, earned_at)
+              VALUES ($1, $2, 'level_up', $3, $4, 'unopened', NOW())
+              ON CONFLICT (user_id, source_ref) DO NOTHING;
+              `,
+              [crypto.randomUUID(), p.userId, `level_${lvl}`, lvl]
+            );
+            packsAwarded++;
+          }
+        }
+
+        const statsAfterRes = await client.query(
+          `SELECT wins FROM public.player_statistics WHERE user_id = $1 LIMIT 1`,
+          [p.userId]
         );
+        const totalWinsAfter = statsAfterRes.rows[0]?.wins || 0;
+        const newlyUnlockedAvatars = await this.evaluateMilestoneAvatarsTx(
+          client,
+          p.userId,
+          newLevel,
+          totalWinsAfter
+        );
+
+        const packCountRes = await client.query(
+          `SELECT COUNT(*)::int AS cnt FROM public.player_card_packs WHERE user_id = $1 AND status = 'unopened'`,
+          [p.userId]
+        );
+        const totalUnopenedPacks = packCountRes.rows[0]?.cnt ?? 0;
 
         // Insert Match History (preserving explicit human + AI opponent names when supplied)
         const opponentNames =
@@ -741,6 +1128,10 @@ export class PostgresDatabaseRepository {
           newMmr,
           newXp,
           newLevel,
+          levelsGained,
+          packsAwarded,
+          totalUnopenedPacks,
+          newlyUnlockedAvatars,
         });
       }
 
@@ -963,12 +1354,14 @@ export class PostgresDatabaseRepository {
       `
       SELECT
         p.id as "userId", p.username, p.avatar_icon as "avatarIcon",
+        c.equipped_card_back as "equippedCardBack",
         r.rank_tier as "rankTier", r.rank_points as "rankPoints", r.mmr,
         COALESCE(s.wins, 0) as wins, COALESCE(s.losses, 0) as losses,
         COALESCE(s.total_games, 0) as "totalGames"
       FROM public.profiles p
       LEFT JOIN public.player_ranks r ON p.id = r.user_id
       LEFT JOIN public.player_statistics s ON p.id = s.user_id
+      LEFT JOIN public.player_cosmetics c ON p.id = c.user_id
       WHERE p.is_banned = FALSE AND p.username NOT LIKE 'Bench_%'
       ORDER BY
         CASE r.rank_tier
@@ -993,7 +1386,8 @@ export class PostgresDatabaseRepository {
         rankPosition: idx + 1,
         userId: r.userId,
         username: r.username,
-        avatarIcon: r.avatarIcon || '🤠',
+        avatarIcon: resolveAvatarId(r.avatarIcon),
+        equippedCardBack: resolveCardBackId(r.equippedCardBack),
         rankTier: r.rankTier || '9',
         rankPoints: r.rankPoints || 0,
         mmr: r.mmr || 1200,
@@ -1055,104 +1449,318 @@ export class PostgresDatabaseRepository {
     return (res.rowCount || 0) > 0;
   }
 
-  public async claimPassReward(
+  // --- COLLECTIBLE CARD PACKS, CARD BACKS & AVATARS ---
+
+  public async getCollectionState(userId: string): Promise<PlayerCollectionState> {
+    const [packsRes, invRes, cbRes, avRes, dropsRes] = await Promise.all([
+      this.queryWithRetry(
+        `
+        SELECT id, source, source_ref, earned_level, earned_at
+        FROM public.player_card_packs
+        WHERE user_id = $1 AND status = 'unopened'
+        ORDER BY earned_at ASC;
+        `,
+        [userId]
+      ),
+      this.queryWithRetry(
+        `
+        SELECT card_id, collection_id, identity, rarity, quantity, first_acquired_at, last_acquired_at
+        FROM public.player_card_inventory
+        WHERE user_id = $1;
+        `,
+        [userId]
+      ),
+      this.queryWithRetry(
+        `SELECT card_back_id FROM public.player_card_backs WHERE user_id = $1;`,
+        [userId]
+      ),
+      this.queryWithRetry(
+        `SELECT avatar_id FROM public.player_avatars WHERE user_id = $1;`,
+        [userId]
+      ),
+      this.queryWithRetry(
+        `
+        SELECT
+          d.pack_id, d.card_id, d.collection_id, d.identity, d.rarity, d.slot_index, d.was_duplicate, d.dropped_at,
+          p.source as pack_source, p.earned_level, p.opened_at
+        FROM public.card_drop_history d
+        LEFT JOIN public.player_card_packs p ON d.pack_id = p.id
+        WHERE d.user_id = $1
+        ORDER BY d.dropped_at DESC, d.slot_index ASC
+        LIMIT 50;
+        `,
+        [userId]
+      ),
+    ]);
+
+    const starterAvatars = AVATAR_CATALOG.filter((a) => a.unlockedByDefault).map((a) => a.id);
+    const starterCardBacks = CARD_BACK_CATALOG.filter((b) => b.unlockedByDefault).map((b) => b.id);
+
+    const unlockedAvatars = Array.from(
+      new Set([
+        ...starterAvatars,
+        ...avRes.rows.map((r) => resolveAvatarId(r.avatar_id)),
+      ])
+    );
+
+    const unlockedCardBacks = Array.from(
+      new Set([
+        ...starterCardBacks,
+        ...cbRes.rows.map((r) => resolveCardBackId(r.card_back_id)),
+      ])
+    );
+
+    const unopenedPacks: UnopenedPackItem[] = packsRes.rows.map((r) => ({
+      id: r.id,
+      source: r.source,
+      sourceRef: r.source_ref,
+      earnedLevel: r.earned_level ?? undefined,
+      earnedAt: r.earned_at ? new Date(r.earned_at).getTime() : Date.now(),
+    }));
+
+    const cards: OwnedCardItem[] = invRes.rows.map((r) => ({
+      cardId: r.card_id,
+      collectionId: r.collection_id,
+      identity: r.identity as CardIdentity,
+      rarity: r.rarity as RarityTier,
+      quantity: r.quantity || 1,
+      firstAcquiredAt: r.first_acquired_at ? new Date(r.first_acquired_at).getTime() : Date.now(),
+      lastAcquiredAt: r.last_acquired_at ? new Date(r.last_acquired_at).getTime() : Date.now(),
+    }));
+
+    // Group drop history rows into PackHistoryEntry objects
+    const packHistoryMap = new Map<string, PackHistoryEntry>();
+    for (const row of dropsRes.rows) {
+      let entry = packHistoryMap.get(row.pack_id);
+      if (!entry) {
+        entry = {
+          packId: row.pack_id,
+          openedAt: row.opened_at
+            ? new Date(row.opened_at).getTime()
+            : row.dropped_at
+              ? new Date(row.dropped_at).getTime()
+              : Date.now(),
+          source: row.pack_source || 'level_up',
+          earnedLevel: row.earned_level ?? undefined,
+          cards: [],
+        };
+        packHistoryMap.set(row.pack_id, entry);
+      }
+      if (entry.cards.length < 5) {
+        entry.cards.push({
+          cardId: row.card_id,
+          collectionId: row.collection_id,
+          identity: row.identity as CardIdentity,
+          rarity: row.rarity as RarityTier,
+          wasDuplicate: Boolean(row.was_duplicate),
+        });
+      }
+    }
+
+    return {
+      unopenedPacksCount: unopenedPacks.length,
+      unopenedPacks,
+      cards,
+      unlockedCardBacks,
+      unlockedAvatars,
+      recentDrops: Array.from(packHistoryMap.values()).slice(0, 10),
+      dropRates: { ...PROGRESSION_CONFIG.rarityDropRates },
+    };
+  }
+
+  public async openCardPack(
     userId: string,
-    tier: number,
-    isPremium: boolean
-  ): Promise<{ success: boolean; item?: string }> {
+    packId?: string,
+    rng: () => number = Math.random
+  ): Promise<{ success: boolean; error?: string; result?: PackOpenResult }> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
 
-      // Idempotency key guard to strictly prevent duplicate reward grants across instances
-      const idemKey = `bp_claim_${userId}_s1_t${tier}_${isPremium ? 'p' : 'f'}`;
-      const idemRes = await client.query(
-        `INSERT INTO public.idempotency_keys (key, resource_type, resource_id, created_at)
-         VALUES ($1, 'battle_pass_reward', $2, NOW())
-         ON CONFLICT (key) DO NOTHING`,
-        [idemKey, `${userId}_t${tier}`]
-      );
-      if (idemRes.rowCount === 0) {
+      const packQuery = packId
+        ? `
+          SELECT id, source, earned_level
+          FROM public.player_card_packs
+          WHERE user_id = $1 AND id::text = $2 AND status = 'unopened'
+          LIMIT 1
+          FOR UPDATE;
+          `
+        : `
+          SELECT id, source, earned_level
+          FROM public.player_card_packs
+          WHERE user_id = $1 AND status = 'unopened'
+          ORDER BY earned_at ASC
+          LIMIT 1
+          FOR UPDATE;
+          `;
+      const packRes = await client.query(packQuery, packId ? [userId, packId] : [userId]);
+
+      if (packRes.rows.length === 0) {
         await client.query('ROLLBACK');
-        return { success: false };
+        return { success: false, error: 'No unopened card packs available.' };
       }
 
-      const bpRes = await client.query(
-        `SELECT tier, is_premium, claimed_free_tiers, claimed_premium_tiers
-         FROM player_battle_pass
-         WHERE user_id = $1 FOR UPDATE`,
+      const targetPackId = packRes.rows[0].id as string;
+
+      // Atomically flip pack from unopened -> opened
+      const updRes = await client.query(
+        `
+        UPDATE public.player_card_packs
+        SET status = 'opened', opened_at = NOW()
+        WHERE id = $1 AND status = 'unopened'
+        RETURNING opened_at;
+        `,
+        [targetPackId]
+      );
+      if (updRes.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return { success: false, error: 'Pack was already opened.' };
+      }
+
+      const openedAtMs = updRes.rows[0].opened_at
+        ? new Date(updRes.rows[0].opened_at).getTime()
+        : Date.now();
+
+      // Roll 5 cards strictly server-side using configurable drop rates
+      const drawnDefs = rollPackCards(PROGRESSION_CONFIG, rng);
+      const drawnResults: DrawnCardResult[] = [];
+      const affectedCollections = new Set<string>();
+
+      // Track pre-existing card ownership before and across all 5 slots
+      const existingInvRes = await client.query(
+        `SELECT card_id, quantity FROM public.player_card_inventory WHERE user_id = $1`,
         [userId]
       );
-      if (bpRes.rows.length === 0) {
-        await client.query('ROLLBACK');
-        return { success: false };
+      const qtyMap = new Map<string, number>();
+      for (const r of existingInvRes.rows) {
+        qtyMap.set(r.card_id, r.quantity || 0);
       }
 
-      const bp = bpRes.rows[0];
-      if (bp.tier < tier) {
-        await client.query('ROLLBACK');
-        return { success: false };
-      }
+      for (let slotIndex = 0; slotIndex < drawnDefs.length; slotIndex++) {
+        const card = drawnDefs[slotIndex];
+        affectedCollections.add(card.collectionId);
+        const prevQty = qtyMap.get(card.id) || 0;
+        const wasDuplicate = prevQty > 0;
+        const newQuantity = prevQty + 1;
+        qtyMap.set(card.id, newQuantity);
 
-      if (isPremium && !bp.is_premium) {
-        await client.query('ROLLBACK');
-        return { success: false };
-      }
-
-      let freeTiers: number[] = Array.isArray(bp.claimed_free_tiers) ? [...bp.claimed_free_tiers] : [];
-      let premTiers: number[] = Array.isArray(bp.claimed_premium_tiers) ? [...bp.claimed_premium_tiers] : [];
-
-      if (isPremium) {
-        if (premTiers.includes(tier)) {
-          await client.query('ROLLBACK');
-          return { success: false };
+        if (prevQty === 0) {
+          await client.query(
+            `
+            INSERT INTO public.player_card_inventory (
+              id, user_id, card_id, collection_id, identity, rarity, quantity, first_acquired_at, last_acquired_at
+            ) VALUES (
+              $1, $2, $3, $4, $5, $6, 1, NOW(), NOW()
+            )
+            ON CONFLICT (user_id, card_id) DO UPDATE SET
+              quantity = public.player_card_inventory.quantity + 1,
+              last_acquired_at = NOW();
+            `,
+            [crypto.randomUUID(), userId, card.id, card.collectionId, card.identity, card.rarity]
+          );
+        } else {
+          await client.query(
+            `
+            UPDATE public.player_card_inventory
+            SET quantity = quantity + 1, last_acquired_at = NOW()
+            WHERE user_id = $1 AND card_id = $2;
+            `,
+            [userId, card.id]
+          );
         }
-        premTiers.push(tier);
-      } else {
-        if (freeTiers.includes(tier)) {
-          await client.query('ROLLBACK');
-          return { success: false };
+
+        drawnResults.push({
+          cardId: card.id,
+          collectionId: card.collectionId,
+          collectionName: card.collectionName,
+          identity: card.identity,
+          name: card.name,
+          rarity: card.rarity,
+          imageUrl: card.imageUrl,
+          wasDuplicate,
+          newQuantity,
+        });
+      }
+
+      // Evaluate server-side collection completion (all 5 unique identities: 10, J, Q, K, A)
+      const newlyUnlockedCardBacks: string[] = [];
+      const unlockedByCol = new Map<string, string>();
+      for (const colId of affectedCollections) {
+        const uniqRes = await client.query(
+          `
+          SELECT DISTINCT identity
+          FROM public.player_card_inventory
+          WHERE user_id = $1 AND collection_id = $2 AND quantity > 0;
+          `,
+          [userId, colId]
+        );
+        const ownedIdentities = new Set(uniqRes.rows.map((r) => r.identity as string));
+        if (ownedIdentities.size >= 5) {
+          const addedCb = await this.grantCardBackTx(client, userId, colId, colId, 'collection');
+          if (addedCb) {
+            newlyUnlockedCardBacks.push(colId);
+            unlockedByCol.set(colId, colId);
+          }
         }
-        freeTiers.push(tier);
       }
 
-      let rewardName = '';
-      let cosmeticItem: { category: string; itemId: string; name: string } | null = null;
-      if (tier === 3) {
-        rewardName = '🎩 Top Hat';
-        cosmeticItem = { category: 'hat', itemId: '🎩', name: rewardName };
-      } else if (tier === 5) {
-        rewardName = 'Obsidian Gold Card Back';
-        cosmeticItem = { category: 'cardBack', itemId: 'obsidian_gold', name: rewardName };
-      } else if (tier === 10) {
-        rewardName = 'Royal Velvet Banner';
-        cosmeticItem = { category: 'banner', itemId: 'royal_velvet', name: rewardName };
-      } else if (tier === 15) {
-        rewardName = '👑 Crown of Bowers';
-        cosmeticItem = { category: 'hat', itemId: '👑', name: rewardName };
-      } else if (tier === 20) {
-        rewardName = 'Supreme Bower Title';
-        cosmeticItem = { category: 'title', itemId: 'Supreme Bower', name: rewardName };
-      }
-
-      await client.query(
-        `UPDATE player_battle_pass
-         SET claimed_free_tiers = $1, claimed_premium_tiers = $2, updated_at = NOW()
-         WHERE user_id = $3`,
-        [freeTiers, premTiers, userId]
+      // Check milestone avatars (in case completing a collection unlocked an avatar!)
+      const xpStatsRes = await client.query(
+        `
+        SELECT COALESCE(x.level, 1) AS level, COALESCE(s.wins, 0) AS wins
+        FROM public.profiles p
+        LEFT JOIN public.player_xp x ON p.id = x.user_id
+        LEFT JOIN public.player_statistics s ON p.id = s.user_id
+        WHERE p.id = $1 LIMIT 1;
+        `,
+        [userId]
       );
+      const curLevel = xpStatsRes.rows[0]?.level || 1;
+      const curWins = xpStatsRes.rows[0]?.wins || 0;
+      const newlyUnlockedAvatars = await this.evaluateMilestoneAvatarsTx(client, userId, curLevel, curWins);
 
-      if (cosmeticItem) {
+      // Write authoritative audit log entries for all 5 card drops
+      for (let slotIndex = 0; slotIndex < drawnResults.length; slotIndex++) {
+        const dr = drawnResults[slotIndex];
         await client.query(
-          `INSERT INTO cosmetic_inventory (id, user_id, category, item_id)
-           VALUES ($1, $2, $3, $4)
-           ON CONFLICT DO NOTHING`,
-          [crypto.randomUUID(), userId, cosmeticItem.category, cosmeticItem.itemId]
+          `
+          INSERT INTO public.card_drop_history (
+            id, pack_id, user_id, card_id, collection_id, identity, rarity, slot_index, was_duplicate, unlocked_card_back_id, dropped_at
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()
+          );
+          `,
+          [
+            crypto.randomUUID(),
+            targetPackId,
+            userId,
+            dr.cardId,
+            dr.collectionId,
+            dr.identity,
+            dr.rarity,
+            slotIndex,
+            dr.wasDuplicate,
+            unlockedByCol.get(dr.collectionId) || null,
+          ]
         );
       }
 
       await client.query('COMMIT');
-      return { success: true, item: rewardName };
+
+      const collectionState = await this.getCollectionState(userId);
+
+      return {
+        success: true,
+        result: {
+          packId: targetPackId,
+          openedAt: openedAtMs,
+          cards: drawnResults,
+          newlyUnlockedCardBacks,
+          newlyUnlockedAvatars,
+          remainingUnopenedPacks: collectionState.unopenedPacksCount,
+          collectionState,
+        },
+      };
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -1161,11 +1769,72 @@ export class PostgresDatabaseRepository {
     }
   }
 
+  public async equipAvatar(
+    userId: string,
+    avatarId: string
+  ): Promise<{ success: boolean; error?: string; avatarId?: string }> {
+    const canonical = resolveAvatarId(avatarId);
+    const def = getAvatarDefinition(canonical);
+
+    if (!def.unlockedByDefault) {
+      const ownRes = await this.queryWithRetry(
+        `SELECT 1 FROM public.player_avatars WHERE user_id = $1 AND avatar_id = $2 LIMIT 1`,
+        [userId, canonical]
+      );
+      if (ownRes.rows.length === 0) {
+        return { success: false, error: 'Avatar is locked. Unlock it to equip.' };
+      }
+    }
+
+    await this.queryWithRetry(
+      `UPDATE public.profiles SET avatar_icon = $1, updated_at = NOW() WHERE id = $2`,
+      [canonical, userId]
+    );
+    await this.queryWithRetry(
+      `UPDATE public.player_cosmetics SET equipped_hat = $1, updated_at = NOW() WHERE user_id = $2`,
+      [canonical, userId]
+    );
+    return { success: true, avatarId: canonical };
+  }
+
+  public async equipCardBack(
+    userId: string,
+    cardBackId: string
+  ): Promise<{ success: boolean; error?: string; cardBackId?: string }> {
+    const canonical = resolveCardBackId(cardBackId);
+    const def = getCardBackDefinition(canonical);
+
+    if (!def.unlockedByDefault) {
+      const ownRes = await this.queryWithRetry(
+        `SELECT 1 FROM public.player_card_backs WHERE user_id = $1 AND card_back_id = $2 LIMIT 1`,
+        [userId, canonical]
+      );
+      if (ownRes.rows.length === 0) {
+        return { success: false, error: 'Complete this collection to unlock its card back.' };
+      }
+    }
+
+    await this.queryWithRetry(
+      `UPDATE public.player_cosmetics SET equipped_card_back = $1, updated_at = NOW() WHERE user_id = $2`,
+      [canonical, userId]
+    );
+    return { success: true, cardBackId: canonical };
+  }
+
   public async equipCosmetic(
     userId: string,
     category: 'hat' | 'cardBack' | 'banner' | 'title',
     itemId?: string
   ): Promise<boolean> {
+    if (category === 'hat' && itemId) {
+      const res = await this.equipAvatar(userId, itemId);
+      return res.success;
+    }
+    if (category === 'cardBack' && itemId) {
+      const res = await this.equipCardBack(userId, itemId);
+      return res.success;
+    }
+
     const colMap: Record<string, string> = {
       hat: 'equipped_hat',
       cardBack: 'equipped_card_back',
@@ -1181,14 +1850,6 @@ export class PostgresDatabaseRepository {
        WHERE user_id = $2`,
       [itemId || null, userId]
     );
-    if (category === 'hat' && itemId) {
-      await this.queryWithRetry(
-        `UPDATE public.profiles
-         SET avatar_icon = $1, updated_at = NOW()
-         WHERE id = $2`,
-        [itemId, userId]
-      );
-    }
     return (res.rowCount || 0) > 0;
   }
 
@@ -1223,7 +1884,8 @@ export class PostgresDatabaseRepository {
     return {
       id: targetUser.id,
       username: targetUser.username,
-      avatarIcon: targetUser.avatarIcon,
+      avatarIcon: resolveAvatarId(targetUser.avatarIcon),
+      equippedCardBack: resolveCardBackId(targetUser.equippedCosmetics?.cardBack),
       level: targetUser.level,
       rankTier: targetUser.rankTier,
       rankPoints: targetUser.rankPoints,
@@ -1336,15 +1998,41 @@ export class PostgresDatabaseRepository {
     // No-op for PostgreSQL; ACID durability is guaranteed via database WAL & transactions
   }
 
+  private async attachProgressionData(user: UserAccount): Promise<void> {
+    try {
+      const collectionState = await this.getCollectionState(user.id);
+      user.collectionState = collectionState;
+      user.unopenedPacksCount = collectionState.unopenedPacksCount;
+      user.unlockedAvatars = collectionState.unlockedAvatars;
+      user.unlockedCardBacks = collectionState.unlockedCardBacks;
+      user.unlockedCosmetics = {
+        ...user.unlockedCosmetics,
+        hats: collectionState.unlockedAvatars,
+        cardBacks: collectionState.unlockedCardBacks,
+      };
+    } catch {
+      const starterAvs = AVATAR_CATALOG.filter((a) => a.unlockedByDefault).map((a) => a.id);
+      const starterCbs = CARD_BACK_CATALOG.filter((b) => b.unlockedByDefault).map((b) => b.id);
+      user.unopenedPacksCount = user.unopenedPacksCount ?? 0;
+      user.unlockedAvatars = user.unlockedAvatars ?? starterAvs;
+      user.unlockedCardBacks = user.unlockedCardBacks ?? starterCbs;
+    }
+  }
+
   private mapRowToUserAccount(row: any): UserAccount {
     const rawXp = typeof row.xp === 'number' ? row.xp : 0;
     const rawLevel = typeof row.level === 'number' ? row.level : 1;
     const normalizedLevel = rawXp >= 1000 ? Math.floor(rawXp / 1000) + 1 : Math.max(1, rawLevel);
     const normalizedXp = rawXp >= 1000 ? rawXp % 1000 : Math.max(0, rawXp);
-    const resolvedAvatar =
+    const rawAvatar =
       row.equipped_hat && row.equipped_hat !== '🤠' && (!row.avatarIcon || row.avatarIcon === '🤠')
         ? row.equipped_hat
-        : row.avatarIcon || row.equipped_hat || '🤠';
+        : row.avatarIcon || row.equipped_hat;
+    const resolvedAvatar = resolveAvatarId(rawAvatar);
+    const resolvedCardBack = resolveCardBackId(row.equipped_card_back);
+
+    const starterAvs = AVATAR_CATALOG.filter((a) => a.unlockedByDefault).map((a) => a.id);
+    const starterCbs = CARD_BACK_CATALOG.filter((b) => b.unlockedByDefault).map((b) => b.id);
 
     return {
       id: row.id,
@@ -1370,27 +2058,21 @@ export class PostgresDatabaseRepository {
       friends: [],
       friendRequests: [],
       recentPlayers: [],
-      challenges: [],
+      unopenedPacksCount: 0,
+      unlockedAvatars: starterAvs,
+      unlockedCardBacks: starterCbs,
       unlockedCosmetics: {
-        hats: ['🤠'],
-        cardBacks: ['classic_blue'],
+        hats: starterAvs,
+        cardBacks: starterCbs,
         banners: ['default_navy'],
         titles: ['Recruit'],
       },
       matchHistory: [],
       equippedCosmetics: {
-        hat: row.equipped_hat || '🤠',
-        cardBack: row.equipped_card_back || 'classic_blue',
+        hat: resolvedAvatar,
+        cardBack: resolvedCardBack,
         banner: row.equipped_banner || 'default_navy',
         title: row.equipped_title || 'Recruit',
-      },
-      battlePass: {
-        tier: row.bpTier || 1,
-        xp: row.bpXp || 0,
-        tierXpRequired: row.bpTierReq || 500,
-        isPremium: Boolean(row.bpIsPremium),
-        claimedFreeTiers: row.bpClaimedFree || [],
-        claimedPremiumTiers: row.bpClaimedPrem || [],
       },
       createdAt: row.createdAt ? new Date(row.createdAt).getTime() : Date.now(),
       lastActive: row.lastActive ? new Date(row.lastActive).getTime() : Date.now(),

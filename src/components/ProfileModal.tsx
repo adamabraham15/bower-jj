@@ -20,6 +20,15 @@ import {
 import { RankBadge, RankTier } from './RankBadge';
 import { sounds } from '../audio/sound';
 import { authService } from '../services/supabaseClient';
+import { AvatarPortrait } from './AvatarPortrait';
+import {
+  AVATAR_CATALOG,
+  CARD_BACK_CATALOG,
+  RARITY_META,
+  getCardBackDefinition,
+  resolveAvatarId,
+  resolveCardBackId,
+} from '../config/collectiblesCatalog';
 
 export interface MatchHistoryItem {
   id: string;
@@ -67,22 +76,10 @@ interface ProfileModalProps {
   onUpdateAvatar: (avatar: string) => void;
   onUpdateUsername: (name: string) => void;
   onUpdateCosmetic?: (category: 'hat' | 'cardBack' | 'banner' | 'title', id: string) => void;
+  unlockedAvatars?: string[];
+  unlockedCardBacks?: string[];
+  onOpenCollection?: () => void;
 }
-
-export const AVATAR_OPTIONS = [
-  { icon: '🤠', name: 'The Outlaw' },
-  { icon: '🧝', name: 'Elven Trickster' },
-  { icon: '🤖', name: 'Cyber Bot' },
-  { icon: '👽', name: 'Cosmic Alien' },
-  { icon: '👑', name: 'Euchre King' },
-  { icon: '🦊', name: 'Clever Fox' },
-  { icon: '⚡', name: 'Thunder Jack' },
-  { icon: '🐉', name: 'Jade Dragon' },
-  { icon: '🎩', name: 'Gentleman' },
-  { icon: '🪖', name: 'Tactician' },
-  { icon: '🧑‍🚀', name: 'Astronaut' },
-  { icon: '🥷', name: 'Shadow Ninja' },
-];
 
 export const BANNER_THEMES: Record<string, { name: string; bgClass: string }> = {
   default_navy: { name: 'Royal Cyber Navy', bgClass: 'from-blue-900 via-indigo-900 to-purple-900' },
@@ -91,14 +88,6 @@ export const BANNER_THEMES: Record<string, { name: string; bgClass: string }> = 
   cyber_purple: { name: 'Cyber Neon', bgClass: 'from-purple-900 via-fuchsia-950 to-indigo-950' },
   golden_royale: { name: 'Bower 24k Gold', bgClass: 'from-amber-800 via-yellow-700 to-amber-950' },
 };
-
-export const CARD_BACK_OPTIONS = [
-  { id: 'classic_blue', name: 'Classic Blue', color: 'bg-blue-800 border-amber-400' },
-  { id: 'crimson_royal', name: 'Crimson Dragon', color: 'bg-red-800 border-amber-400' },
-  { id: 'neon_cyber', name: 'Neon Cyberpunk', color: 'bg-cyan-900 border-cyan-400' },
-  { id: 'golden_bower', name: '24k Golden Bower', color: 'bg-amber-600 border-yellow-300' },
-  { id: 'midnight_black', name: 'Midnight Obsidian', color: 'bg-zinc-900 border-emerald-400' },
-];
 
 export const TITLE_OPTIONS = [
   'Recruit',
@@ -116,10 +105,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onUpdateAvatar,
   onUpdateUsername,
   onUpdateCosmetic,
+  unlockedAvatars,
+  unlockedCardBacks,
+  onOpenCollection,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'wardrobe' | 'history'>('overview');
   const [selectedBanner, setSelectedBanner] = useState(profile.equippedCosmetics?.banner || 'default_navy');
-  const [selectedCardBack, setSelectedCardBack] = useState(profile.equippedCosmetics?.cardBack || 'classic_blue');
+  const [selectedCardBack, setSelectedCardBack] = useState(resolveCardBackId(profile.equippedCosmetics?.cardBack || 'classic_blue'));
   const [selectedTitle, setSelectedTitle] = useState(profile.equippedCosmetics?.title || 'Recruit');
   const [localMatches, setLocalMatches] = useState<MatchHistoryItem[]>(profile.recentMatches || []);
 
@@ -239,10 +231,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         <div className="px-6 pt-2 pb-1 relative z-10 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             {/* Avatar overlapping banner cleanly */}
-            <div className="-mt-12 sm:-mt-14 relative z-20 group cursor-pointer flex-shrink-0">
-              <div className="w-20 h-20 rounded-2xl bg-slate-800 border-4 border-slate-900 flex items-center justify-center text-4xl shadow-2xl ring-2 ring-amber-400/30">
-                {profile.avatarIcon}
-              </div>
+            <div className="-mt-12 sm:-mt-14 relative z-20 group cursor-pointer flex-shrink-0" onClick={() => setActiveTab('wardrobe')}>
+              <AvatarPortrait
+                avatarId={profile.avatarIcon}
+                size="lg"
+                showRarityGem
+                className="!w-20 !h-20 border-4 border-slate-900 shadow-2xl ring-2 ring-amber-400/30"
+              />
             </div>
 
             {/* Username & Level - completely below banner on solid background */}
@@ -388,33 +383,76 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         )}
 
         {/* Tab 2: Wardrobe & Cosmetics */}
-        {activeTab === 'wardrobe' && (
+        {activeTab === 'wardrobe' && (() => {
+          const unlockedAvatarSet = new Set(
+            (unlockedAvatars && unlockedAvatars.length > 0
+              ? unlockedAvatars
+              : AVATAR_CATALOG.filter((a) => a.unlockedByDefault).map((a) => a.id)
+            ).map((id) => resolveAvatarId(id))
+          );
+          const unlockedBackSet = new Set(
+            (unlockedCardBacks && unlockedCardBacks.length > 0
+              ? unlockedCardBacks
+              : CARD_BACK_CATALOG.filter((c) => c.unlockedByDefault).map((c) => c.id)
+            ).map((id) => resolveCardBackId(id))
+          );
+          const equippedAvatarId = resolveAvatarId(profile.avatarIcon);
+
+          return (
           <div className="p-6 flex-1 overflow-y-auto space-y-5">
-            {/* 1. Avatars & Hats */}
+            {onOpenCollection && (
+              <button
+                onClick={() => {
+                  sounds.playUiClick();
+                  onOpenCollection();
+                }}
+                className="w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500/20 via-purple-500/15 to-cyan-500/20 border border-amber-400/40 hover:border-amber-300 text-amber-200 font-bold text-xs flex items-center justify-between transition-all"
+              >
+                <span className="flex items-center space-x-2">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>Unlock more Card Backs &amp; Illustrated Avatars in Collection Vault</span>
+                </span>
+                <span className="text-amber-300 font-black">Open Vault →</span>
+              </button>
+            )}
+
+            {/* 1. Illustrated Avatars */}
             <div>
               <span className="text-xs font-black uppercase tracking-wider text-amber-400 block mb-2">
-                1. Avatar & Character Style
+                1. Illustrated Character Avatar
               </span>
               <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                {AVATAR_OPTIONS.map((item, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      sounds.playUiClick();
-                      onUpdateAvatar(item.icon);
-                    }}
-                    className={`p-2 rounded-2xl flex flex-col items-center justify-center transition-all ${
-                      profile.avatarIcon === item.icon
-                        ? 'bg-amber-500/20 border-2 border-amber-400 shadow-lg shadow-amber-400/20 scale-105'
-                        : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700'
-                    }`}
-                  >
-                    <span className="text-2xl mb-1">{item.icon}</span>
-                    <span className="text-[9px] font-bold text-gray-300 truncate w-full text-center">
-                      {item.name}
-                    </span>
-                  </button>
-                ))}
+                {AVATAR_CATALOG.map((item) => {
+                  const isUnlocked = unlockedAvatarSet.has(item.id) || item.unlockedByDefault;
+                  const isEquipped = equippedAvatarId === item.id;
+                  const rarity = RARITY_META[item.rarity];
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        sounds.playUiClick();
+                        if (isUnlocked) {
+                          onUpdateAvatar(item.id);
+                        } else {
+                          onOpenCollection?.();
+                        }
+                      }}
+                      title={isUnlocked ? `${item.name} (${rarity.label})` : `Locked — ${item.unlockHint}`}
+                      className={`p-1.5 rounded-2xl flex flex-col items-center justify-center transition-all ${
+                        isEquipped
+                          ? 'bg-amber-500/20 border-2 border-amber-400 shadow-lg shadow-amber-400/20 scale-105'
+                          : isUnlocked
+                          ? 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700'
+                          : 'bg-slate-900/70 border border-slate-800 opacity-65 hover:opacity-90'
+                      }`}
+                    >
+                      <AvatarPortrait avatarId={item.id} size="md" locked={!isUnlocked} showRarityRing />
+                      <span className="text-[9px] font-bold text-gray-200 truncate w-full text-center mt-1">
+                        {item.name}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -451,22 +489,43 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 3. Card Back Deck Skin
               </span>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {CARD_BACK_OPTIONS.map((cb) => (
-                  <button
-                    key={cb.id}
-                    onClick={() => handleEquipCardBack(cb.id)}
-                    className={`p-2.5 rounded-xl border flex items-center space-x-2.5 transition-all ${
-                      selectedCardBack === cb.id
-                        ? 'bg-amber-500/10 border-amber-400 ring-1 ring-amber-400'
-                        : 'bg-slate-800/80 border-slate-700 hover:bg-slate-700'
-                    }`}
-                  >
-                    <div className={`w-6 h-8 rounded-md border ${cb.color} flex items-center justify-center text-[8px] font-black text-amber-300 shadow-sm`}>
-                      JJ
-                    </div>
-                    <span className="text-xs font-bold text-gray-200">{cb.name}</span>
-                  </button>
-                ))}
+                {CARD_BACK_CATALOG.map((cb) => {
+                  const isUnlocked = unlockedBackSet.has(cb.id) || cb.unlockedByDefault;
+                  const isEquipped = resolveCardBackId(selectedCardBack) === cb.id;
+                  return (
+                    <button
+                      key={cb.id}
+                      onClick={() => {
+                        if (isUnlocked) {
+                          handleEquipCardBack(cb.id);
+                        } else {
+                          sounds.playUiClick();
+                          onOpenCollection?.();
+                        }
+                      }}
+                      title={isUnlocked ? cb.name : `Complete 5-card collection to unlock ${cb.name}`}
+                      className={`p-2 rounded-xl border flex items-center space-x-2.5 transition-all text-left ${
+                        isEquipped
+                          ? 'bg-amber-500/10 border-amber-400 ring-1 ring-amber-400'
+                          : isUnlocked
+                          ? 'bg-slate-800/80 border-slate-700 hover:bg-slate-700'
+                          : 'bg-slate-900/60 border-slate-800 opacity-60 hover:opacity-85'
+                      }`}
+                    >
+                      <img
+                        src={cb.imageUrl}
+                        alt={cb.name}
+                        className={`w-7 h-10 rounded-md object-cover border border-white/20 flex-shrink-0 ${!isUnlocked ? 'grayscale' : ''}`}
+                      />
+                      <div className="min-w-0">
+                        <span className="text-xs font-bold text-gray-200 block truncate">{cb.name}</span>
+                        <span className="text-[9px] text-slate-400 uppercase font-bold">
+                          {isEquipped ? 'Equipped' : isUnlocked ? 'Unlocked' : 'Locked'}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -492,7 +551,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* Tab 3: Match History */}
         {activeTab === 'history' && (

@@ -9,58 +9,32 @@ import {
   UserAccount,
   RankTier,
   MatchRecord,
-  Challenge,
-  BattlePassState,
   LeaderboardEntry,
   FriendSummary,
   PublicPlayerData,
   MatchmakingStats,
+  PlayerCollectionState,
+  PackOpenResult,
+  DrawnCardResult,
 } from './types';
+import {
+  AVATAR_CATALOG,
+  CARD_BACK_CATALOG,
+  DEFAULT_AVATAR_ID,
+  DEFAULT_CARD_BACK_ID,
+  getAvatarDefinition,
+  getCardBackDefinition,
+  getEligibleMilestoneAvatars,
+  resolveAvatarId,
+  resolveCardBackId,
+} from '../src/config/collectiblesCatalog';
+import { PROGRESSION_CONFIG, rollPackCards } from './config/progressionConfig';
 import { supabaseAdmin } from './auth';
 
 const DB_DIR = path.resolve(process.cwd(), 'server', 'data');
 const DB_FILE = path.join(DB_DIR, 'db.json');
 
 export const TIER_ORDER: RankTier[] = ['9', '10', 'Q', 'K', 'A', 'BOWER_JJ'];
-
-const DEFAULT_CHALLENGES: Challenge[] = [
-  {
-    id: 'ch_1',
-    title: 'Trick Taker',
-    desc: 'Win 15 total tricks across any game mode',
-    target: 15,
-    current: 0,
-    xpReward: 300,
-    completed: false,
-  },
-  {
-    id: 'ch_2',
-    title: 'Euchre Master',
-    desc: 'Defend and Euchre the opponents 2 times',
-    target: 2,
-    current: 0,
-    xpReward: 450,
-    completed: false,
-  },
-  {
-    id: 'ch_3',
-    title: 'March of the Kings',
-    desc: 'Score a March (take all 5 tricks in a single hand)',
-    target: 1,
-    current: 0,
-    xpReward: 500,
-    completed: false,
-  },
-  {
-    id: 'ch_4',
-    title: 'Victorious Bower',
-    desc: 'Win 2 full matches',
-    target: 2,
-    current: 0,
-    xpReward: 600,
-    completed: false,
-  },
-];
 
 interface DatabaseSchema {
   users: Record<string, UserAccount>; // userId -> UserAccount
@@ -222,12 +196,16 @@ class Database {
     existingToken?: string,
     forcedUserId?: string
   ): { user: UserAccount; sessionToken: string } {
+    const starterAvatars = AVATAR_CATALOG.filter((a) => a.unlockedByDefault).map((a) => a.id);
+    const starterCardBacks = CARD_BACK_CATALOG.filter((b) => b.unlockedByDefault).map((b) => b.id);
+
     // If forcedUserId is given (verified Supabase Auth user ID)
     if (forcedUserId && this.data.users[forcedUserId]) {
       const existing = this.data.users[forcedUserId];
       existing.lastActive = Date.now();
       if (username) existing.username = username;
-      if (avatarIcon) existing.avatarIcon = avatarIcon;
+      if (avatarIcon) existing.avatarIcon = resolveAvatarId(avatarIcon);
+      this.ensureProgressionState(existing);
       const sessionToken = existingToken || `tok_${crypto.randomBytes(16).toString('hex')}`;
       this.data.sessions[sessionToken] = existing.id;
       this.save();
@@ -238,7 +216,8 @@ class Database {
     if (existing) {
       existing.user.lastActive = Date.now();
       if (username) existing.user.username = username;
-      if (avatarIcon) existing.user.avatarIcon = avatarIcon;
+      if (avatarIcon) existing.user.avatarIcon = resolveAvatarId(avatarIcon);
+      this.ensureProgressionState(existing.user);
       this.save();
       return existing;
     }
@@ -249,7 +228,8 @@ class Database {
       if (existingUser) {
         const sessionToken = `tok_${crypto.randomBytes(16).toString('hex')}`;
         existingUser.lastActive = Date.now();
-        if (avatarIcon) existingUser.avatarIcon = avatarIcon;
+        if (avatarIcon) existingUser.avatarIcon = resolveAvatarId(avatarIcon);
+        this.ensureProgressionState(existingUser);
         this.data.sessions[sessionToken] = existingUser.id;
         this.save();
         return { user: existingUser, sessionToken };
@@ -258,13 +238,26 @@ class Database {
 
     const userId = forcedUserId || `usr_${crypto.randomBytes(6).toString('hex')}`;
     const sessionToken = existingToken || `tok_${crypto.randomBytes(16).toString('hex')}`;
+    const resolvedReq = resolveAvatarId(avatarIcon);
+    const initialAvatar = getAvatarDefinition(resolvedReq).unlockedByDefault ? resolvedReq : DEFAULT_AVATAR_ID;
+
+    const initialCollection: PlayerCollectionState = {
+      unopenedPacksCount: 0,
+      unopenedPacks: [],
+      cards: [],
+      unlockedCardBacks: [...starterCardBacks],
+      unlockedAvatars: [...starterAvatars],
+      recentDrops: [],
+      dropRates: { ...PROGRESSION_CONFIG.rarityDropRates },
+    };
 
     const newUser: UserAccount = {
       id: userId,
       username: username || `Bower_${Math.floor(1000 + Math.random() * 9000)}`,
-      avatarIcon: avatarIcon || '🤠',
+      avatarIcon: initialAvatar,
       level: 1,
       xp: 0,
+      nextLevelXp: 1000,
       
       // Ranked & MMR
       rankTier: '9',
@@ -289,25 +282,20 @@ class Database {
       friendRequests: [],
       recentPlayers: [],
 
-      // Progression
-      battlePass: {
-        tier: 1,
-        xp: 0,
-        tierXpRequired: 500,
-        isPremium: false,
-        claimedFreeTiers: [],
-        claimedPremiumTiers: [],
-      },
-      challenges: JSON.parse(JSON.stringify(DEFAULT_CHALLENGES)),
+      // Progression & Collectibles
+      unopenedPacksCount: 0,
+      unlockedAvatars: [...starterAvatars],
+      unlockedCardBacks: [...starterCardBacks],
+      collectionState: initialCollection,
       unlockedCosmetics: {
-        hats: ['🤠', '🧢'],
-        cardBacks: ['classic_blue', 'classic_red'],
+        hats: [...starterAvatars],
+        cardBacks: [...starterCardBacks],
         banners: ['default_navy'],
         titles: ['Recruit'],
       },
       equippedCosmetics: {
-        hat: '🤠',
-        cardBack: 'classic_blue',
+        hat: initialAvatar,
+        cardBack: DEFAULT_CARD_BACK_ID,
         banner: 'default_navy',
         title: 'Recruit',
       },
@@ -322,6 +310,48 @@ class Database {
     this.save();
 
     return { user: newUser, sessionToken };
+  }
+
+  private ensureProgressionState(user: UserAccount): PlayerCollectionState {
+    const starterAvatars = AVATAR_CATALOG.filter((a) => a.unlockedByDefault).map((a) => a.id);
+    const starterCardBacks = CARD_BACK_CATALOG.filter((b) => b.unlockedByDefault).map((b) => b.id);
+
+    if (!user.collectionState) {
+      user.collectionState = {
+        unopenedPacksCount: 0,
+        unopenedPacks: [],
+        cards: [],
+        unlockedCardBacks: [...starterCardBacks],
+        unlockedAvatars: [...starterAvatars],
+        recentDrops: [],
+        dropRates: { ...PROGRESSION_CONFIG.rarityDropRates },
+      };
+    }
+
+    const avSet = new Set([
+      ...starterAvatars,
+      ...(user.unlockedAvatars || []).map((a) => resolveAvatarId(a)),
+      ...user.collectionState.unlockedAvatars.map((a) => resolveAvatarId(a)),
+      ...(user.unlockedCosmetics?.hats || []).map((a) => resolveAvatarId(a)),
+    ]);
+    const cbSet = new Set([
+      ...starterCardBacks,
+      ...(user.unlockedCardBacks || []).map((c) => resolveCardBackId(c)),
+      ...user.collectionState.unlockedCardBacks.map((c) => resolveCardBackId(c)),
+      ...(user.unlockedCosmetics?.cardBacks || []).map((c) => resolveCardBackId(c)),
+    ]);
+
+    user.avatarIcon = resolveAvatarId(user.avatarIcon);
+    user.equippedCosmetics.cardBack = resolveCardBackId(user.equippedCosmetics.cardBack);
+    user.unlockedAvatars = Array.from(avSet);
+    user.unlockedCardBacks = Array.from(cbSet);
+    user.collectionState.unlockedAvatars = [...user.unlockedAvatars];
+    user.collectionState.unlockedCardBacks = [...user.unlockedCardBacks];
+    user.collectionState.unopenedPacksCount = user.collectionState.unopenedPacks.length;
+    user.unopenedPacksCount = user.collectionState.unopenedPacks.length;
+    user.unlockedCosmetics.hats = [...user.unlockedAvatars];
+    user.unlockedCosmetics.cardBacks = [...user.unlockedCardBacks];
+    return user.collectionState;
   }
 
   /**
@@ -568,7 +598,7 @@ class Database {
   }
 
   /**
-   * Authoritative match completion (XP, Battle Pass, Challenges, Lifetime Stats)
+   * Authoritative match completion (XP, Level-Up Card Packs, Milestone Avatars, Lifetime Stats)
    */
   public recordMatchCompletion(
     userId: string,
@@ -580,6 +610,7 @@ class Database {
   ): UserAccount | null {
     const user = this.data.users[userId];
     if (!user) return null;
+    const colState = this.ensureProgressionState(user);
 
     user.totalGames++;
     if (isWin) {
@@ -606,38 +637,43 @@ class Database {
     xpAwarded += euchres * 75;
     xpAwarded += loners * 150;
 
+    const oldLevel = user.level;
     user.xp += xpAwarded;
 
-    // Battle Pass Progression
-    const passXp = Math.floor(xpAwarded * 0.8);
-    user.battlePass.xp += passXp;
-
-    // Challenges Progress
-    user.challenges.forEach(ch => {
-      if (ch.completed) return;
-      if (ch.id === 'ch_1') ch.current = Math.min(ch.target, ch.current + tricks);
-      if (ch.id === 'ch_2') ch.current = Math.min(ch.target, ch.current + euchres);
-      if (ch.id === 'ch_3') ch.current = Math.min(ch.target, ch.current + marches);
-      if (ch.id === 'ch_4' && isWin) ch.current = Math.min(ch.target, ch.current + 1);
-
-      if (ch.current >= ch.target) {
-        ch.completed = true;
-        user.xp += ch.xpReward;
-        user.battlePass.xp += ch.xpReward;
-      }
-    });
-
     // Level progression (1000 XP per level)
-    while (user.xp >= 1000) {
-      user.xp -= 1000;
+    while (user.xp >= PROGRESSION_CONFIG.xpPerLevel) {
+      user.xp -= PROGRESSION_CONFIG.xpPerLevel;
       user.level++;
     }
+    user.nextLevelXp = PROGRESSION_CONFIG.xpPerLevel;
 
-    while (user.battlePass.xp >= user.battlePass.tierXpRequired && user.battlePass.tier < 30) {
-      user.battlePass.xp -= user.battlePass.tierXpRequired;
-      user.battlePass.tier++;
+    // Grant exactly 1 unopened card pack per qualifying level-up (idempotent per level)
+    for (let lvl = oldLevel + 1; lvl <= user.level; lvl++) {
+      const sourceRef = `level_${lvl}`;
+      if (!colState.unopenedPacks.some((p) => p.sourceRef === sourceRef)) {
+        colState.unopenedPacks.push({
+          id: crypto.randomUUID(),
+          source: 'level_up',
+          sourceRef,
+          earnedLevel: lvl,
+          earnedAt: Date.now(),
+        });
+      }
     }
 
+    const completedCols = colState.unlockedCardBacks.filter((cb) => !getCardBackDefinition(cb).isStarter);
+    const eligibleAvs = getEligibleMilestoneAvatars({
+      level: user.level,
+      wins: user.wins,
+      unlockedCollectionIds: completedCols,
+    });
+    for (const av of eligibleAvs) {
+      if (!colState.unlockedAvatars.includes(av.id)) {
+        colState.unlockedAvatars.push(av.id);
+      }
+    }
+
+    this.ensureProgressionState(user);
     user.lastActive = Date.now();
     this.save();
     return user;
@@ -747,7 +783,8 @@ class Database {
       return {
         userId: f.id,
         username: f.username,
-        avatarIcon: f.avatarIcon,
+        avatarIcon: resolveAvatarId(f.avatarIcon),
+        equippedCardBack: resolveCardBackId(f.equippedCosmetics?.cardBack),
         rankTier: f.rankTier,
         rankPoints: f.rankPoints,
         level: f.level,
@@ -774,7 +811,8 @@ class Database {
       rankPosition: idx + 1,
       userId: u.id,
       username: u.username,
-      avatarIcon: u.avatarIcon,
+      avatarIcon: resolveAvatarId(u.avatarIcon),
+      equippedCardBack: resolveCardBackId(u.equippedCosmetics?.cardBack),
       rankTier: u.rankTier,
       rankPoints: u.rankPoints,
       mmr: u.mmr,
@@ -785,43 +823,191 @@ class Database {
     }));
   }
 
-  // --- COSMETICS & BATTLE PASS CLAIM ---
+  // --- COLLECTIBLE CARD PACKS, CARD BACKS & AVATARS ---
 
-  public claimPassReward(userId: string, tier: number, isPremium: boolean): { success: boolean; item?: string } {
+  public getCollectionState(userId: string): PlayerCollectionState {
     const user = this.data.users[userId];
-    if (!user || user.battlePass.tier < tier) return { success: false };
-
-    if (isPremium && !user.battlePass.isPremium) return { success: false };
-
-    if (isPremium) {
-      if (user.battlePass.claimedPremiumTiers.includes(tier)) return { success: false };
-      user.battlePass.claimedPremiumTiers.push(tier);
-    } else {
-      if (user.battlePass.claimedFreeTiers.includes(tier)) return { success: false };
-      user.battlePass.claimedFreeTiers.push(tier);
+    if (!user) {
+      return {
+        unopenedPacksCount: 0,
+        unopenedPacks: [],
+        cards: [],
+        unlockedCardBacks: CARD_BACK_CATALOG.filter((b) => b.unlockedByDefault).map((b) => b.id),
+        unlockedAvatars: AVATAR_CATALOG.filter((a) => a.unlockedByDefault).map((a) => a.id),
+        recentDrops: [],
+        dropRates: { ...PROGRESSION_CONFIG.rarityDropRates },
+      };
     }
+    return this.ensureProgressionState(user);
+  }
 
-    // Award cosmetic based on tier
-    let rewardName = '';
-    if (tier === 3) {
-      user.unlockedCosmetics.hats.push('🎩');
-      rewardName = '🎩 Top Hat';
-    } else if (tier === 5) {
-      user.unlockedCosmetics.cardBacks.push('obsidian_gold');
-      rewardName = 'Obsidian Gold Card Back';
-    } else if (tier === 10) {
-      user.unlockedCosmetics.banners.push('royal_velvet');
-      rewardName = 'Royal Velvet Banner';
-    } else if (tier === 15) {
-      user.unlockedCosmetics.hats.push('👑');
-      rewardName = '👑 Crown of Bowers';
-    } else if (tier === 20) {
-      user.unlockedCosmetics.titles.push('Supreme Bower');
-      rewardName = 'Supreme Bower Title';
+  public grantLevelUpPacksForTest(userId: string, newLevel: number): number {
+    const user = this.data.users[userId];
+    if (!user) return 0;
+    const colState = this.ensureProgressionState(user);
+    const oldLevel = user.level;
+    user.level = Math.max(oldLevel, newLevel);
+    let awarded = 0;
+    for (let lvl = oldLevel + 1; lvl <= user.level; lvl++) {
+      const sourceRef = `level_${lvl}`;
+      if (!colState.unopenedPacks.some((p) => p.sourceRef === sourceRef)) {
+        colState.unopenedPacks.push({
+          id: crypto.randomUUID(),
+          source: 'level_up',
+          sourceRef,
+          earnedLevel: lvl,
+          earnedAt: Date.now(),
+        });
+        awarded++;
+      }
     }
-
+    this.ensureProgressionState(user);
     this.save();
-    return { success: true, item: rewardName };
+    return awarded;
+  }
+
+  public openCardPack(
+    userId: string,
+    packId?: string,
+    rng: () => number = Math.random
+  ): { success: boolean; error?: string; result?: PackOpenResult } {
+    const user = this.data.users[userId];
+    if (!user) return { success: false, error: 'User not found.' };
+    const colState = this.ensureProgressionState(user);
+
+    const idx = packId
+      ? colState.unopenedPacks.findIndex((p) => p.id === packId)
+      : colState.unopenedPacks.length > 0
+        ? 0
+        : -1;
+    if (idx === -1) {
+      return { success: false, error: 'No unopened card packs available.' };
+    }
+
+    const pack = colState.unopenedPacks.splice(idx, 1)[0];
+    const openedAt = Date.now();
+    const drawnDefs = rollPackCards(PROGRESSION_CONFIG, rng);
+    const drawnResults: DrawnCardResult[] = [];
+    const affectedCollections = new Set<string>();
+
+    for (const card of drawnDefs) {
+      affectedCollections.add(card.collectionId);
+      const existing = colState.cards.find((c) => c.cardId === card.id);
+      const wasDuplicate = Boolean(existing && existing.quantity > 0);
+      if (existing) {
+        existing.quantity += 1;
+        existing.lastAcquiredAt = openedAt;
+      } else {
+        colState.cards.push({
+          cardId: card.id,
+          collectionId: card.collectionId,
+          identity: card.identity,
+          rarity: card.rarity,
+          quantity: 1,
+          firstAcquiredAt: openedAt,
+          lastAcquiredAt: openedAt,
+        });
+      }
+      const qty = colState.cards.find((c) => c.cardId === card.id)!.quantity;
+      drawnResults.push({
+        cardId: card.id,
+        collectionId: card.collectionId,
+        collectionName: card.collectionName,
+        identity: card.identity,
+        name: card.name,
+        rarity: card.rarity,
+        imageUrl: card.imageUrl,
+        wasDuplicate,
+        newQuantity: qty,
+      });
+    }
+
+    const newlyUnlockedCardBacks: string[] = [];
+    for (const colId of affectedCollections) {
+      const ownedIdentities = new Set(
+        colState.cards.filter((c) => c.collectionId === colId && c.quantity > 0).map((c) => c.identity)
+      );
+      if (ownedIdentities.size >= 5 && !colState.unlockedCardBacks.includes(colId)) {
+        colState.unlockedCardBacks.push(colId);
+        newlyUnlockedCardBacks.push(colId);
+      }
+    }
+
+    const completedCols = colState.unlockedCardBacks.filter((cb) => !getCardBackDefinition(cb).isStarter);
+    const eligibleAvs = getEligibleMilestoneAvatars({
+      level: user.level,
+      wins: user.wins,
+      unlockedCollectionIds: completedCols,
+    });
+    const newlyUnlockedAvatars: string[] = [];
+    for (const av of eligibleAvs) {
+      if (!colState.unlockedAvatars.includes(av.id)) {
+        colState.unlockedAvatars.push(av.id);
+        newlyUnlockedAvatars.push(av.id);
+      }
+    }
+
+    colState.recentDrops.unshift({
+      packId: pack.id,
+      openedAt,
+      source: pack.source,
+      earnedLevel: pack.earnedLevel,
+      cards: drawnResults.map((c) => ({
+        cardId: c.cardId,
+        collectionId: c.collectionId,
+        identity: c.identity,
+        rarity: c.rarity,
+        wasDuplicate: c.wasDuplicate,
+      })),
+    });
+    if (colState.recentDrops.length > 10) {
+      colState.recentDrops = colState.recentDrops.slice(0, 10);
+    }
+
+    this.ensureProgressionState(user);
+    this.save();
+
+    return {
+      success: true,
+      result: {
+        packId: pack.id,
+        openedAt,
+        cards: drawnResults,
+        newlyUnlockedCardBacks,
+        newlyUnlockedAvatars,
+        remainingUnopenedPacks: colState.unopenedPacksCount,
+        collectionState: colState,
+      },
+    };
+  }
+
+  public equipAvatar(userId: string, avatarId: string): { success: boolean; error?: string; avatarId?: string } {
+    const user = this.data.users[userId];
+    if (!user) return { success: false, error: 'User not found.' };
+    const colState = this.ensureProgressionState(user);
+    const canonical = resolveAvatarId(avatarId);
+    const def = getAvatarDefinition(canonical);
+    if (!def.unlockedByDefault && !colState.unlockedAvatars.includes(canonical)) {
+      return { success: false, error: 'Avatar is locked. Unlock it to equip.' };
+    }
+    user.avatarIcon = canonical;
+    user.equippedCosmetics.hat = canonical;
+    this.save();
+    return { success: true, avatarId: canonical };
+  }
+
+  public equipCardBack(userId: string, cardBackId: string): { success: boolean; error?: string; cardBackId?: string } {
+    const user = this.data.users[userId];
+    if (!user) return { success: false, error: 'User not found.' };
+    const colState = this.ensureProgressionState(user);
+    const canonical = resolveCardBackId(cardBackId);
+    const def = getCardBackDefinition(canonical);
+    if (!def.unlockedByDefault && !colState.unlockedCardBacks.includes(canonical)) {
+      return { success: false, error: 'Complete this collection to unlock its card back.' };
+    }
+    user.equippedCosmetics.cardBack = canonical;
+    this.save();
+    return { success: true, cardBackId: canonical };
   }
 
   public equipCosmetic(
@@ -831,11 +1017,14 @@ class Database {
   ): boolean {
     const user = this.data.users[userId];
     if (!user) return false;
+    if (category === 'hat' && itemId) {
+      return this.equipAvatar(userId, itemId).success;
+    }
+    if (category === 'cardBack' && itemId) {
+      return this.equipCardBack(userId, itemId).success;
+    }
 
     user.equippedCosmetics[category] = itemId;
-    if (category === 'hat' && itemId) {
-      user.avatarIcon = itemId;
-    }
     this.save();
     return true;
   }
@@ -861,7 +1050,8 @@ class Database {
     return {
       id: targetUser.id,
       username: targetUser.username,
-      avatarIcon: targetUser.avatarIcon,
+      avatarIcon: resolveAvatarId(targetUser.avatarIcon),
+      equippedCardBack: resolveCardBackId(targetUser.equippedCosmetics?.cardBack),
       level: targetUser.level,
       rankTier: targetUser.rankTier,
       rankPoints: targetUser.rankPoints,

@@ -13,6 +13,7 @@ import {
   Trick,
   GamePhase,
 } from '../src/engine/types';
+import { CardIdentity, RarityTier } from '../src/config/collectiblesCatalog';
 
 export type RankTier = '9' | '10' | 'Q' | 'K' | 'A' | 'BOWER_JJ';
 
@@ -27,23 +28,73 @@ export interface MatchRecord {
   opponentNames: string[];
 }
 
-export interface Challenge {
-  id: string;
-  title: string;
-  desc: string;
-  target: number;
-  current: number;
-  xpReward: number;
-  completed: boolean;
+export interface OwnedCardItem {
+  cardId: string;
+  collectionId: string;
+  identity: CardIdentity;
+  rarity: RarityTier;
+  quantity: number;
+  firstAcquiredAt: number;
+  lastAcquiredAt: number;
 }
 
-export interface BattlePassState {
-  tier: number; // Current unlocked tier (1-30)
-  xp: number; // XP within current tier
-  tierXpRequired: number; // e.g. 500 XP per tier
-  isPremium: boolean;
-  claimedFreeTiers: number[];
-  claimedPremiumTiers: number[];
+export interface UnopenedPackItem {
+  id: string;
+  source: string;
+  sourceRef: string;
+  earnedLevel?: number;
+  earnedAt: number;
+}
+
+export interface PackHistoryEntry {
+  packId: string;
+  openedAt: number;
+  source: string;
+  earnedLevel?: number;
+  cards: {
+    cardId: string;
+    collectionId: string;
+    identity: CardIdentity;
+    rarity: RarityTier;
+    wasDuplicate: boolean;
+  }[];
+}
+
+export interface DrawnCardResult {
+  cardId: string;
+  collectionId: string;
+  collectionName: string;
+  identity: CardIdentity;
+  name: string;
+  rarity: RarityTier;
+  imageUrl: string;
+  wasDuplicate: boolean;
+  newQuantity: number;
+}
+
+export interface PlayerCollectionState {
+  unopenedPacksCount: number;
+  unopenedPacks: UnopenedPackItem[];
+  cards: OwnedCardItem[];
+  unlockedCardBacks: string[];
+  unlockedAvatars: string[];
+  recentDrops: PackHistoryEntry[];
+  dropRates: {
+    common: number;
+    rare: number;
+    epic: number;
+    legendary: number;
+  };
+}
+
+export interface PackOpenResult {
+  packId: string;
+  openedAt: number;
+  cards: DrawnCardResult[];
+  newlyUnlockedCardBacks: string[];
+  newlyUnlockedAvatars: string[];
+  remainingUnopenedPacks: number;
+  collectionState: PlayerCollectionState;
 }
 
 export interface CosmeticLoadout {
@@ -57,6 +108,7 @@ export interface FriendSummary {
   userId: string;
   username: string;
   avatarIcon: string;
+  equippedCardBack?: string;
   rankTier: RankTier;
   rankPoints: number;
   level: number;
@@ -98,8 +150,10 @@ export interface UserAccount {
   recentPlayers: { userId: string; username: string; avatarIcon: string; timestamp: number }[];
 
   // Progression & Cosmetics
-  battlePass: BattlePassState;
-  challenges: Challenge[];
+  unopenedPacksCount?: number;
+  unlockedAvatars?: string[];
+  unlockedCardBacks?: string[];
+  collectionState?: PlayerCollectionState;
   unlockedCosmetics: {
     hats: string[];
     cardBacks: string[];
@@ -120,6 +174,7 @@ export interface PlayerSlot {
   userId?: string;
   username: string;
   avatarIcon: string;
+  equippedCardBack?: string;
   rankTier?: RankTier;
   connected: boolean;
   isReady: boolean;
@@ -197,6 +252,7 @@ export interface LeaderboardEntry {
   userId: string;
   username: string;
   avatarIcon: string;
+  equippedCardBack?: string;
   rankTier: RankTier;
   rankPoints: number;
   mmr: number;
@@ -210,6 +266,7 @@ export interface PublicPlayerData {
   id: string;
   username: string;
   avatarIcon: string;
+  equippedCardBack?: string;
   level: number;
   rankTier: RankTier;
   rankPoints: number;
@@ -245,7 +302,10 @@ export type ClientMessage =
   | { type: 'FRIEND_REMOVE'; friendUserId: string }
   | { type: 'GET_FRIENDS' }
   | { type: 'GET_LEADERBOARD' }
-  | { type: 'CLAIM_PASS_REWARD'; tier: number; isPremium: boolean }
+  | { type: 'GET_COLLECTION_STATE' }
+  | { type: 'OPEN_CARD_PACK'; packId?: string }
+  | { type: 'EQUIP_AVATAR'; avatarId: string }
+  | { type: 'EQUIP_CARD_BACK'; cardBackId: string }
   | { type: 'EQUIP_COSMETIC'; category: 'hat' | 'cardBack' | 'banner' | 'title'; itemId?: string }
   | { type: 'PARTY_INVITE_SEND'; friendUserId?: string; friendUsername?: string; mode?: 'rivals' | 'custom' | 'duo' }
   | { type: 'PARTY_INVITE_ACCEPT'; partyRoomCode: string }
@@ -268,7 +328,9 @@ export type ServerMessage =
   | { type: 'DISCONNECT_ALERT'; position: PlayerPosition; username: string; graceRemainingSec: number }
   | { type: 'FRIENDS_LIST'; friends: FriendSummary[]; incomingRequests: UserAccount['friendRequests'] }
   | { type: 'LEADERBOARD_DATA'; entries: LeaderboardEntry[]; yourRank?: number }
-  | { type: 'BATTLE_PASS_UPDATE'; battlePass: BattlePassState; challenges: Challenge[] }
+  | { type: 'COLLECTION_STATE'; collection: PlayerCollectionState }
+  | { type: 'PACK_OPENED'; result: PackOpenResult }
+  | { type: 'PACK_EARNED'; count: number; totalUnopened: number; reason: string; level?: number; unlockedAvatars?: string[] }
   | { type: 'RANK_UPDATE'; oldTier: RankTier; newTier: RankTier; oldPoints: number; newPoints: number; lpChange: number; didRankUp: boolean }
   | { type: 'PARTY_INVITE_RECEIVED'; fromUsername: string; fromAvatar: string; roomCode: string; mode?: string }
   | { type: 'PROFILE_DATA'; profile: PublicPlayerData }

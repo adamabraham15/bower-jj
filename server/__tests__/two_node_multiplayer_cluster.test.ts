@@ -115,7 +115,7 @@ describe('Stage 4.6: Two-Node Multiplayer Validation & Cross-Node Recovery', () 
     const profileOnNodeB = await repoNodeB.getUserById(userAId);
     expect(profileOnNodeB).not.toBeNull();
     expect(profileOnNodeB!.username).toBe('ClusterPlayer');
-    expect(profileOnNodeB!.avatarIcon).toBe('🤠');
+    expect(profileOnNodeB!.avatarIcon).toBe('the_outlaw');
     expect(profileOnNodeB!.rankTier).toBe('9');
     expect(profileOnNodeB!.rankPoints).toBe(0);
   });

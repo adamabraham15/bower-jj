@@ -5,6 +5,7 @@
 
 import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
 import WebSocket from 'ws';
+import { resolveAvatarId } from '../src/config/collectiblesCatalog';
 
 // Ensure globalThis.WebSocket is available for Supabase client in Node < 22 runtimes
 if (typeof globalThis.WebSocket === 'undefined') {
@@ -95,7 +96,7 @@ export class TokenVerifier {
               userId: user.id,
               email: user.email,
               username: profile?.username || user.user_metadata?.username || fallbackUsername || `Player_${user.id.slice(0, 5)}`,
-              avatarIcon: profile?.avatar_icon || user.user_metadata?.avatar_icon || fallbackAvatar || '🤠',
+              avatarIcon: resolveAvatarId(profile?.avatar_icon || user.user_metadata?.avatar_icon || fallbackAvatar),
               isAdmin: Boolean(profile?.is_admin),
               isGuest: false,
             };
@@ -116,7 +117,7 @@ export class TokenVerifier {
             userId,
             email: jwtPayload.email,
             username: jwtPayload.user_metadata?.username || fallbackUsername || `Player_${userId.slice(0, 5)}`,
-            avatarIcon: jwtPayload.user_metadata?.avatar_icon || fallbackAvatar || '🤠',
+            avatarIcon: resolveAvatarId(jwtPayload.user_metadata?.avatar_icon || fallbackAvatar),
             isAdmin: false,
             isGuest: false,
           };
@@ -135,7 +136,7 @@ export class TokenVerifier {
       return {
         userId: guestId,
         username: cleanName,
-        avatarIcon: fallbackAvatar || '🤠',
+        avatarIcon: resolveAvatarId(fallbackAvatar),
         isAdmin: cleanName.toLowerCase().includes('admin'),
         isGuest: true,
       };

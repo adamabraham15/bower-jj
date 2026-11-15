@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Trophy, Medal, Flame, Shield, ArrowUpRight } from 'lucide-react';
 import { LeaderboardEntry } from '../../server/types';
 import { RankBadge } from './RankBadge';
+import { AvatarPortrait } from './AvatarPortrait';
 import { multiplayerClient } from '../services/multiplayerClient';
 import { authService } from '../services/supabaseClient';
 
@@ -143,7 +144,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 
                   {/* Player Name & Avatar */}
                   <div className="col-span-4 sm:col-span-5 flex items-center space-x-1.5 sm:space-x-2.5 min-w-0">
-                    <span className="text-xl sm:text-2xl flex-shrink-0">{entry.avatarIcon}</span>
+                    <AvatarPortrait avatarId={entry.avatarIcon} size="xs" showRarityGem />
                     <div className="min-w-0 truncate">
                       <div className="font-black text-white text-xs sm:text-sm truncate flex items-center space-x-1 sm:space-x-1.5">
                         <span className="truncate">{entry.username}</span>

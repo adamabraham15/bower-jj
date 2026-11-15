@@ -10,13 +10,14 @@ import {
   UserAccount,
   FriendSummary,
   LeaderboardEntry,
-  BattlePassState,
-  Challenge,
+  PlayerCollectionState,
+  PackOpenResult,
   RankTier,
   PublicPlayerData,
   MatchmakingStats,
 } from '../../server/types';
 import { PlayerPosition, Suit, AIDifficulty, EuchreHouseRules } from '../engine/types';
+import { resolveAvatarId } from '../config/collectiblesCatalog';
 import { authService } from './supabaseClient';
 
 export class MultiplayerClient {
@@ -26,7 +27,7 @@ export class MultiplayerClient {
   private lastSentAccessToken: string | null = null;
   private userId: string | null = null;
   private username: string = 'Player';
-  private avatarIcon: string = '🤠';
+  private avatarIcon: string = 'the_outlaw';
   private serverUrl: string = '';
   private isConnecting: boolean = false;
   private reconnectTimer: any = null;
@@ -117,7 +118,9 @@ export class MultiplayerClient {
   private onEmoteCallback?: (fromPosition: PlayerPosition, text?: string, emoji?: string) => void;
   private onFriendsCallback?: (friends: FriendSummary[], requests: UserAccount['friendRequests']) => void;
   private onLeaderboardCallback?: (entries: LeaderboardEntry[], yourRank?: number) => void;
-  private onBattlePassCallback?: (battlePass: BattlePassState, challenges: Challenge[]) => void;
+  private onCollectionCallback?: (collection: PlayerCollectionState) => void;
+  private onPackOpenedCallback?: (result: PackOpenResult) => void;
+  private onPackEarnedCallback?: (info: { count: number; totalUnopened: number; reason: string; level?: number; unlockedAvatars?: string[] }) => void;
   private onRankUpdateCallback?: (update: {
     oldTier: RankTier;
     newTier: RankTier;
@@ -136,6 +139,8 @@ export class MultiplayerClient {
   private roomListeners = new Set<(room: Room, yourPosition?: PlayerPosition) => void>();
   private gameSyncListeners = new Set<(state: SanitizedGameState) => void>();
   private queueListeners = new Set<(data: { inQueue: boolean; mode?: string; playersFound: number; elapsedSeconds: number }) => void>();
+  private collectionListeners = new Set<(collection: PlayerCollectionState) => void>();
+  private packOpenedListeners = new Set<(result: PackOpenResult) => void>();
   private noticeListeners = new Set<(message: string, title?: string) => void>();
   private errorListeners = new Set<(errorMsg: string) => void>();
 
@@ -161,7 +166,9 @@ export class MultiplayerClient {
     onEmote?: (fromPosition: PlayerPosition, text?: string, emoji?: string) => void;
     onFriends?: (friends: FriendSummary[], requests: UserAccount['friendRequests']) => void;
     onLeaderboard?: (entries: LeaderboardEntry[], yourRank?: number) => void;
-    onBattlePass?: (battlePass: BattlePassState, challenges: Challenge[]) => void;
+    onCollection?: (collection: PlayerCollectionState) => void;
+    onPackOpened?: (result: PackOpenResult) => void;
+    onPackEarned?: (info: { count: number; totalUnopened: number; reason: string; level?: number; unlockedAvatars?: string[] }) => void;
     onRankUpdate?: (update: {
       oldTier: RankTier;
       newTier: RankTier;
@@ -193,7 +200,15 @@ export class MultiplayerClient {
     if (callbacks.onEmote) this.onEmoteCallback = callbacks.onEmote;
     if (callbacks.onFriends) this.onFriendsCallback = callbacks.onFriends;
     if (callbacks.onLeaderboard) this.onLeaderboardCallback = callbacks.onLeaderboard;
-    if (callbacks.onBattlePass) this.onBattlePassCallback = callbacks.onBattlePass;
+    if (callbacks.onCollection) {
+      this.onCollectionCallback = callbacks.onCollection;
+      this.collectionListeners.add(callbacks.onCollection);
+    }
+    if (callbacks.onPackOpened) {
+      this.onPackOpenedCallback = callbacks.onPackOpened;
+      this.packOpenedListeners.add(callbacks.onPackOpened);
+    }
+    if (callbacks.onPackEarned) this.onPackEarnedCallback = callbacks.onPackEarned;
     if (callbacks.onRankUpdate) this.onRankUpdateCallback = callbacks.onRankUpdate;
     if (callbacks.onPartyInvite) this.onPartyInviteCallback = callbacks.onPartyInvite;
     if (callbacks.onProfile) this.onProfileCallback = callbacks.onProfile;
@@ -460,8 +475,22 @@ export class MultiplayerClient {
         this.onLeaderboardCallback?.(msg.entries, msg.yourRank);
         break;
 
-      case 'BATTLE_PASS_UPDATE':
-        this.onBattlePassCallback?.(msg.battlePass, msg.challenges);
+      case 'COLLECTION_STATE':
+        if (this.onCollectionCallback) this.onCollectionCallback(msg.collection);
+        this.collectionListeners.forEach(cb => {
+          if (cb !== this.onCollectionCallback) cb(msg.collection);
+        });
+        break;
+
+      case 'PACK_OPENED':
+        if (this.onPackOpenedCallback) this.onPackOpenedCallback(msg.result);
+        this.packOpenedListeners.forEach(cb => {
+          if (cb !== this.onPackOpenedCallback) cb(msg.result);
+        });
+        break;
+
+      case 'PACK_EARNED':
+        this.onPackEarnedCallback?.(msg);
         break;
 
       case 'RANK_UPDATE':
@@ -692,13 +721,26 @@ export class MultiplayerClient {
     this.send({ type: 'GET_LEADERBOARD' });
   }
 
-  public claimBattlePassReward(tier: number, isPremium: boolean = false) {
-    this.send({ type: 'CLAIM_PASS_REWARD', tier, isPremium });
+  public fetchCollectionState() {
+    this.send({ type: 'GET_COLLECTION_STATE' });
+  }
+
+  public openCardPack(packId?: string) {
+    this.send({ type: 'OPEN_CARD_PACK', packId });
+  }
+
+  public equipAvatar(avatarId: string) {
+    this.avatarIcon = resolveAvatarId(avatarId);
+    this.send({ type: 'EQUIP_AVATAR', avatarId: this.avatarIcon });
+  }
+
+  public equipCardBack(cardBackId: string) {
+    this.send({ type: 'EQUIP_CARD_BACK', cardBackId });
   }
 
   public equipCosmetic(category: 'hat' | 'cardBack' | 'banner' | 'title', itemId?: string) {
     if (category === 'hat' && itemId) {
-      this.avatarIcon = itemId;
+      this.avatarIcon = resolveAvatarId(itemId);
     }
     this.send({ type: 'EQUIP_COSMETIC', category, itemId });
   }

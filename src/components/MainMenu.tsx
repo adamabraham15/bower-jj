@@ -21,12 +21,16 @@ import {
   Swords,
   ShieldCheck,
   LogOut,
+  Package,
+  Layers,
 } from 'lucide-react';
 import { RankBadge, RankTier } from './RankBadge';
 import { PlayerProfileData } from './ProfileModal';
 import { AIDifficulty, EuchreHouseRules, DEFAULT_RULES } from '../engine/types';
 import { QueueType } from './MatchmakingModal';
 import { sounds } from '../audio/sound';
+import { AvatarPortrait } from './AvatarPortrait';
+import { CARD_COLLECTIONS, PACK_ARTWORK_URL, RARITY_META } from '../config/collectiblesCatalog';
 
 interface MainMenuProps {
   profile: PlayerProfileData;
@@ -37,7 +41,9 @@ interface MainMenuProps {
   onOpenProfile: () => void;
   onOpenFriends: () => void;
   onOpenLeaderboard: () => void;
-  onOpenBowerPass: () => void;
+  unopenedPacksCount?: number;
+  onOpenCollection: (tab?: 'packs' | 'collections' | 'avatars') => void;
+  onOpenPackOpener: () => void;
   onOpenRivalryInvite: () => void;
   onOpenAchievements: () => void;
   pendingRequestsCount?: number;
@@ -57,7 +63,9 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   onOpenProfile,
   onOpenFriends,
   onOpenLeaderboard,
-  onOpenBowerPass,
+  unopenedPacksCount = 0,
+  onOpenCollection,
+  onOpenPackOpener,
   onOpenRivalryInvite,
   onOpenAchievements,
   pendingRequestsCount = 0,
@@ -70,7 +78,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   const [selectedDifficulty, setSelectedDifficulty] = useState<AIDifficulty>('medium');
   const [targetScore, setTargetScore] = useState<number>(10);
   const [stickTheDealer, setStickTheDealer] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<'modes' | 'battlepass'>('modes');
+  const [activeTab, setActiveTab] = useState<'modes' | 'collection'>('modes');
 
   return (
     <div className="relative min-h-[100dvh] w-full bg-slate-950 text-white flex flex-col overflow-x-hidden">
@@ -190,9 +198,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             }}
             className="flex items-center space-x-1.5 sm:space-x-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-2xl bg-slate-800 hover:bg-slate-750 border border-slate-700 shadow-md transition-all active:scale-95 group"
           >
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-slate-700 flex items-center justify-center text-base sm:text-lg flex-shrink-0">
-              {profile.avatarIcon}
-            </div>
+            <AvatarPortrait avatarId={profile.avatarIcon} size="xs" showRarityGem />
             <div className="text-left hidden sm:block">
               <div className="text-xs font-bold text-white group-hover:text-amber-300 truncate max-w-[90px]">
                 {profile.username}
@@ -272,7 +278,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                   Playing as Guest (Unsaved Progress)
                 </h3>
                 <p className="text-[11px] sm:text-xs text-gray-300">
-                  Create a free account or sign in to save your MMR, competitive rank, and battle pass across devices.
+                  Create a free account or sign in to save your MMR, competitive rank, card packs, and collections across devices.
                 </p>
               </div>
             </div>
@@ -291,34 +297,85 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           </section>
         )}
 
-        {/* Tab Selector: Play vs Battle Pass */}
-        <div className="flex border-b border-slate-800 space-x-4">
+        {/* Unopened Card Pack Notification Banner */}
+        {unopenedPacksCount > 0 && (
+          <section
+            onClick={() => {
+              sounds.playUiClick();
+              onOpenPackOpener();
+            }}
+            className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 via-yellow-500/15 to-amber-600/20 border-2 border-amber-400 shadow-[0_0_24px_rgba(245,158,11,0.28)] flex items-center justify-between gap-3 cursor-pointer hover:brightness-110 transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <img
+                src={PACK_ARTWORK_URL}
+                alt="Unopened Pack"
+                className="w-10 h-14 rounded-lg object-cover border border-amber-300 shadow-md flex-shrink-0"
+              />
+              <div>
+                <div className="text-xs sm:text-sm font-black text-amber-300 flex items-center gap-1.5">
+                  <Package className="w-4 h-4 animate-bounce" />
+                  <span>
+                    {unopenedPacksCount} Collectible Card Pack{unopenedPacksCount > 1 ? 's' : ''} Waiting!
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-200">
+                  Open now to draw 5 illustrated cards and unlock permanent Card Backs.
+                </p>
+              </div>
+            </div>
+            <span className="px-4 py-2 rounded-xl bg-amber-400 text-slate-950 font-black text-xs shadow flex-shrink-0">
+              Open Pack
+            </span>
+          </section>
+        )}
+
+        {/* Tab Selector: Play vs Collection Vault */}
+        <div className="flex flex-wrap items-center justify-between border-b border-slate-800 gap-2">
+          <div className="flex space-x-4">
+            <button
+              onClick={() => {
+                sounds.playUiClick();
+                setActiveTab('modes');
+              }}
+              className={`pb-2 text-sm font-black transition-all border-b-2 cursor-pointer ${
+                activeTab === 'modes'
+                  ? 'border-amber-400 text-amber-400'
+                  : 'border-transparent text-gray-400 hover:text-white'
+              }`}
+            >
+              Game Modes
+            </button>
+            <button
+              onClick={() => {
+                sounds.playUiClick();
+                setActiveTab('collection');
+              }}
+              className={`pb-2 text-sm font-black transition-all border-b-2 flex items-center space-x-1.5 cursor-pointer ${
+                activeTab === 'collection'
+                  ? 'border-amber-400 text-amber-400'
+                  : 'border-transparent text-gray-400 hover:text-white'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Collection &amp; Packs</span>
+              {unopenedPacksCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-slate-950">
+                  {unopenedPacksCount}
+                </span>
+              )}
+            </button>
+          </div>
+
           <button
             onClick={() => {
               sounds.playUiClick();
-              setActiveTab('modes');
+              onOpenCollection(unopenedPacksCount > 0 ? 'packs' : 'collections');
             }}
-            className={`pb-2 text-sm font-black transition-all border-b-2 ${
-              activeTab === 'modes'
-                ? 'border-amber-400 text-amber-400'
-                : 'border-transparent text-gray-400 hover:text-white'
-            }`}
+            className="mb-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-amber-500/40 text-amber-300 font-black text-xs flex items-center gap-1.5 cursor-pointer"
           >
-            Game Modes
-          </button>
-          <button
-            onClick={() => {
-              sounds.playUiClick();
-              setActiveTab('battlepass');
-            }}
-            className={`pb-2 text-sm font-black transition-all border-b-2 flex items-center space-x-1.5 ${
-              activeTab === 'battlepass'
-                ? 'border-amber-400 text-amber-400'
-                : 'border-transparent text-gray-400 hover:text-white'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Battle Pass (Season 1)</span>
+            <Package className="w-3.5 h-3.5" />
+            <span>Open Vault{unopenedPacksCount > 0 ? ` (${unopenedPacksCount})` : ''}</span>
           </button>
         </div>
 
@@ -498,55 +555,64 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             </div>
           </div>
         ) : (
-          /* Battle Pass Season 1 Preview */
-          <div className="p-6 rounded-3xl bg-slate-900 border-2 border-amber-500/40 space-y-4">
-            <div className="flex justify-between items-center">
+          /* Collectible Card Packs & Card Back Collections Preview */
+          <div className="p-5 sm:p-6 rounded-3xl bg-slate-900 border-2 border-amber-500/40 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <div>
-                <span className="text-xs font-black uppercase text-amber-400">SEASON 1 BATTLE PASS</span>
-                <h3 className="text-xl font-black text-white">The Crown of Bowers</h3>
-                <p className="text-xs text-gray-300">
-                  Earn cosmetic rewards simply by playing ranked, unranked, or AI matches!
+                <span className="text-xs font-black uppercase text-amber-400">
+                  LEVEL-UP PROGRESSION SYSTEM
+                </span>
+                <h3 className="text-xl font-black text-white">Collectible Card Packs &amp; Card Backs</h3>
+                <p className="text-xs text-gray-300 mt-0.5">
+                  Receive a 5-card Booster Pack every Level Up. Complete all 5 cards (10, J, Q, K, A) of any set to unlock its Card Back!
                 </p>
               </div>
-              <button
-                onClick={() => {
-                  sounds.playUiClick();
-                  onOpenBowerPass();
-                }}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 text-slate-950 font-black text-xs shadow-md active:scale-95 transition-transform"
-              >
-                Open Bower Pass
-              </button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {unopenedPacksCount > 0 && (
+                  <button
+                    onClick={() => {
+                      sounds.playUiClick();
+                      onOpenPackOpener();
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-lg cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Package className="w-4 h-4" />
+                    <span>Open Pack ({unopenedPacksCount})</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    sounds.playUiClick();
+                    onOpenCollection('collections');
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-amber-400/50 text-amber-300 font-black text-xs cursor-pointer"
+                >
+                  Open Vault
+                </button>
+              </div>
             </div>
 
-            {/* Reward track showcase */}
-            <div
-              onClick={() => {
-                sounds.playUiClick();
-                onOpenBowerPass();
-              }}
-              className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 cursor-pointer group"
-            >
-              <div className="p-3 bg-slate-800 rounded-2xl border border-amber-500/40 text-center group-hover:border-amber-400 transition-all">
-                <span className="text-2xl block mb-1">🤠</span>
-                <span className="text-xs font-bold text-white block">Outlaw Hat</span>
-                <span className="text-[10px] text-amber-400 font-black uppercase">Tier 1</span>
-              </div>
-              <div className="p-3 bg-slate-800 rounded-2xl border border-slate-700 text-center group-hover:border-amber-400 transition-all">
-                <span className="text-2xl block mb-1">🎩</span>
-                <span className="text-xs font-bold text-white block">Top Hat</span>
-                <span className="text-[10px] text-amber-300 font-black uppercase">Tier 3</span>
-              </div>
-              <div className="p-3 bg-slate-800 rounded-2xl border border-slate-700 text-center group-hover:border-amber-400 transition-all">
-                <span className="text-2xl block mb-1">✨</span>
-                <span className="text-xs font-bold text-white block">Obsidian Gold</span>
-                <span className="text-[10px] text-amber-300 font-black uppercase">Tier 5</span>
-              </div>
-              <div className="p-3 bg-slate-800 rounded-2xl border border-slate-700 text-center group-hover:border-amber-400 transition-all">
-                <span className="text-2xl block mb-1">👑</span>
-                <span className="text-xs font-bold text-white block">Crown of Bowers</span>
-                <span className="text-[10px] text-amber-300 font-black uppercase">Tier 10 (Apex)</span>
-              </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              {CARD_COLLECTIONS.slice(0, 5).concat(CARD_COLLECTIONS.slice(5, 10)).map((col) => (
+                <button
+                  key={col.id}
+                  onClick={() => {
+                    sounds.playUiClick();
+                    onOpenCollection('collections');
+                  }}
+                  className="p-2.5 bg-slate-950/90 rounded-2xl border border-slate-800 hover:border-amber-400/60 text-center transition-all group cursor-pointer"
+                >
+                  <img
+                    src={col.cardBackImageUrl}
+                    alt={col.name}
+                    className="w-16 h-24 mx-auto rounded-lg object-cover border border-slate-700 group-hover:scale-105 transition-transform"
+                  />
+                  <span className="text-xs font-black text-white block mt-2 truncate">{col.name}</span>
+                  <span className={`text-[10px] font-black uppercase ${RARITY_META[col.rarity].textClass}`}>
+                    {RARITY_META[col.rarity].label}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
         )}

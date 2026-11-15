@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { FriendSummary, UserAccount } from '../../server/types';
 import { RankBadge } from './RankBadge';
+import { AvatarPortrait } from './AvatarPortrait';
 import { multiplayerClient } from '../services/multiplayerClient';
 
 interface FriendsModalProps {
@@ -227,8 +228,8 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
                           className="bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-2xl p-3 flex items-center justify-between transition-all"
                         >
                           <div className="flex items-center space-x-3">
-                            <div className="relative text-2xl">
-                              {friend.avatarIcon}
+                            <div className="relative flex-shrink-0">
+                              <AvatarPortrait avatarId={friend.avatarIcon} size="sm" />
                               <span
                                 className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-900 ${
                                   friend.status === 'in_game' ? 'bg-amber-400' : 'bg-emerald-400'
@@ -290,7 +291,7 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
                           className="bg-slate-800/40 border border-slate-800 rounded-2xl p-3 flex items-center justify-between opacity-75 hover:opacity-100 transition-opacity"
                         >
                           <div className="flex items-center space-x-3">
-                            <div className="text-2xl grayscale">{friend.avatarIcon}</div>
+                            <AvatarPortrait avatarId={friend.avatarIcon} size="sm" className="grayscale opacity-75" />
                             <div>
                               <div className="flex items-center space-x-2">
                                 <span className="font-bold text-gray-300 text-sm">
@@ -337,7 +338,7 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
                     className="bg-slate-800 border border-cyan-500/40 rounded-2xl p-3 flex items-center justify-between"
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="text-2xl">{req.fromAvatar}</div>
+                      <AvatarPortrait avatarId={req.fromAvatar} size="sm" />
                       <div>
                         <div className="font-bold text-white text-sm">{req.fromUsername}</div>
                         <div className="text-[10px] text-gray-400 flex items-center space-x-1">

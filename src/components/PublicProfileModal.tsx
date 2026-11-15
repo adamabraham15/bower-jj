@@ -7,6 +7,8 @@ import { X, Trophy, Shield, Flame, UserPlus, Check, VolumeX, Volume2, Flag, Aler
 import { RankBadge, RankTier } from './RankBadge';
 import { sounds } from '../audio/sound';
 import { multiplayerClient } from '../services/multiplayerClient';
+import { AvatarPortrait } from './AvatarPortrait';
+import { getCardBackDefinition } from '../config/collectiblesCatalog';
 
 export interface PublicPlayerData {
   id: string;
@@ -134,9 +136,18 @@ export const PublicProfileModal: React.FC<PublicProfileModalProps> = ({
 
         {/* Avatar & Badges */}
         <div className="px-5 -mt-10 flex flex-col items-center">
-          <div className="w-18 h-18 rounded-2xl bg-slate-800 border-4 border-slate-900 flex items-center justify-center text-4xl shadow-xl">
-            {player.avatarIcon}
+          <div className="rounded-2xl p-1 bg-slate-900 border-2 border-slate-800 shadow-xl">
+            <AvatarPortrait avatarId={player.avatarIcon} size="lg" showRarityGem />
           </div>
+          {(() => {
+            const cb = getCardBackDefinition(player.equippedCosmetics?.cardBack);
+            return (
+              <div className="mt-2 inline-flex items-center space-x-2 px-2.5 py-1 rounded-full bg-slate-950/90 border border-slate-800 text-[11px] text-slate-300">
+                <img src={cb.imageUrl} alt={cb.name} className="w-4 h-6 rounded-[3px] object-cover border border-white/20" />
+                <span className="font-semibold">{cb.name}</span>
+              </div>
+            );
+          })()}
 
           <h3 className="text-lg font-black text-white mt-2 flex items-center space-x-1.5">
             <span>{player.username}</span>

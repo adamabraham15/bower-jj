@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY,
   player_id TEXT UNIQUE NOT NULL,
   username TEXT UNIQUE NOT NULL,
-  avatar_icon TEXT NOT NULL DEFAULT '🤠',
+  avatar_icon TEXT NOT NULL DEFAULT 'the_outlaw',
   is_admin BOOLEAN NOT NULL DEFAULT FALSE,
   is_suspended BOOLEAN NOT NULL DEFAULT FALSE,
   is_banned BOOLEAN NOT NULL DEFAULT FALSE,
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS player_xp (
 -- 5. Cosmetics & Wardrobe
 CREATE TABLE IF NOT EXISTS player_cosmetics (
   user_id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
-  equipped_hat TEXT NOT NULL DEFAULT '🤠',
+  equipped_hat TEXT NOT NULL DEFAULT 'the_outlaw',
   equipped_card_back TEXT NOT NULL DEFAULT 'classic_blue',
   equipped_banner TEXT NOT NULL DEFAULT 'default_navy',
   equipped_title TEXT NOT NULL DEFAULT 'Recruit',
@@ -75,22 +75,7 @@ CREATE TABLE IF NOT EXISTS cosmetic_inventory (
   UNIQUE(user_id, category, item_id)
 );
 
--- 6. Seasonal Battle Pass (Bower Pass)
-CREATE TABLE IF NOT EXISTS player_battle_pass (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  season_id INT NOT NULL DEFAULT 1,
-  tier INT NOT NULL DEFAULT 1,
-  xp INT NOT NULL DEFAULT 0,
-  tier_xp_required INT NOT NULL DEFAULT 500,
-  is_premium BOOLEAN NOT NULL DEFAULT FALSE,
-  claimed_free_tiers INT[] NOT NULL DEFAULT '{}',
-  claimed_premium_tiers INT[] NOT NULL DEFAULT '{}',
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(user_id, season_id)
-);
-
--- 7. Social: Friendships & Requests
+-- 6. Social: Friendships & Requests (Battle Pass retired in v4.6.0)
 CREATE TABLE IF NOT EXISTS friendships (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -161,4 +146,111 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
   description TEXT NOT NULL,
   applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+`;
+
+
+export const COLLECTIBLE_SCHEMA_DEFINITIONS = `
+-- 1. Illustrated Avatar Catalog & Player Inventory
+CREATE TABLE IF NOT EXISTS public.avatar_catalog (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  theme TEXT NOT NULL,
+  rarity TEXT NOT NULL,
+  image_url TEXT NOT NULL,
+  unlocked_by_default BOOLEAN NOT NULL DEFAULT FALSE,
+  unlock_hint TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.player_avatars (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  avatar_id TEXT NOT NULL,
+  source TEXT NOT NULL DEFAULT 'starter',
+  unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, avatar_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_player_avatars_user_id ON public.player_avatars(user_id);
+
+-- 2. Card Collections & Collectible Cards Catalog
+CREATE TABLE IF NOT EXISTS public.card_collections (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  theme TEXT NOT NULL,
+  description TEXT NOT NULL,
+  rarity TEXT NOT NULL,
+  card_back_id TEXT NOT NULL,
+  card_back_image_url TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.collectible_cards (
+  id TEXT PRIMARY KEY,
+  collection_id TEXT NOT NULL REFERENCES public.card_collections(id) ON DELETE CASCADE,
+  identity TEXT NOT NULL,
+  name TEXT NOT NULL,
+  rarity TEXT NOT NULL,
+  image_url TEXT NOT NULL,
+  UNIQUE(collection_id, identity)
+);
+
+-- 3. Player Unopened / Opened Card Packs (1 per qualifying level-up)
+CREATE TABLE IF NOT EXISTS public.player_card_packs (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  source TEXT NOT NULL DEFAULT 'level_up',
+  source_ref TEXT NOT NULL,
+  earned_level INT,
+  status TEXT NOT NULL DEFAULT 'unopened',
+  earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  opened_at TIMESTAMPTZ,
+  UNIQUE(user_id, source_ref)
+);
+
+CREATE INDEX IF NOT EXISTS idx_player_card_packs_user_status ON public.player_card_packs(user_id, status);
+
+-- 4. Player Collectible Card Inventory
+CREATE TABLE IF NOT EXISTS public.player_card_inventory (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  card_id TEXT NOT NULL,
+  collection_id TEXT NOT NULL,
+  identity TEXT NOT NULL,
+  rarity TEXT NOT NULL,
+  quantity INT NOT NULL DEFAULT 1,
+  first_acquired_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_acquired_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, card_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_player_card_inv_user_col ON public.player_card_inventory(user_id, collection_id);
+
+-- 5. Player Unlocked Card Backs
+CREATE TABLE IF NOT EXISTS public.player_card_backs (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  card_back_id TEXT NOT NULL,
+  collection_id TEXT,
+  source TEXT NOT NULL DEFAULT 'collection',
+  unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, card_back_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_player_card_backs_user_id ON public.player_card_backs(user_id);
+
+-- 6. Server-Side Pack Drop History (Audit & Balancing)
+CREATE TABLE IF NOT EXISTS public.card_drop_history (
+  id UUID PRIMARY KEY,
+  pack_id UUID NOT NULL REFERENCES public.player_card_packs(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  card_id TEXT NOT NULL,
+  collection_id TEXT NOT NULL,
+  identity TEXT NOT NULL,
+  rarity TEXT NOT NULL,
+  slot_index INT NOT NULL,
+  was_duplicate BOOLEAN NOT NULL DEFAULT FALSE,
+  unlocked_card_back_id TEXT,
+  dropped_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_card_drop_history_user_time ON public.card_drop_history(user_id, dropped_at DESC);
 `;

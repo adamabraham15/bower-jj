@@ -22,6 +22,7 @@ import {
   ArrowLeftRight,
 } from 'lucide-react';
 import { RankBadge, RankTier } from './RankBadge';
+import { AvatarPortrait } from './AvatarPortrait';
 import { sounds } from '../audio/sound';
 import { multiplayerClient } from '../services/multiplayerClient';
 import { Room, PlayerSlot, FriendSummary } from '../../server/types';
@@ -409,7 +410,11 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
                         >
                           <div className="flex items-center justify-between min-w-0">
                             <div className="flex items-center space-x-2 min-w-0">
-                              <span className="text-base flex-shrink-0">{slot ? slot.avatarIcon : '🪑'}</span>
+                              {slot ? (
+                                <AvatarPortrait avatarId={slot.avatarIcon} size="xs" />
+                              ) : (
+                                <span className="text-base flex-shrink-0">🪑</span>
+                              )}
                               <div className="min-w-0">
                                 <div className="font-bold truncate text-[11px] flex items-center space-x-1">
                                   <span>{slot ? slot.username : `Empty Seat ${pos + 1}`}</span>
@@ -583,7 +588,7 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
                             className="p-1.5 px-2 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between text-xs"
                           >
                             <div className="flex items-center space-x-2">
-                              <span>{fr.avatarIcon}</span>
+                              <AvatarPortrait avatarId={fr.avatarIcon} size="xs" />
                               <span className="font-bold text-white text-[11px]">{fr.username}</span>
                             </div>
 

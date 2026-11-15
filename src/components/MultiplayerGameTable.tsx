@@ -14,6 +14,8 @@ import { DealerAvatarBadge, ModalDealerBanner, GoAloneControl } from './BiddingM
 import { PostMatchModal } from './PostMatchModal';
 import { PublicProfileModal, PublicPlayerData } from './PublicProfileModal';
 import { PlayerProfileData } from './ProfileModal';
+import { AvatarPortrait } from './AvatarPortrait';
+import { resolveAvatarId, resolveCardBackId } from '../config/collectiblesCatalog';
 import { sounds } from '../audio/sound';
 import { multiplayerClient } from '../services/multiplayerClient';
 import confetti from 'canvas-confetti';
@@ -169,82 +171,115 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
           </div>
         )}
 
-        <div
-          onClick={() => {
-            if (slot) {
-              sounds.playUiClick();
-              const isMe = slot.position === serverState.yourPosition && Boolean(profile);
-              setInspectedPlayer({
-                id: slot.userId || `bot_${slot.username}`,
-                username: slot.username,
-                avatarIcon: isMe ? (profile?.avatarIcon || slot.avatarIcon) : slot.avatarIcon,
-                level: isMe ? (profile?.level ?? 1) : (slot.isAI ? 8 : 1),
-                rankTier: isMe ? ((profile?.rankTier as RankTier) || slot.rankTier || '9') : (slot.rankTier || '9'),
-                rankPoints: isMe ? (profile?.rankPoints ?? 0) : 50,
-                totalGames: isMe ? (profile?.totalGames ?? 0) : (slot.isAI ? 120 : 15),
-                wins: isMe ? (profile?.wins ?? 0) : (slot.isAI ? 68 : 9),
-                losses: isMe ? (profile?.losses ?? 0) : (slot.isAI ? 52 : 6),
-                bestStreak: isMe ? (profile?.bestStreak ?? 0) : 4,
-                isFriend: false,
-                isOnline: slot.connected,
-              });
-              if (slot.userId && !slot.isAI) {
-                multiplayerClient.fetchProfile(slot.userId, slot.username);
-              }
-            }
-          }}
-          title={slot ? `Inspect ${slot.username}` : undefined}
-          className="relative cursor-pointer hover:scale-105 active:scale-95 transition-transform"
-        >
-          <div
-            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 transition-all duration-300 flex items-center justify-center
-              ${isBlueTeam ? 'bg-gradient-to-tr from-blue-600 to-cyan-400' : 'bg-gradient-to-tr from-red-600 to-amber-500'}
-              ${isCurrentTurn ? 'ring-4 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : isPlayerDealer ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/30' : 'opacity-90'}
-              ${isSlotBenched ? 'grayscale opacity-50' : ''}`}
-          >
-            <div className="w-full h-full bg-slate-900 rounded-[14px] flex flex-col items-center justify-center overflow-hidden">
-              <span className="text-xl sm:text-2xl">{slot ? slot.avatarIcon : '🪑'}</span>
-            </div>
-          </div>
+        {(() => {
+          const isMe = Boolean(slot && slot.position === serverState.yourPosition && profile);
+          const podAvatar = slot ? resolveAvatarId(isMe ? (profile?.avatarIcon || slot.avatarIcon) : slot.avatarIcon) : undefined;
+          const podCardBack = resolveCardBackId(isMe ? (profile?.equippedCosmetics?.cardBack || slot?.equippedCardBack) : slot?.equippedCardBack);
+          return (
+            <>
+              <div
+                onClick={() => {
+                  if (slot) {
+                    sounds.playUiClick();
+                    setInspectedPlayer({
+                      id: slot.userId || `bot_${slot.username}`,
+                      username: slot.username,
+                      avatarIcon: podAvatar || slot.avatarIcon,
+                      level: isMe ? (profile?.level ?? 1) : (slot.isAI ? 8 : 1),
+                      rankTier: isMe ? ((profile?.rankTier as RankTier) || slot.rankTier || '9') : (slot.rankTier || '9'),
+                      rankPoints: isMe ? (profile?.rankPoints ?? 0) : 50,
+                      totalGames: isMe ? (profile?.totalGames ?? 0) : (slot.isAI ? 120 : 15),
+                      wins: isMe ? (profile?.wins ?? 0) : (slot.isAI ? 68 : 9),
+                      losses: isMe ? (profile?.losses ?? 0) : (slot.isAI ? 52 : 6),
+                      bestStreak: isMe ? (profile?.bestStreak ?? 0) : 4,
+                      isFriend: false,
+                      isOnline: slot.connected,
+                      equippedCosmetics: {
+                        cardBack: podCardBack,
+                      },
+                    });
+                    if (slot.userId && !slot.isAI) {
+                      multiplayerClient.fetchProfile(slot.userId, slot.username);
+                    }
+                  }
+                }}
+                title={slot ? `Inspect ${slot.username}` : undefined}
+                className="relative cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+              >
+                <div
+                  className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 transition-all duration-300 flex items-center justify-center
+                    ${isBlueTeam ? 'bg-gradient-to-tr from-blue-600 to-cyan-400' : 'bg-gradient-to-tr from-red-600 to-amber-500'}
+                    ${isCurrentTurn ? 'ring-4 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : isPlayerDealer ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/30' : 'opacity-90'}
+                    ${isSlotBenched ? 'grayscale opacity-50' : ''}`}
+                >
+                  <div className="w-full h-full bg-slate-900 rounded-[14px] flex flex-col items-center justify-center overflow-hidden">
+                    {slot ? (
+                      <AvatarPortrait
+                        avatarId={podAvatar}
+                        size="md"
+                        showRarityRing={false}
+                        className="!w-full !h-full !rounded-[14px]"
+                      />
+                    ) : (
+                      <span className="text-xl sm:text-2xl">🪑</span>
+                    )}
+                  </div>
+                </div>
 
-          {/* Dealer Chip */}
-          {isPlayerDealer && <DealerAvatarBadge />}
+                {/* Dealer Chip */}
+                {isPlayerDealer && <DealerAvatarBadge />}
 
-          {/* Trump Maker Chip */}
-          {isTrumpCaller && serverState.trumpSuit && (
-            <MakerBadge trumpSuit={serverState.trumpSuit} isBlueTeam={isBlueTeam} />
-          )}
+                {/* Trump Maker Chip */}
+                {isTrumpCaller && serverState.trumpSuit && (
+                  <MakerBadge trumpSuit={serverState.trumpSuit} isBlueTeam={isBlueTeam} />
+                )}
 
-          {/* Online/Offline connection status */}
-          {slot && !slot.isAI && (
-            <div
-              title={slot.connected ? 'Connected' : 'Disconnected'}
-              className={`absolute -top-1 -left-1 w-3.5 h-3.5 rounded-full border-2 border-slate-900 ${
-                slot.connected ? 'bg-emerald-400' : 'bg-red-500 animate-ping'
-              }`}
-            />
-          )}
+                {/* Online/Offline connection status */}
+                {slot && !slot.isAI && (
+                  <div
+                    title={slot.connected ? 'Connected' : 'Disconnected'}
+                    className={`absolute -top-1 -left-1 w-3.5 h-3.5 rounded-full border-2 border-slate-900 ${
+                      slot.connected ? 'bg-emerald-400' : 'bg-red-500 animate-ping'
+                    }`}
+                  />
+                )}
 
-          {/* Card Count for others */}
-          {pos !== yourPos && (
-            <div className="absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-mono font-bold text-gray-200 shadow-sm">
-              {isSlotBenched ? 'BENCH' : `${cardCount} 🂠`}
-            </div>
-          )}
-        </div>
+                {/* Card Count for others */}
+                {pos !== yourPos && (
+                  <div className="absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-mono font-bold text-gray-200 shadow-sm z-10">
+                    {isSlotBenched ? 'BENCH' : `${cardCount} 🂠`}
+                  </div>
+                )}
+              </div>
 
-        {/* Player Name */}
-        <div className="mt-1 flex flex-col items-center">
-          <div className="text-[11px] sm:text-xs font-bold text-white flex items-center space-x-1">
-            <span>{slot ? (pos === yourPos ? `${slot.username} (You)` : slot.username) : `Seat ${pos}`}</span>
-            {isCurrentTurn && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />}
-          </div>
-          {slot?.isAI && (
-            <span className="text-[9px] uppercase tracking-wider text-gray-400 font-mono">
-              AI ({slot.aiDifficulty})
-            </span>
-          )}
-        </div>
+              {/* Player Name */}
+              <div className="mt-1 flex flex-col items-center">
+                <div className="text-[11px] sm:text-xs font-bold text-white flex items-center space-x-1">
+                  <span>{slot ? (pos === yourPos ? `${slot.username} (You)` : slot.username) : `Seat ${pos}`}</span>
+                  {isCurrentTurn && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />}
+                </div>
+                {slot?.isAI && (
+                  <span className="text-[9px] uppercase tracking-wider text-gray-400 font-mono">
+                    AI ({slot.aiDifficulty})
+                  </span>
+                )}
+                {pos !== yourPos && !isSlotBenched && cardCount > 0 && (
+                  <div className="mt-0.5 sm:mt-1 flex items-center justify-center -space-x-6 scale-75 sm:scale-95 origin-top pointer-events-none">
+                    {Array.from({ length: Math.min(cardCount, 5) }).map((_, idx, arr) => {
+                      const mid = (arr.length - 1) / 2;
+                      const rot = (idx - mid) * 7;
+                      return (
+                        <div key={idx} style={{ transform: `rotate(${rot}deg)` }} className="drop-shadow-md">
+                          <CardView isFacedown size="xs" cardBackSkin={podCardBack} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </>
+          );
+        })()}
       </div>
     );
   };

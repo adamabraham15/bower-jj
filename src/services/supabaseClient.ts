@@ -5,6 +5,7 @@
 
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js';
 import { captureInitialAuthRedirect } from './authCallback';
+import { resolveAvatarId, resolveCardBackId } from '../config/collectiblesCatalog';
 
 // Capture auth redirect parameters before Supabase client initializes and scrubs URL fragments
 captureInitialAuthRedirect();
@@ -72,7 +73,7 @@ class AuthService {
     email: string,
     password: string,
     username: string,
-    avatarIcon: string = '🤠'
+    avatarIcon: string = 'the_outlaw'
   ): Promise<{ user: User | null; session: Session | null; error: string | null }> {
     if (!supabase) {
       return {
@@ -353,14 +354,14 @@ class AuthService {
     if (!isUuid) return null;
 
     try {
-      const [profileRes, rankRes, xpRes, statsRes, settingsRes, cosmeticsRes, passRes] = await Promise.all([
+      const [profileRes, rankRes, xpRes, statsRes, settingsRes, cosmeticsRes, packsRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
         supabase.from('player_ranks').select('*').eq('user_id', userId).single(),
         supabase.from('player_xp').select('*').eq('user_id', userId).single(),
         supabase.from('player_statistics').select('*').eq('user_id', userId).single(),
         supabase.from('player_settings').select('*').eq('user_id', userId).single(),
         supabase.from('player_cosmetics').select('*').eq('user_id', userId).single(),
-        supabase.from('player_battle_pass').select('*').eq('user_id', userId).maybeSingle(),
+        supabase.from('player_card_packs').select('id').eq('user_id', userId).eq('status', 'unopened'),
       ]);
 
       if (profileRes.error) return null;
@@ -372,7 +373,7 @@ class AuthService {
         statistics: statsRes.data,
         settings: settingsRes.data,
         cosmetics: cosmeticsRes.data,
-        battlePass: passRes.data,
+        unopenedPacksCount: Array.isArray(packsRes.data) ? packsRes.data.length : 0,
       };
     } catch (err) {
       console.error('Failed to fetch full authoritative profile:', err);
@@ -389,10 +390,11 @@ class AuthService {
     if (!isUuid) return false;
     try {
       const now = new Date().toISOString();
+      const resolvedAvatar = resolveAvatarId(avatarIcon);
       await Promise.all([
-        supabase.from('profiles').update({ avatar_icon: avatarIcon, updated_at: now }).eq('id', userId),
-        supabase.from('player_cosmetics').update({ equipped_hat: avatarIcon, updated_at: now }).eq('user_id', userId),
-        supabase.auth.updateUser({ data: { avatar_icon: avatarIcon } }).catch(() => {}),
+        supabase.from('profiles').update({ avatar_icon: resolvedAvatar, updated_at: now }).eq('id', userId),
+        supabase.from('player_cosmetics').update({ equipped_hat: resolvedAvatar, updated_at: now }).eq('user_id', userId),
+        supabase.auth.updateUser({ data: { avatar_icon: resolvedAvatar } }).catch(() => {}),
       ]);
       return true;
     } catch (err) {
@@ -422,9 +424,15 @@ class AuthService {
     if (!col) return false;
     try {
       const now = new Date().toISOString();
-      await supabase.from('player_cosmetics').update({ [col]: itemId, updated_at: now }).eq('user_id', userId);
+      const normalizedItem =
+        category === 'hat'
+          ? resolveAvatarId(itemId)
+          : category === 'cardBack'
+            ? resolveCardBackId(itemId)
+            : itemId;
+      await supabase.from('player_cosmetics').update({ [col]: normalizedItem, updated_at: now }).eq('user_id', userId);
       if (category === 'hat') {
-        await supabase.from('profiles').update({ avatar_icon: itemId, updated_at: now }).eq('id', userId);
+        await supabase.from('profiles').update({ avatar_icon: normalizedItem, updated_at: now }).eq('id', userId);
       }
       return true;
     } catch (err) {
@@ -492,6 +500,24 @@ class AuthService {
         const xp = totalXp % 1000;
         const next_level_xp = 1000;
         await supabase.from('player_xp').update({ xp, level, next_level_xp, updated_at: new Date().toISOString() }).eq('user_id', userId);
+        if (levelsGained > 0 && typeof crypto !== 'undefined' && crypto.randomUUID) {
+          for (let lvl = baseLevel + 1; lvl <= level; lvl++) {
+            await supabase
+              .from('player_card_packs')
+              .upsert(
+                {
+                  id: crypto.randomUUID(),
+                  user_id: userId,
+                  source: 'level_up',
+                  source_ref: `level_${lvl}`,
+                  earned_level: lvl,
+                  status: 'unopened',
+                  earned_at: new Date().toISOString(),
+                },
+                { onConflict: 'user_id,source_ref', ignoreDuplicates: true }
+              );
+          }
+        }
       }
 
       // Record rank progression for competitive ranking
@@ -626,7 +652,7 @@ class AuthService {
         return {
           userId: p.id,
           username: p.username || 'Player',
-          avatarIcon: p.avatar_icon || '🤠',
+          avatarIcon: resolveAvatarId(p.avatar_icon),
           rankTier: tier,
           rankPoints: points,
           mmr,

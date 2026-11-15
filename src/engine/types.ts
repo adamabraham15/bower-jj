@@ -44,6 +44,7 @@ export interface Player {
   isAI: boolean;
   aiDifficulty?: AIDifficulty;
   avatarId: string;
+  cardBack?: string;
   rankPoints?: number;
   rankTier?: string;
 }

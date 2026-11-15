@@ -223,6 +223,95 @@ class SoundEngine {
     osc.start();
     osc.stop(this.ctx.currentTime + 0.035);
   }
+
+  /**
+   * Anticipation charge hum before booster pack burst
+   */
+  public playPackCharge() {
+    if (this.isMuted) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(110, now);
+    osc.frequency.exponentialRampToValueAtTime(660, now + 0.65);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(400, now);
+    filter.frequency.exponentialRampToValueAtTime(2800, now + 0.65);
+
+    gain.gain.setValueAtTime(0.04, now);
+    gain.gain.exponentialRampToValueAtTime(0.22, now + 0.55);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.72);
+  }
+
+  /**
+   * Booster foil tear / burst impact
+   */
+  public playPackBurst() {
+    if (this.isMuted) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    [220, 440, 659.25, 880, 1318.5].forEach((freq, idx) => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+      osc.type = idx === 0 ? 'triangle' : 'sine';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.02);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.15, now + 0.35 + idx * 0.02);
+      gain.gain.setValueAtTime(0.18, now + idx * 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45 + idx * 0.02);
+      osc.connect(gain);
+      gain.connect(this.ctx!.destination);
+      osc.start(now + idx * 0.02);
+      osc.stop(now + 0.48 + idx * 0.02);
+    });
+  }
+
+  /**
+   * Rarity-tuned card flip sound inside Pack Opening modal
+   */
+  public playCardFlipReveal(rarity: 'common' | 'rare' | 'epic' | 'legendary') {
+    if (this.isMuted) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const chords: Record<string, number[]> = {
+      common: [440, 554.37],
+      rare: [523.25, 659.25, 783.99],
+      epic: [587.33, 739.99, 880, 1174.66],
+      legendary: [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98],
+    };
+    const notes = chords[rarity] || chords.common;
+    const step = rarity === 'legendary' ? 0.075 : rarity === 'epic' ? 0.055 : 0.04;
+    const dur = rarity === 'legendary' ? 0.7 : rarity === 'epic' ? 0.45 : 0.25;
+
+    notes.forEach((f, idx) => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+      osc.type = rarity === 'legendary' ? 'triangle' : 'sine';
+      osc.frequency.setValueAtTime(f, now + idx * step);
+      gain.gain.setValueAtTime(rarity === 'legendary' ? 0.24 : 0.16, now + idx * step);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * step + dur);
+      osc.connect(gain);
+      gain.connect(this.ctx!.destination);
+      osc.start(now + idx * step);
+      osc.stop(now + idx * step + dur + 0.04);
+    });
+  }
 }
 
 export const sounds = new SoundEngine();

@@ -28,6 +28,13 @@ import {
   getPlayerTeam,
 } from '../src/engine/types';
 import {
+  BOT_AVATAR_BY_DIFFICULTY,
+  BOT_CARD_BACK_BY_DIFFICULTY,
+  DEFAULT_CARD_BACK_ID,
+  resolveAvatarId,
+  resolveCardBackId,
+} from '../src/config/collectiblesCatalog';
+import {
   initializeGame,
   pickRandomDealer,
   handleBid,
@@ -60,6 +67,7 @@ export interface ClientConnection {
   userId: string;
   username: string;
   avatarIcon: string;
+  equippedCardBack?: string;
   roomCode?: string;
   inQueue?: 'solo' | 'rivals' | 'duo' | 'casual';
   queueEnterTime?: number;
@@ -550,6 +558,7 @@ export class RoomManager {
       userId,
       username: conn.username,
       avatarIcon: conn.avatarIcon,
+      equippedCardBack: resolveCardBackId(userAcc?.equippedCosmetics?.cardBack || conn.equippedCardBack),
       rankTier: userAcc?.rankTier || '9',
       connected: true,
       isReady: true,
@@ -611,6 +620,9 @@ export class RoomManager {
             slot.abandoned = false;
             slot.connected = true;
             slot.avatarIcon = slotUser?.avatarIcon || slotConn.avatarIcon || slot.avatarIcon;
+            slot.equippedCardBack = resolveCardBackId(
+              slotUser?.equippedCosmetics?.cardBack || slotConn.equippedCardBack || slot.equippedCardBack
+            );
             slot.rankTier = slotUser?.rankTier || slot.rankTier;
           }
         }
@@ -635,16 +647,17 @@ export class RoomManager {
   }
 
   public updateUserAvatar(userId: string, avatarIcon: string): void {
+    const resolved = resolveAvatarId(avatarIcon);
     const conn = this.connections.get(userId);
     if (conn) {
-      conn.avatarIcon = avatarIcon;
+      conn.avatarIcon = resolved;
       if (conn.roomCode) {
         const room = this.rooms.get(conn.roomCode);
         if (room) {
           let updated = false;
           for (const slot of room.slots) {
             if (slot && !slot.isAI && slot.userId === userId) {
-              slot.avatarIcon = avatarIcon;
+              slot.avatarIcon = resolved;
               updated = true;
             }
           }
@@ -653,6 +666,38 @@ export class RoomManager {
               type: 'ROOM_UPDATE',
               room,
             });
+            if (room.status === 'playing') {
+              this.broadcastGameSync(room.code);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  public updateUserCardBack(userId: string, cardBackId: string): void {
+    const resolved = resolveCardBackId(cardBackId);
+    const conn = this.connections.get(userId);
+    if (conn) {
+      conn.equippedCardBack = resolved;
+      if (conn.roomCode) {
+        const room = this.rooms.get(conn.roomCode);
+        if (room) {
+          let updated = false;
+          for (const slot of room.slots) {
+            if (slot && !slot.isAI && slot.userId === userId) {
+              slot.equippedCardBack = resolved;
+              updated = true;
+            }
+          }
+          if (updated) {
+            this.broadcastRoom(room.code, {
+              type: 'ROOM_UPDATE',
+              room,
+            });
+            if (room.status === 'playing') {
+              this.broadcastGameSync(room.code);
+            }
           }
         }
       }
@@ -703,6 +748,7 @@ export class RoomManager {
       userId,
       username: conn.username,
       avatarIcon: conn.avatarIcon,
+      equippedCardBack: resolveCardBackId(userAcc?.equippedCosmetics?.cardBack || conn.equippedCardBack),
       rankTier: userAcc?.rankTier || '9',
       connected: true,
       isReady: true,
@@ -744,7 +790,8 @@ export class RoomManager {
     const difficulty = overrideDifficulty || botConfig.difficulty;
     const displayTier = botConfig.displayTier;
 
-    const aiAvatars = ['🤖', '🧝', '👽', '🦊'];
+    const aiAvatars = BOT_AVATAR_BY_DIFFICULTY[difficulty] || BOT_AVATAR_BY_DIFFICULTY.medium;
+    const aiCardBack = BOT_CARD_BACK_BY_DIFFICULTY[difficulty] || DEFAULT_CARD_BACK_ID;
     const aiNames = ['West (Bot)', 'Partner (Bot)', 'East (Bot)'];
 
     for (let i = 0; i < 4; i++) {
@@ -755,6 +802,7 @@ export class RoomManager {
           aiDifficulty: difficulty,
           username: aiNames[i - 1] || `Bot ${i}`,
           avatarIcon: aiAvatars[i % aiAvatars.length],
+          equippedCardBack: aiCardBack,
           rankTier: displayTier,
           connected: true,
           isReady: true,
@@ -840,6 +888,7 @@ export class RoomManager {
       isAI: s!.isAI,
       aiDifficulty: s!.aiDifficulty,
       avatarId: s!.avatarIcon,
+      cardBack: s!.equippedCardBack || DEFAULT_CARD_BACK_ID,
       rankTier: s!.rankTier,
     }));
 
@@ -1095,6 +1144,7 @@ export class RoomManager {
               userId: uid,
               username: conn.username,
               avatarIcon: conn.avatarIcon,
+              equippedCardBack: resolveCardBackId(userAcc?.equippedCosmetics?.cardBack || conn.equippedCardBack),
               rankTier: userAcc?.rankTier || '9',
               connected: true,
               isReady: true,
@@ -1147,6 +1197,7 @@ export class RoomManager {
             userId: uid,
             username: conn.username,
             avatarIcon: conn.avatarIcon,
+            equippedCardBack: resolveCardBackId(userAcc?.equippedCosmetics?.cardBack || conn.equippedCardBack),
             rankTier: userAcc?.rankTier || targetTier,
             connected: true,
             isReady: true,
@@ -1420,14 +1471,27 @@ export class RoomManager {
               if (freshUser) {
                 this.setCachedUser(freshUser);
                 this.sendToUser(pr.userId, {
-                  type: 'BATTLE_PASS_UPDATE',
-                  battlePass: freshUser.battlePass,
-                  challenges: freshUser.challenges,
-                });
-                this.sendToUser(pr.userId, {
                   type: 'USER_SYNC',
                   user: freshUser,
                 });
+                if (freshUser.collectionState) {
+                  this.sendToUser(pr.userId, {
+                    type: 'COLLECTION_STATE',
+                    collection: freshUser.collectionState,
+                  });
+                }
+                if (pr.packsAwarded > 0) {
+                  this.sendToUser(pr.userId, {
+                    type: 'PACK_EARNED',
+                    count: pr.packsAwarded,
+                    totalUnopened: pr.totalUnopenedPacks,
+                    reason: pr.packsAwarded > 1
+                      ? `Leveled Up +${pr.levelsGained} times! Earned ${pr.packsAwarded} Card Packs!`
+                      : `Level ${pr.newLevel} Reached! Earned a Collectible Card Pack!`,
+                    level: pr.newLevel,
+                    unlockedAvatars: pr.newlyUnlockedAvatars,
+                  });
+                }
               }
             }
           }
@@ -1456,6 +1520,7 @@ export class RoomManager {
         const partnerSlot = room.slots[partnerPos];
         const isTeammateAbandoned = Boolean(partnerSlot && partnerSlot.abandoned);
 
+        const preLevel = db.getUserById(slot.userId)?.level ?? 1;
         const updatedUser = db.recordMatchCompletion(
           slot.userId,
           isWin,
@@ -1466,11 +1531,24 @@ export class RoomManager {
         );
 
         if (updatedUser) {
-          this.sendToUser(slot.userId, {
-            type: 'BATTLE_PASS_UPDATE',
-            battlePass: updatedUser.battlePass,
-            challenges: updatedUser.challenges,
-          });
+          if (updatedUser.collectionState) {
+            this.sendToUser(slot.userId, {
+              type: 'COLLECTION_STATE',
+              collection: updatedUser.collectionState,
+            });
+          }
+          const gained = Math.max(0, updatedUser.level - preLevel);
+          if (gained > 0) {
+            this.sendToUser(slot.userId, {
+              type: 'PACK_EARNED',
+              count: gained,
+              totalUnopened: updatedUser.unopenedPacksCount || gained,
+              reason: gained > 1
+                ? `Leveled Up +${gained} times! Earned ${gained} Card Packs!`
+                : `Level ${updatedUser.level} Reached! Earned a Collectible Card Pack!`,
+              level: updatedUser.level,
+            });
+          }
         }
 
         let rankResult: ReturnType<typeof db.recordRankedMatchResult> = null;
@@ -1618,13 +1696,33 @@ export class RoomManager {
       scores: state.scores,
       lastHandResult: state.lastHandResult,
       history: state.history,
-      slots: slots.map((s, idx) => s || {
-        position: idx as PlayerPosition,
-        isAI: false,
-        username: `Seat ${idx}`,
-        avatarIcon: '👤',
-        connected: false,
-        isReady: false,
+      slots: slots.map((s, idx) => {
+        if (!s) {
+          return {
+            position: idx as PlayerPosition,
+            isAI: false,
+            username: `Seat ${idx}`,
+            avatarIcon: 'shadow_assassin',
+            equippedCardBack: DEFAULT_CARD_BACK_ID,
+            connected: false,
+            isReady: false,
+          };
+        }
+        const authoritativeUser = s.userId && !s.isAI ? this.getCachedUser(s.userId) : undefined;
+        const conn = s.userId && !s.isAI ? this.connections.get(s.userId) : undefined;
+        return {
+          ...s,
+          avatarIcon: resolveAvatarId(authoritativeUser?.avatarIcon || conn?.avatarIcon || s.avatarIcon),
+          equippedCardBack: s.isAI
+            ? resolveCardBackId(
+                s.equippedCardBack || BOT_CARD_BACK_BY_DIFFICULTY[s.aiDifficulty || 'medium']
+              )
+            : resolveCardBackId(
+                authoritativeUser?.equippedCosmetics?.cardBack ||
+                  conn?.equippedCardBack ||
+                  s.equippedCardBack
+              ),
+        };
       }),
       roomId: room?.id,
       roomCode: room?.code,
@@ -1742,16 +1840,18 @@ export class RoomManager {
     });
   }
 
-  public async sendBattlePass(userId: string) {
+  public async sendCollectionState(userId: string) {
     const user = this.pgRepo
       ? await this.pgRepo.getUserById(userId)
       : db.getUserById(userId);
     if (!user) return;
     this.setCachedUser(user);
+    const collection = this.pgRepo
+      ? await this.pgRepo.getCollectionState(userId)
+      : db.getCollectionState(userId);
     this.sendToUser(userId, {
-      type: 'BATTLE_PASS_UPDATE',
-      battlePass: user.battlePass,
-      challenges: user.challenges,
+      type: 'COLLECTION_STATE',
+      collection,
     });
   }
 

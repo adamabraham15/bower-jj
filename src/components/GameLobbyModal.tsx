@@ -28,6 +28,8 @@ import { RankBadge, RankTier } from './RankBadge';
 import { AIDifficulty, PlayerPosition } from '../engine/types';
 import { multiplayerClient } from '../services/multiplayerClient';
 import { sounds } from '../audio/sound';
+import { AvatarPortrait } from './AvatarPortrait';
+import { getCardBackDefinition } from '../config/collectiblesCatalog';
 
 export type LobbyGameMode = 'rivals' | 'custom';
 
@@ -491,7 +493,23 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                   >
                     <div className="flex items-center justify-between min-w-0">
                       <div className="flex items-center space-x-2 min-w-0">
-                        <span className="text-base flex-shrink-0">{slot ? slot.avatarIcon : '🪑'}</span>
+                        {slot ? (
+                          <div className="relative flex-shrink-0">
+                            <AvatarPortrait avatarId={slot.avatarIcon} size="sm" />
+                            {slot.equippedCardBack && (
+                              <img
+                                src={getCardBackDefinition(slot.equippedCardBack).imageUrl}
+                                alt={getCardBackDefinition(slot.equippedCardBack).name}
+                                title={`Deck: ${getCardBackDefinition(slot.equippedCardBack).name}`}
+                                className="absolute -bottom-1 -right-1 w-3.5 h-5 rounded-[3px] object-cover border border-white/40 shadow"
+                              />
+                            )}
+                          </div>
+                        ) : (
+                          <span className="w-9 h-9 rounded-xl bg-slate-900/70 border border-slate-800 flex items-center justify-center text-base flex-shrink-0">
+                            🪑
+                          </span>
+                        )}
                         <div className="min-w-0">
                           <div className="font-bold truncate text-[11px] flex items-center space-x-1">
                             <span>{slot ? slot.username : `Empty Seat ${pos + 1}`}</span>
@@ -665,7 +683,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                       className="p-1.5 px-2 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between text-xs"
                     >
                       <div className="flex items-center space-x-2">
-                        <span>{fr.avatarIcon}</span>
+                        <AvatarPortrait avatarId={fr.avatarIcon} size="xs" />
                         <span className="font-bold text-white text-[11px]">{fr.username}</span>
                       </div>
 

@@ -70,11 +70,12 @@ describe('Multiplayer Server & Anti-Cheat Architecture', () => {
     expect(updated!.tricksWon).toBe(2);
     expect(updated!.xp).toBe(450);
 
-    // Second match victory: 600 match XP + 600 Challenge 4 ("Win 2 matches") = 1650 XP total
-    // 1650 - 1000 = 650 XP into Level 2!
+    // Second match victory: 600 match XP + 450 previous = 1050 XP total
+    // 1050 - 1000 = 50 XP into Level 2, earning 1 collectible card pack!
     const secondWin = db.recordMatchCompletion(user.id, true, 8, 0, 0, 0);
     expect(secondWin!.level).toBe(2);
-    expect(secondWin!.xp).toBe(650);
+    expect(secondWin!.xp).toBe(50);
+    expect(secondWin!.unopenedPacksCount).toBe(1);
   });
 
   it('allows players to join custom rooms and switch seats between Blue and Red teams', () => {

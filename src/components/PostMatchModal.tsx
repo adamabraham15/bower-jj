@@ -21,6 +21,7 @@ import confetti from 'canvas-confetti';
 import { RankBadge, RankTier } from './RankBadge';
 import { sounds } from '../audio/sound';
 import { multiplayerClient } from '../services/multiplayerClient';
+import { AvatarPortrait } from './AvatarPortrait';
 
 interface MatchPlayer {
   id: string;
@@ -250,7 +251,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
                     }`}
                   >
                     <div className="flex items-center space-x-2 truncate">
-                      <span className="text-lg flex-shrink-0">{p.avatarIcon}</span>
+                      <AvatarPortrait avatarId={p.avatarIcon} size="sm" />
                       <div className="truncate">
                         <div className="font-bold text-white text-xs truncate flex items-center space-x-1">
                           <span>{p.name}</span>

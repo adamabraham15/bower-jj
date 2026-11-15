@@ -22,7 +22,7 @@ describe('Stage 4.1: Token Verification & Impersonation Prevention', () => {
 
     expect(identity).not.toBeNull();
     expect(identity?.username).toBe('HonestPlayer');
-    expect(identity?.avatarIcon).toBe('🤠');
+    expect(identity?.avatarIcon).toBe('the_outlaw');
     expect(identity?.isGuest).toBe(true);
     expect(identity?.userId).toBe('usr_sample_session_123');
   });

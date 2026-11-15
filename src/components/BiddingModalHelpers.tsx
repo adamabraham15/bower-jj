@@ -1,4 +1,5 @@
 import React from 'react';
+import { AvatarPortrait } from './AvatarPortrait';
 
 /**
  * Prominent pill badge placed on the current dealer's table avatar so it stands out immediately.
@@ -49,7 +50,7 @@ export const ModalDealerBanner: React.FC<ModalDealerBannerProps> = ({
         <span className="px-1.5 py-0.5 rounded-md bg-amber-400 text-slate-950 font-black text-[9px] uppercase tracking-wider flex-shrink-0 shadow-sm">
           Dealer
         </span>
-        {dealerAvatar && <span className="text-sm flex-shrink-0">{dealerAvatar}</span>}
+        {dealerAvatar && <AvatarPortrait avatarId={dealerAvatar} size="xs" className="flex-shrink-0" />}
         <span className="font-bold truncate">{isSelfDealer ? 'You' : dealerName}</span>
       </div>
       <span

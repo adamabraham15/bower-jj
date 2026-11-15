@@ -45,6 +45,13 @@ import { DealerAvatarBadge, ModalDealerBanner, GoAloneControl } from './BiddingM
 import { RankBadge, RankTier } from './RankBadge';
 import { PostMatchModal } from './PostMatchModal';
 import { PublicProfileModal, PublicPlayerData } from './PublicProfileModal';
+import { AvatarPortrait } from './AvatarPortrait';
+import {
+  BOT_AVATAR_BY_DIFFICULTY,
+  BOT_CARD_BACK_BY_DIFFICULTY,
+  resolveAvatarId,
+  resolveCardBackId,
+} from '../config/collectiblesCatalog';
 import { sounds } from '../audio/sound';
 import confetti from 'canvas-confetti';
 import {
@@ -67,6 +74,12 @@ interface GameTableProps {
     level?: number;
     xp?: number;
     nextLevelXp?: number;
+    avatarIcon?: string;
+    equippedCosmetics?: {
+      cardBack?: string;
+      banner?: string;
+      title?: string;
+    };
   };
   onOpenRules: () => void;
   onOpenTutorial: () => void;
@@ -275,81 +288,117 @@ export const GameTable: React.FC<GameTableProps> = ({
           </div>
         )}
 
-        <div
-          onClick={() => {
-            sounds.playUiClick();
-            const avatar = pos === 0 ? '🤠' : pos === 1 ? '🤖' : pos === 2 ? '🧝' : '👽';
-            const tier = (player.rankTier as RankTier) || (pos === 0 ? '9' : player.aiDifficulty === 'hard' ? 'K' : player.aiDifficulty === 'medium' ? '10' : '9');
-            setInspectedPlayer({
-              id: player.id || `bot_${player.name}`,
-              username: player.name,
-              avatarIcon: player.avatarId || avatar,
-              level: pos === 0 ? 1 : 8,
-              rankTier: tier,
-              rankPoints: 50,
-              totalGames: pos === 0 ? 12 : 95,
-              wins: pos === 0 ? 9 : 52,
-              losses: pos === 0 ? 3 : 43,
-              bestStreak: 4,
-              isFriend: pos === 2,
-              isOnline: true,
-              equippedCosmetics: {
-                hat: avatar,
-                cardBack: 'classic_blue',
-                banner: 'default_navy',
-                title: player.isAI ? `Tactical AI (${player.aiDifficulty})` : 'Competitor',
-              },
-            });
-          }}
-          title={`Inspect ${player.name}`}
-          className="relative cursor-pointer hover:scale-105 active:scale-95 transition-transform"
-        >
-          {/* Avatar Container */}
-          <div
-            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 transition-all duration-300 flex items-center justify-center
-              ${isTeamBlue ? 'bg-gradient-to-tr from-blue-600 to-cyan-400' : 'bg-gradient-to-tr from-red-600 to-amber-500'}
-              ${isCurrentTurn ? 'ring-4 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : isDealer ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/30' : 'opacity-90'}
-              ${isBenched ? 'grayscale opacity-50' : ''}`}
-          >
-            <div className="w-full h-full bg-slate-900 rounded-[14px] flex flex-col items-center justify-center overflow-hidden">
-              <span className="text-xl sm:text-2xl">
-                {pos === 0 ? '🤠' : pos === 1 ? '🤖' : pos === 2 ? '🧝' : '👽'}
-              </span>
-            </div>
-          </div>
+        {(() => {
+          const fallbackBotAvatars = BOT_AVATAR_BY_DIFFICULTY[player.aiDifficulty || 'medium'];
+          const resolvedAvatar = resolveAvatarId(
+            pos === 0
+              ? (profile?.avatarIcon || player.avatarId)
+              : (player.avatarId || fallbackBotAvatars[pos % fallbackBotAvatars.length])
+          );
+          const resolvedCardBack = resolveCardBackId(
+            pos === 0
+              ? (profile?.equippedCosmetics?.cardBack || player.cardBack)
+              : (player.cardBack || BOT_CARD_BACK_BY_DIFFICULTY[player.aiDifficulty || 'medium'])
+          );
+          return (
+            <>
+              <div
+                onClick={() => {
+                  sounds.playUiClick();
+                  const tier = (player.rankTier as RankTier) || (pos === 0 ? '9' : player.aiDifficulty === 'hard' ? 'K' : player.aiDifficulty === 'medium' ? '10' : '9');
+                  setInspectedPlayer({
+                    id: player.id || `bot_${player.name}`,
+                    username: player.name,
+                    avatarIcon: resolvedAvatar,
+                    level: pos === 0 ? (profile?.level ?? 1) : 8,
+                    rankTier: tier,
+                    rankPoints: pos === 0 ? (profile?.rankPoints ?? 0) : 50,
+                    totalGames: pos === 0 ? 12 : 95,
+                    wins: pos === 0 ? 9 : 52,
+                    losses: pos === 0 ? 3 : 43,
+                    bestStreak: 4,
+                    isFriend: pos === 2,
+                    isOnline: true,
+                    equippedCosmetics: {
+                      hat: resolvedAvatar,
+                      cardBack: resolvedCardBack,
+                      banner: 'default_navy',
+                      title: player.isAI ? `Tactical AI (${player.aiDifficulty})` : 'Competitor',
+                    },
+                  });
+                }}
+                title={`Inspect ${player.name}`}
+                className="relative cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+              >
+                {/* Avatar Container */}
+                <div
+                  className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 transition-all duration-300 flex items-center justify-center
+                    ${isTeamBlue ? 'bg-gradient-to-tr from-blue-600 to-cyan-400' : 'bg-gradient-to-tr from-red-600 to-amber-500'}
+                    ${isCurrentTurn ? 'ring-4 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : isDealer ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/30' : 'opacity-90'}
+                    ${isBenched ? 'grayscale opacity-50' : ''}`}
+                >
+                  <div className="w-full h-full bg-slate-900 rounded-[14px] flex flex-col items-center justify-center overflow-hidden">
+                    <AvatarPortrait
+                      avatarId={resolvedAvatar}
+                      size="md"
+                      showRarityRing={false}
+                      className="!w-full !h-full !rounded-[14px]"
+                    />
+                  </div>
+                </div>
 
-          {/* Dealer Chip */}
-          {isDealer && <DealerAvatarBadge />}
+                {/* Dealer Chip */}
+                {isDealer && <DealerAvatarBadge />}
 
-          {/* Trump Maker Chip */}
-          {isTrumpCaller && state.trumpSuit && (
-            <MakerBadge trumpSuit={state.trumpSuit} isBlueTeam={isTeamBlue} />
-          )}
+                {/* Trump Maker Chip */}
+                {isTrumpCaller && state.trumpSuit && (
+                  <MakerBadge trumpSuit={state.trumpSuit} isBlueTeam={isTeamBlue} />
+                )}
 
-          {/* Card Count Badge */}
-          {pos !== 0 && (
-            <div className="absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-mono font-bold text-gray-200 shadow-sm">
-              {isBenched ? 'BENCHED' : `${hand.length} 🂠`}
-            </div>
-          )}
-        </div>
+                {/* Card Count Badge */}
+                {pos !== 0 && (
+                  <div className="absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-mono font-bold text-gray-200 shadow-sm z-10">
+                    {isBenched ? 'BENCHED' : `${hand.length} 🂠`}
+                  </div>
+                )}
+              </div>
 
-        {/* Player Name & Info */}
-        <div className="mt-1 flex flex-col items-center">
-          <div className="text-[11px] sm:text-xs font-bold text-white flex items-center space-x-1">
-            <span>{player.name}</span>
-            {isCurrentTurn && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />}
-          </div>
-          {isBenched ? (
-            <span className="text-[9px] uppercase font-bold text-red-400 bg-red-950/80 px-1.5 rounded-sm">
-              Sitting Out
-            </span>
-          ) : player.isAI ? (
-            <span className="text-[9px] uppercase tracking-wider text-gray-400 font-mono">
-              AI ({player.aiDifficulty})
-            </span>
-          ) : null}
-        </div>
+              {/* Player Name & Info */}
+              <div className="mt-1 flex flex-col items-center">
+                <div className="text-[11px] sm:text-xs font-bold text-white flex items-center space-x-1">
+                  <span>{player.name}</span>
+                  {isCurrentTurn && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />}
+                </div>
+                {isBenched ? (
+                  <span className="text-[9px] uppercase font-bold text-red-400 bg-red-950/80 px-1.5 rounded-sm">
+                    Sitting Out
+                  </span>
+                ) : (
+                  <>
+                    {player.isAI && (
+                      <span className="text-[9px] uppercase tracking-wider text-gray-400 font-mono">
+                        AI ({player.aiDifficulty})
+                      </span>
+                    )}
+                    {pos !== 0 && hand.length > 0 && (
+                      <div className="mt-0.5 sm:mt-1 flex items-center justify-center -space-x-6 scale-75 sm:scale-95 origin-top pointer-events-none">
+                        {Array.from({ length: Math.min(hand.length, 5) }).map((_, idx, arr) => {
+                          const mid = (arr.length - 1) / 2;
+                          const rot = (idx - mid) * 7;
+                          return (
+                            <div key={idx} style={{ transform: `rotate(${rot}deg)` }} className="drop-shadow-md">
+                              <CardView isFacedown size="xs" cardBackSkin={resolvedCardBack} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </>
+          );
+        })()}
       </div>
     );
   };
@@ -368,7 +417,7 @@ export const GameTable: React.FC<GameTableProps> = ({
     : undefined;
   const callerTeam = state.callingTeam ?? (state.callingPlayer !== undefined ? getPlayerTeam(state.callingPlayer) : undefined);
   const dealerPlayer = state.players[state.dealer];
-  const dealerAvatar = state.dealer === 0 ? '🤠' : state.dealer === 1 ? '🤖' : state.dealer === 2 ? '🧝' : '👽';
+  const dealerAvatar = resolveAvatarId(state.dealer === 0 ? (profile?.avatarIcon || dealerPlayer?.avatarId) : dealerPlayer?.avatarId);
 
   return (
     <div className="relative w-full h-[100dvh] bg-slate-950 text-white flex flex-col overflow-hidden select-none">

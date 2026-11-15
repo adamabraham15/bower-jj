@@ -90,7 +90,7 @@ export function runLegacyMigration(
   for (const u of validUsers) {
     const playerId = `JJ-${(u.id.replace(/[^a-zA-Z0-9]/g, '').slice(-4) || '1000').toUpperCase()}`;
     const cleanUsername = u.username.replace(/'/g, "''");
-    const avatar = (u.avatarIcon || '🤠').replace(/'/g, "''");
+    const avatar = (u.avatarIcon || 'the_outlaw').replace(/'/g, "''");
     const tier = (u.rankTier as RankTier) || '9';
     const lp = Math.min(100, Math.max(0, u.rankPoints || 0));
     const mmr = u.mmr || 1200;
@@ -146,35 +146,25 @@ export function runLegacyMigration(
       ON CONFLICT (user_id) DO NOTHING;
     `);
 
-    // Insert Cosmetics
-    const hat = (u.equippedCosmetics?.hat || '🤠').replace(/'/g, "''");
+    // Insert Normalized Cosmetics & Level-Up Collectible Packs
+    const rawHat = u.equippedCosmetics?.hat || u.avatarIcon || 'the_outlaw';
     const cb = (u.equippedCosmetics?.cardBack || 'classic_blue').replace(/'/g, "''");
     const banner = (u.equippedCosmetics?.banner || 'default_navy').replace(/'/g, "''");
     const title = (u.equippedCosmetics?.title || 'Recruit').replace(/'/g, "''");
 
     sqlStatements.push(`
       INSERT INTO public.player_cosmetics (user_id, equipped_hat, equipped_card_back, equipped_banner, equipped_title)
-      SELECT p.id, '${hat}', '${cb}', '${banner}', '${title}'
+      SELECT p.id, '${rawHat.replace(/'/g, "''")}', '${cb}', '${banner}', '${title}'
       FROM public.profiles p WHERE p.username = '${cleanUsername}'
       ON CONFLICT (user_id) DO NOTHING;
     `);
 
-    // Insert Seasonal Battle Pass
-    if (u.battlePass) {
-      const bpTier = u.battlePass.tier || 1;
-      const bpXp = u.battlePass.xp || 0;
-      const bpReq = u.battlePass.tierXpRequired || 500;
-      const bpPrem = Boolean(u.battlePass.isPremium);
-      const freeClaimed = JSON.stringify(u.battlePass.claimedFreeTiers || []).replace('[', '{').replace(']', '}');
-      const premClaimed = JSON.stringify(u.battlePass.claimedPremiumTiers || []).replace('[', '{').replace(']', '}');
+    for (let lvl = 2; lvl <= level; lvl++) {
       sqlStatements.push(`
-        INSERT INTO public.player_battle_pass (user_id, season_id, tier, xp, tier_xp_required, is_premium, claimed_free_tiers, claimed_premium_tiers)
-        SELECT p.id, 1, ${bpTier}, ${bpXp}, ${bpReq}, ${bpPrem}, '${freeClaimed}'::INT[], '${premClaimed}'::INT[]
+        INSERT INTO public.player_card_packs (id, user_id, source, source_ref, earned_level, status, earned_at)
+        SELECT gen_random_uuid(), p.id, 'level_up_backfill', 'level_${lvl}', ${lvl}, 'unopened', NOW()
         FROM public.profiles p WHERE p.username = '${cleanUsername}'
-        ON CONFLICT (user_id, season_id) DO UPDATE SET
-          tier = EXCLUDED.tier,
-          xp = EXCLUDED.xp,
-          is_premium = EXCLUDED.is_premium;
+        ON CONFLICT (user_id, source_ref) DO NOTHING;
       `);
     }
 

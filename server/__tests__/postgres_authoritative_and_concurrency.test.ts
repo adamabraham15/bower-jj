@@ -70,7 +70,7 @@ describe('Stage 4.5: PostgreSQL Migration & Authoritative Database Cutover', () 
     const { user, sessionToken } = await repoInstanceA.getOrCreateUser('MasterBower', '👑');
     expect(user.id).toBeDefined();
     expect(user.username).toBe('MasterBower');
-    expect(user.avatarIcon).toBe('👑');
+    expect(user.avatarIcon).toBe('the_outlaw');
     expect(user.rankTier).toBe('9');
     expect(user.rankPoints).toBe(0);
     expect(user.mmr).toBe(1200);
@@ -92,14 +92,14 @@ describe('Stage 4.5: PostgreSQL Migration & Authoritative Database Cutover', () 
     expect(updated!.rankTier).toBe('10');
     expect(updated!.rankPoints).toBe(45);
     expect(updated!.mmr).toBe(1280);
-    expect(updated!.equippedCosmetics.cardBack).toBe('midnight_black');
+    expect(updated!.equippedCosmetics.cardBack).toBe('shadow_realm');
 
     // Instance B reads the updated profile from shared PostgreSQL
     const readFromB = await repoInstanceB.getUserById(user.id);
     expect(readFromB).not.toBeNull();
     expect(readFromB!.rankTier).toBe('10');
     expect(readFromB!.rankPoints).toBe(45);
-    expect(readFromB!.equippedCosmetics.cardBack).toBe('midnight_black');
+    expect(readFromB!.equippedCosmetics.cardBack).toBe('shadow_realm');
   });
 
   // ---------------------------------------------------------------------------
@@ -172,11 +172,11 @@ describe('Stage 4.5: PostgreSQL Migration & Authoritative Database Cutover', () 
     expect(p1InDb.totalGames).toBe(1);
     expect(p1InDb.tricksWon).toBe(6);
 
-    // Equip new hat avatar and verify it persists to profiles.avatar_icon
+    // Equip new starter hat avatar ('🤖' -> 'cyber_bot') and verify it persists to profiles.avatar_icon
     await repoInstanceA.equipCosmetic(p1.id, 'hat', '🤖');
     const p1WithHat = (await repoInstanceA.getUserById(p1.id))!;
-    expect(p1WithHat.avatarIcon).toBe('🤖');
-    expect(p1WithHat.equippedCosmetics.hat).toBe('🤖');
+    expect(p1WithHat.avatarIcon).toBe('cyber_bot');
+    expect(p1WithHat.equippedCosmetics.hat).toBe('cyber_bot');
 
     // Win two more matches (total 3 wins * 350 XP = 1050 XP -> Level 2 with 50 / 1000 XP)
     for (let m = 2; m <= 3; m++) {
@@ -456,14 +456,14 @@ describe('Stage 4.5: PostgreSQL Migration & Authoritative Database Cutover', () 
     expect(migratedUser!.mmr).toBe(1420);
     expect(migratedUser!.wins).toBe(18);
     expect(migratedUser!.losses).toBe(7);
-    expect(migratedUser!.equippedCosmetics.cardBack).toBe('golden_bower');
-    expect(migratedUser!.battlePass?.tier).toBe(7);
-    expect(migratedUser!.battlePass?.isPremium).toBe(true);
+    expect(migratedUser!.equippedCosmetics.cardBack).toBe('dark_royalty');
+    // Preserved legacy Battle Pass rewards + level-up pack backfill (Level 4 -> 3 packs)
+    expect(migratedUser!.unopenedPacksCount).toBe(3);
+    const migratedCollection = await migrationRepo.getCollectionState(migratedUser!.id);
+    expect(migratedCollection.unlockedAvatars).toContain('velvet_gentleman');
+    expect(migratedCollection.unlockedCardBacks).toContain('dark_royalty');
 
     await migrationRepo.close();
-    expect(migratedUser!.equippedCosmetics.cardBack).toBe('golden_bower');
-    expect(migratedUser!.battlePass?.tier).toBe(7);
-    expect(migratedUser!.battlePass?.isPremium).toBe(true);
 
     // Clean test sandbox
     try {
@@ -536,31 +536,38 @@ describe('Stage 4.5: PostgreSQL Migration & Authoritative Database Cutover', () 
     }
   });
 
-  it('prevents duplicate battle pass reward claims across multiple concurrent server nodes', async () => {
-    const user = await repoInstanceA.getOrCreateUser('PassChallenger', '🎯');
-    // Set battle pass tier to 5
+  it('prevents duplicate card pack opens across multiple concurrent server nodes', async () => {
+    const userRes = await repoInstanceA.getOrCreateUser('PackChallenger', '🎯');
+    const uid = userRes.user.id;
+
+    // Seed exactly one level-up pack in PostgreSQL for level 2
     await pool.query(
-      `UPDATE player_battle_pass
-       SET tier = 5, is_premium = true, claimed_free_tiers = '{}'
-       WHERE user_id = $1`,
-      [user.user.id]
+      `INSERT INTO public.player_card_packs (id, user_id, source, source_ref, earned_level, status, earned_at)
+       VALUES ($1, $2, 'level_up', 'level_2', 2, 'unopened', NOW())`,
+      ['11111111-1111-4111-8111-111111111111', uid]
     );
 
-    // Node A claims Tier 3 reward
-    const claimA = await repoInstanceA.claimPassReward(user.user.id, 3, false);
-    expect(claimA.success).toBe(true);
-    expect(claimA.item).toBe('🎩 Top Hat');
+    // Concurrent open attempts across two independent server nodes targeting the exact same pack
+    const [openA, openB] = await Promise.all([
+      repoInstanceA.openCardPack(uid, '11111111-1111-4111-8111-111111111111'),
+      repoInstanceB.openCardPack(uid, '11111111-1111-4111-8111-111111111111'),
+    ]);
 
-    // Node B attempts to claim the same Tier 3 reward on a different server instance
-    const claimB = await repoInstanceB.claimPassReward(user.user.id, 3, false);
-    expect(claimB.success).toBe(false);
+    const successes = [openA, openB].filter((r) => r.success);
+    const failures = [openA, openB].filter((r) => !r.success);
+    expect(successes.length).toBe(1);
+    expect(failures.length).toBe(1);
+    expect(successes[0].result!.cards.length).toBe(5);
 
-    // Verify inventory in PostgreSQL contains exactly one item
-    const invRes = await pool.query(
-      `SELECT * FROM cosmetic_inventory WHERE user_id = $1 AND item_id = '🎩'`,
-      [user.user.id]
+    // Verify PostgreSQL persisted exactly 5 card drop rows and 0 unopened packs remaining
+    const dropRes = await pool.query(
+      `SELECT COUNT(*)::int AS cnt FROM public.card_drop_history WHERE user_id = $1`,
+      [uid]
     );
-    expect(invRes.rows.length).toBe(1);
+    expect(dropRes.rows[0].cnt).toBe(5);
+
+    const colState = await repoInstanceB.getCollectionState(uid);
+    expect(colState.unopenedPacksCount).toBe(0);
   });
 
   it('creates a validated PostgreSQL JSON backup snapshot and verifies dry-run restoration into a separate pool', async () => {

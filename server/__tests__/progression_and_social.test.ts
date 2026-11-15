@@ -124,11 +124,11 @@ describe('Friends & Social System', () => {
   });
 });
 
-describe('Battle Pass & Progression System', () => {
-  it('awards match XP, advances level, and updates challenges', () => {
+describe('Level Progression & Card Pack System', () => {
+  it('awards match XP, advances level, and grants a collectible card pack on level up', () => {
     const { user } = db.getOrCreateUser(genName('ProgHero'), '⚡');
 
-    const updated = db.recordMatchCompletion(
+    const firstWin = db.recordMatchCompletion(
       user.id,
       true, // Win
       4, // tricks
@@ -137,15 +137,17 @@ describe('Battle Pass & Progression System', () => {
       0  // Loner
     );
 
-    expect(updated).not.toBeNull();
-    expect(updated!.xp).toBeGreaterThan(0);
-    expect(updated!.wins).toBe(1);
-    expect(updated!.marches).toBe(1);
-    expect(updated!.euchres).toBe(1);
+    expect(firstWin).not.toBeNull();
+    expect(firstWin!.xp).toBeGreaterThan(0);
+    expect(firstWin!.wins).toBe(1);
+    expect(firstWin!.marches).toBe(1);
+    expect(firstWin!.euchres).toBe(1);
+    expect(firstWin!.unopenedPacksCount).toBe(0);
 
-    // Check challenge progress
-    const trickChallenge = updated!.challenges.find(c => c.id === 'ch_1');
-    expect(trickChallenge!.current).toBe(4);
+    // Second win pushes past 1000 XP to Level 2 -> awards 1 unopened pack!
+    const secondWin = db.recordMatchCompletion(user.id, true, 8, 1, 1, 1);
+    expect(secondWin!.level).toBeGreaterThanOrEqual(2);
+    expect(secondWin!.unopenedPacksCount).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -228,20 +230,20 @@ describe('Public Profile Inspection, Moderation & Cosmetic Customization', () =>
     const { user: player1 } = db.getOrCreateUser(genName('InspectedUser'), '👑');
     const { user: viewer } = db.getOrCreateUser(genName('ViewerUser'), '🤠');
 
-    // Equip custom cosmetic
+    // Equip custom unlocked cosmetics
     db.equipCosmetic(player1.id, 'title', 'Bower Master');
     db.equipCosmetic(player1.id, 'banner', 'golden_royale');
-    db.equipCosmetic(player1.id, 'cardBack', 'golden_bower');
+    db.equipCosmetic(player1.id, 'cardBack', 'classic_red');
 
     const profile = db.getUserProfile(player1.id, undefined, viewer.id);
     expect(profile).not.toBeNull();
     expect(profile!.username).toBe(player1.username);
-    expect(profile!.avatarIcon).toBe('👑');
+    expect(profile!.avatarIcon).toBe('the_outlaw');
     expect(profile!.rankTier).toBe('9');
     expect(profile!.isFriend).toBe(false);
     expect(profile!.equippedCosmetics?.title).toBe('Bower Master');
     expect(profile!.equippedCosmetics?.banner).toBe('golden_royale');
-    expect(profile!.equippedCosmetics?.cardBack).toBe('golden_bower');
+    expect(profile!.equippedCosmetics?.cardBack).toBe('classic_red');
   });
 
   it('records player report with moderation audit', () => {
@@ -291,11 +293,11 @@ describe('Public Profile Inspection, Moderation & Cosmetic Customization', () =>
     const { user: host } = db.getOrCreateUser(genName('PlayAgainHost'), '🤠');
     const { user: rival } = db.getOrCreateUser(genName('PlayAgainRival'), '🧝');
 
-    // Equip new avatar ('🤖') via equipCosmetic('hat')
+    // Equip new starter avatar ('🤖' -> 'cyber_bot') via equipCosmetic('hat')
     db.equipCosmetic(host.id, 'hat', '🤖');
     const updatedHost = db.getUserById(host.id)!;
-    expect(updatedHost.avatarIcon).toBe('🤖');
-    expect(updatedHost.equippedCosmetics.hat).toBe('🤖');
+    expect(updatedHost.avatarIcon).toBe('cyber_bot');
+    expect(updatedHost.equippedCosmetics.hat).toBe('cyber_bot');
 
     roomManager.registerConnection(host.id, {
       ws: { readyState: 1, send: () => {} } as any,

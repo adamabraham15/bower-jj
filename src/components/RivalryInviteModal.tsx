@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { FriendSummary, Room } from '../../server/types';
 import { RankBadge, RankTier } from './RankBadge';
+import { AvatarPortrait } from './AvatarPortrait';
 import { multiplayerClient } from '../services/multiplayerClient';
 import { sounds } from '../audio/sound';
 import { PlayerPosition } from '../engine/types';
@@ -207,7 +208,7 @@ export const RivalryInviteModal: React.FC<RivalryInviteModalProps> = ({
                 </div>
                 {blueSlot ? (
                   <div className="font-bold text-white flex items-center space-x-1.5 min-w-0">
-                    <span className="text-base flex-shrink-0">{blueSlot.avatarIcon}</span>
+                    <AvatarPortrait avatarId={blueSlot.avatarIcon} size="xs" />
                     <span className="truncate">{blueSlot.username}</span>
                   </div>
                 ) : (
@@ -236,7 +237,7 @@ export const RivalryInviteModal: React.FC<RivalryInviteModalProps> = ({
                 </div>
                 {redSlot && !redSlot.isAI ? (
                   <div className="font-bold text-white flex items-center space-x-1.5 min-w-0">
-                    <span className="text-base flex-shrink-0">{redSlot.avatarIcon}</span>
+                    <AvatarPortrait avatarId={redSlot.avatarIcon} size="xs" />
                     <span className="truncate">{redSlot.username}</span>
                   </div>
                 ) : (
@@ -339,8 +340,8 @@ export const RivalryInviteModal: React.FC<RivalryInviteModalProps> = ({
                       }`}
                     >
                       <div className="flex items-center space-x-3">
-                        <div className="relative text-2xl">
-                          {friend.avatarIcon}
+                        <div className="relative flex-shrink-0">
+                          <AvatarPortrait avatarId={friend.avatarIcon} size="sm" />
                           <span
                             className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-slate-900 ${
                               friend.isOnline ? 'bg-emerald-400' : 'bg-gray-500'

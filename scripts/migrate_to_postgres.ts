@@ -20,6 +20,11 @@ import crypto from 'crypto';
 import pg from 'pg';
 import { PostgresDatabaseRepository } from '../server/db/postgres';
 import { UserAccount, RankTier } from '../server/types';
+import {
+  resolveAvatarId,
+  resolveCardBackId,
+  getCardBackDefinition,
+} from '../src/config/collectiblesCatalog';
 
 export interface MigrationResult {
   success: boolean;
@@ -31,7 +36,7 @@ export interface MigrationResult {
   migratedStats: number;
   migratedXp: number;
   migratedCosmetics: number;
-  migratedBattlePass: number;
+  migratedPacks: number;
   migratedFriendships: number;
   verificationPassed: boolean;
   errors: string[];
@@ -85,7 +90,7 @@ export async function executePostgresMigration(
   let migratedStats = 0;
   let migratedXp = 0;
   let migratedCosmetics = 0;
-  let migratedBattlePass = 0;
+  let migratedPacks = 0;
   let migratedFriendships = 0;
 
   try {
@@ -112,7 +117,7 @@ export async function executePostgresMigration(
           userUuid,
           playerId,
           u.username,
-          u.avatarIcon || '🤠',
+          resolveAvatarId(u.avatarIcon),
           new Date(u.createdAt || Date.now()).toISOString(),
           new Date(u.lastActive || Date.now()).toISOString(),
         ]
@@ -186,9 +191,9 @@ export async function executePostgresMigration(
       );
       migratedXp++;
 
-      // 5. Cosmetics
-      const hat = u.equippedCosmetics?.hat || '🤠';
-      const cardBack = u.equippedCosmetics?.cardBack || 'classic_blue';
+      // 5. Cosmetics & Collectibles (Migrating equipped items & retroactive level-up packs)
+      const hat = resolveAvatarId(u.equippedCosmetics?.hat || u.avatarIcon);
+      const cardBack = resolveCardBackId(u.equippedCosmetics?.cardBack);
       const banner = u.equippedCosmetics?.banner || 'default_navy';
       const title = u.equippedCosmetics?.title || 'Recruit';
 
@@ -207,37 +212,60 @@ export async function executePostgresMigration(
         `,
         [u.username, hat, cardBack, banner, title]
       );
+      await client.query(
+        `
+        INSERT INTO public.player_avatars (id, user_id, avatar_id, source, unlocked_at)
+        SELECT $1, id, $2, 'migrated_legacy', NOW() FROM public.profiles WHERE username = $3
+        ON CONFLICT (user_id, avatar_id) DO NOTHING;
+        `,
+        [crypto.randomUUID(), hat, u.username]
+      );
+      await client.query(
+        `
+        INSERT INTO public.player_card_backs (id, user_id, card_back_id, collection_id, source, unlocked_at)
+        SELECT $1, id, $2, $3, 'migrated_legacy', NOW() FROM public.profiles WHERE username = $4
+        ON CONFLICT (user_id, card_back_id) DO NOTHING;
+        `,
+        [crypto.randomUUID(), cardBack, getCardBackDefinition(cardBack).collectionId || null, u.username]
+      );
       migratedCosmetics++;
 
-      // 6. Battle Pass
-      if (u.battlePass) {
-        const bpId = crypto.randomUUID();
-        await client.query(
+      // 6. Preserve legacy Battle Pass rewards + grant level-up packs
+      const legacyBp = (u as any).battlePass;
+      if (legacyBp?.claimedFreeTiers) {
+        const free: number[] = legacyBp.claimedFreeTiers;
+        if (free.includes(3)) {
+          await client.query(
+            `INSERT INTO public.player_avatars (id, user_id, avatar_id, source, unlocked_at) SELECT $1, id, 'velvet_gentleman', 'migrated_battle_pass', NOW() FROM public.profiles WHERE username = $2 ON CONFLICT (user_id, avatar_id) DO NOTHING`,
+            [crypto.randomUUID(), u.username]
+          );
+        }
+        if (free.includes(5)) {
+          await client.query(
+            `INSERT INTO public.player_card_backs (id, user_id, card_back_id, collection_id, source, unlocked_at) SELECT $1, id, 'dark_royalty', 'dark_royalty', 'migrated_battle_pass', NOW() FROM public.profiles WHERE username = $2 ON CONFLICT (user_id, card_back_id) DO NOTHING`,
+            [crypto.randomUUID(), u.username]
+          );
+        }
+        if (free.includes(15)) {
+          await client.query(
+            `INSERT INTO public.player_avatars (id, user_id, avatar_id, source, unlocked_at) SELECT $1, id, 'bower_king', 'migrated_battle_pass', NOW() FROM public.profiles WHERE username = $2 ON CONFLICT (user_id, avatar_id) DO NOTHING`,
+            [crypto.randomUUID(), u.username]
+          );
+        }
+      }
+      const normLevel = Math.max(1, u.level || 1);
+      for (let lvl = 2; lvl <= normLevel; lvl++) {
+        const insPack = await client.query(
           `
-          INSERT INTO public.player_battle_pass (
-            id, user_id, season_id, tier, xp, tier_xp_required, is_premium, claimed_free_tiers, claimed_premium_tiers, updated_at
-          )
-          VALUES (
-            $1, (SELECT id FROM public.profiles WHERE username = $2),
-            1, $3, $4, $5, $6, $7, $8, NOW()
-          )
-          ON CONFLICT (user_id, season_id) DO UPDATE SET
-            tier = EXCLUDED.tier,
-            xp = EXCLUDED.xp,
-            is_premium = EXCLUDED.is_premium;
+          INSERT INTO public.player_card_packs (id, user_id, source, source_ref, earned_level, status, earned_at)
+          SELECT $1, id, 'level_up_backfill', $2, $3::int, 'unopened', NOW()
+          FROM public.profiles WHERE username = $4
+          ON CONFLICT (user_id, source_ref) DO NOTHING
+          RETURNING id;
           `,
-          [
-            bpId,
-            u.username,
-            u.battlePass.tier || 1,
-            u.battlePass.xp || 0,
-            u.battlePass.tierXpRequired || 500,
-            Boolean(u.battlePass.isPremium),
-            u.battlePass.claimedFreeTiers || [],
-            u.battlePass.claimedPremiumTiers || [],
-          ]
+          [crypto.randomUUID(), `level_${lvl}`, lvl, u.username]
         );
-        migratedBattlePass++;
+        if (insPack.rows.length > 0) migratedPacks++;
       }
     }
 
@@ -357,7 +385,7 @@ export async function executePostgresMigration(
     migratedStats,
     migratedXp,
     migratedCosmetics,
-    migratedBattlePass,
+    migratedPacks,
     migratedFriendships,
     verificationPassed: passed,
     errors,

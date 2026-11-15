@@ -3,9 +3,10 @@
  * Crisp vector SVG suits, guaranteed pixel sizing, and unmistakable visual clarity.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, Suit } from '../engine/types';
 import { isRightBower, isLeftBower, getEffectiveSuit } from '../engine/cards';
+import { getCardBackDefinition, RARITY_META } from '../config/collectiblesCatalog';
 
 interface CardViewProps {
   card?: Card; // If undefined, renders card back
@@ -14,7 +15,7 @@ interface CardViewProps {
   isSelected?: boolean;
   isFacedown?: boolean;
   onClick?: () => void;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   rotation?: number; // In degrees, for trick orientation or hand fanning
   elevated?: boolean;
   badge?: string;
@@ -22,36 +23,17 @@ interface CardViewProps {
   cardBackSkin?: string;
 }
 
-const CARD_BACK_STYLES: Record<string, { bg: string; border: string; accent: string }> = {
-  classic_blue: {
-    bg: 'radial-gradient(circle at center, #1e3a8a 0%, #090d16 100%)',
-    border: 'border-amber-500/50',
-    accent: 'text-amber-300 border-amber-400/70',
-  },
-  crimson_royal: {
-    bg: 'radial-gradient(circle at center, #881337 0%, #2e0505 100%)',
-    border: 'border-amber-400/60',
-    accent: 'text-amber-300 border-amber-400/80',
-  },
-  neon_cyber: {
-    bg: 'linear-gradient(135deg, #09090b 0%, #1e1b4b 50%, #0369a1 100%)',
-    border: 'border-cyan-400/70',
-    accent: 'text-cyan-300 border-cyan-400',
-  },
-  golden_bower: {
-    bg: 'radial-gradient(circle at center, #d97706 0%, #78350f 50%, #1c1917 100%)',
-    border: 'border-yellow-300',
-    accent: 'text-yellow-200 border-yellow-300',
-  },
-  midnight_black: {
-    bg: 'radial-gradient(circle at center, #18181b 0%, #050505 100%)',
-    border: 'border-emerald-500/60',
-    accent: 'text-emerald-300 border-emerald-400',
-  },
-};
-
 // Guaranteed Pixel Dimensions (Prevents any CSS purge or 0-width collapse)
 const SIZE_CONFIG = {
+  xs: {
+    w: 36,
+    h: 52,
+    rankClass: 'text-[10px] font-black',
+    cornerIconClass: 'w-2.5 h-2.5',
+    centerIconClass: 'w-4 h-4',
+    ribbonClass: 'text-[7px] py-0.5',
+    suitLabelClass: 'text-[7px]',
+  },
   sm: {
     w: 64,
     h: 92,
@@ -125,15 +107,19 @@ export const CardView: React.FC<CardViewProps> = ({
   playerTag,
   cardBackSkin = 'classic_blue',
 }) => {
+  const [backImgFailed, setBackImgFailed] = useState(false);
   const cfg = SIZE_CONFIG[size];
-  const backStyle = CARD_BACK_STYLES[cardBackSkin] || CARD_BACK_STYLES.classic_blue;
+  const backDef = getCardBackDefinition(cardBackSkin);
+  const rarityMeta = RARITY_META[backDef.rarity];
 
   // Card Back
   if (isFacedown || !card) {
     return (
       <div
         onClick={onClick}
-        className={`relative rounded-xl select-none cursor-pointer border-2 ${backStyle.border} shadow-xl transition-transform duration-200 active:scale-95 flex items-center justify-center overflow-hidden flex-shrink-0`}
+        className={`relative ${size === 'xs' ? 'rounded-md border' : 'rounded-xl border-2'} select-none ${
+          onClick ? 'cursor-pointer active:scale-95' : ''
+        } ${rarityMeta.borderClass} shadow-xl transition-transform duration-200 flex items-center justify-center overflow-hidden flex-shrink-0 bg-slate-950`}
         style={{
           width: `${cfg.w}px`,
           height: `${cfg.h}px`,
@@ -142,18 +128,34 @@ export const CardView: React.FC<CardViewProps> = ({
           maxWidth: `${cfg.w}px`,
           maxHeight: `${cfg.h}px`,
           transform: `rotate(${rotation}deg) ${elevated ? 'translateY(-12px)' : ''}`,
-          background: backStyle.bg,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.6), inset 0 0 10px rgba(245, 158, 11, 0.2)',
+          boxShadow:
+            size === 'xs'
+              ? '0 3px 8px rgba(0,0,0,0.65)'
+              : `0 6px 16px rgba(0,0,0,0.65), 0 0 12px ${backDef.accentHex}33`,
         }}
+        title={`${backDef.name} Card Back`}
       >
-        <div className="absolute inset-1 border border-amber-400/30 rounded-lg flex flex-col items-center justify-center p-1 bg-slate-900/40">
-          <div className={`w-7 h-7 rounded-full border-2 ${backStyle.accent} flex items-center justify-center text-xs font-black shadow-inner`}>
-            JJ
+        {!backImgFailed ? (
+          <img
+            src={backDef.imageUrl}
+            alt={`${backDef.name} card back`}
+            draggable={false}
+            onError={() => setBackImgFailed(true)}
+            className="w-full h-full object-cover select-none"
+          />
+        ) : (
+          <div
+            className="w-full h-full flex flex-col items-center justify-center p-1"
+            style={{
+              background: `radial-gradient(circle at center, ${backDef.accentHex}44 0%, #090d16 100%)`,
+            }}
+          >
+            <div className="w-6 h-6 rounded-full border border-amber-400/70 flex items-center justify-center text-[10px] font-black text-amber-200">
+              JJ
+            </div>
           </div>
-          <div className="text-[9px] font-mono tracking-widest text-amber-400 font-bold mt-1 uppercase">
-            Bower
-          </div>
-        </div>
+        )}
+        <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/15 rounded-[inherit]" />
       </div>
     );
   }
