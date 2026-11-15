@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { parseAuthRedirectUrl } from '../authCallback';
+import { formatAuthError, parseAuthRedirectUrl } from '../authCallback';
 
 describe('parseAuthRedirectUrl', () => {
   it('detects scanner-proof token_hash confirmation links', () => {
@@ -66,5 +66,26 @@ describe('parseAuthRedirectUrl', () => {
   it('ignores normal menu visits and lobby invite URLs', () => {
     expect(parseAuthRedirectUrl('https://bower-jj.vercel.app/?join=ABC123').kind).toBe('none');
     expect(parseAuthRedirectUrl('https://bower-jj.vercel.app/').kind).toBe('none');
+  });
+});
+
+describe('formatAuthError', () => {
+  it('replaces empty GoTrue "{}" error messages on 500 failures with actionable text', () => {
+    const err = { message: '{}', status: 500, __isAuthError: true };
+    const formatted = formatAuthError(err, 'Registration failed.');
+    expect(formatted).not.toBe('{}');
+    expect(formatted.toLowerCase()).toContain('database or server error');
+  });
+
+  it('replaces raw Database error saving new user with friendly text', () => {
+    const formatted = formatAuthError({ message: 'Database error saving new user', status: 500 }, 'Registration failed.');
+    expect(formatted).toBe('Account setup could not complete in the database. Please try again shortly.');
+  });
+
+  it('preserves clear client validation and auth messages', () => {
+    expect(formatAuthError({ message: 'User already registered', status: 422 }, 'Registration failed.')).toBe(
+      'User already registered'
+    );
+    expect(formatAuthError(null, 'Registration failed.')).toBe('Registration failed.');
   });
 });

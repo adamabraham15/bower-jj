@@ -4,7 +4,7 @@
  */
 
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js';
-import { captureInitialAuthRedirect } from './authCallback';
+import { captureInitialAuthRedirect, formatAuthError } from './authCallback';
 import { resolveAvatarId, resolveCardBackId } from '../config/collectiblesCatalog';
 
 // Capture auth redirect parameters before Supabase client initializes and scrubs URL fragments
@@ -110,7 +110,7 @@ class AuthService {
       });
 
       if (error) {
-        return { user: null, session: null, error: error.message };
+        return { user: null, session: null, error: formatAuthError(error, 'Registration failed.') };
       }
 
       return {
@@ -119,7 +119,7 @@ class AuthService {
         error: null,
       };
     } catch (err: any) {
-      return { user: null, session: null, error: err.message || 'Registration failed' };
+      return { user: null, session: null, error: formatAuthError(err, 'Registration failed.') };
     }
   }
 
@@ -145,7 +145,7 @@ class AuthService {
       });
 
       if (error) {
-        return { user: null, session: null, error: error.message };
+        return { user: null, session: null, error: formatAuthError(error, 'Login failed.') };
       }
 
       return {
@@ -154,7 +154,7 @@ class AuthService {
         error: null,
       };
     } catch (err: any) {
-      return { user: null, session: null, error: err.message || 'Login failed' };
+      return { user: null, session: null, error: formatAuthError(err, 'Login failed.') };
     }
   }
 
@@ -203,12 +203,12 @@ class AuthService {
       });
 
       if (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: formatAuthError(error, 'Password reset request failed.') };
       }
 
       return { success: true, error: null };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Password reset request failed' };
+      return { success: false, error: formatAuthError(err, 'Password reset request failed.') };
     }
   }
 
@@ -234,11 +234,11 @@ class AuthService {
           type,
         });
         if (error) {
-          return { user: null, session: null, error: error.message };
+          return { user: null, session: null, error: formatAuthError(error, 'Account verification failed.') };
         }
         return { user: data.user, session: data.session, error: null };
       } catch (err: any) {
-        return { user: null, session: null, error: err.message || 'Account verification failed.' };
+        return { user: null, session: null, error: formatAuthError(err, 'Account verification failed.') };
       }
     })();
 
@@ -265,11 +265,11 @@ class AuthService {
         type: 'signup',
       });
       if (error) {
-        return { user: null, session: null, error: error.message };
+        return { user: null, session: null, error: formatAuthError(error, 'Verification code invalid or expired.') };
       }
       return { user: data.user, session: data.session, error: null };
     } catch (err: any) {
-      return { user: null, session: null, error: err.message || 'Verification code invalid or expired.' };
+      return { user: null, session: null, error: formatAuthError(err, 'Verification code invalid or expired.') };
     }
   }
 
@@ -292,11 +292,11 @@ class AuthService {
         },
       });
       if (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: formatAuthError(error, 'Could not resend confirmation email.') };
       }
       return { success: true, error: null };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Could not resend confirmation email.' };
+      return { success: false, error: formatAuthError(err, 'Could not resend confirmation email.') };
     }
   }
 

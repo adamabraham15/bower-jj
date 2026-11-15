@@ -157,3 +157,38 @@ export function cleanAuthParamsFromBrowserUrl(): void {
     // Ignore history API restrictions in embedded webviews
   }
 }
+
+/**
+ * Normalizes Supabase Auth / GoTrue errors into readable messages,
+ * preventing empty `{}` or `[object Object]` strings from surfacing to players.
+ */
+export function formatAuthError(err: unknown, fallback: string): string {
+  if (!err) return fallback;
+
+  const raw =
+    typeof err === 'string'
+      ? err
+      : typeof (err as any)?.message === 'string'
+        ? (err as any).message
+        : typeof (err as any)?.error_description === 'string'
+          ? (err as any).error_description
+          : typeof (err as any)?.msg === 'string'
+            ? (err as any).msg
+            : '';
+
+  const trimmed = raw.trim();
+  const status = typeof (err as any)?.status === 'number' ? (err as any).status : undefined;
+
+  if (!trimmed || trimmed === '{}' || trimmed === '[object Object]') {
+    if (status && status >= 500) {
+      return 'Account service encountered a database or server error while saving your account. Please try again shortly.';
+    }
+    return fallback;
+  }
+
+  if (trimmed.toLowerCase().includes('database error saving new user')) {
+    return 'Account setup could not complete in the database. Please try again shortly.';
+  }
+
+  return trimmed;
+}

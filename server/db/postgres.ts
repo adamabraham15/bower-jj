@@ -170,9 +170,9 @@ export class PostgresDatabaseRepository {
         await client.query(sql);
       }
 
-      // Fast-path skip if schema + catalogs + 4.6.0 migration are already cleanly applied
+      // Fast-path skip if schema + catalogs + 4.6.0/4.6.1 migrations are already cleanly applied
       const migRes = await client.query(
-        `SELECT version FROM schema_migrations WHERE version IN ('4.5.0', '4.6.0')`
+        `SELECT version FROM schema_migrations WHERE version IN ('4.5.0', '4.6.0', '4.6.1')`
       );
       const appliedVersions = new Set(migRes.rows.map((r) => String(r.version)));
       const bpStillExistsRes = await client.query(
@@ -270,6 +270,21 @@ export class PostgresDatabaseRepository {
       throw err;
     } finally {
       client.release();
+    }
+
+    // Migration 4.6.1 runs outside the schema TX using autocommit queries so pg-mem adapters remain unaffected
+    const mig461 = await this.pool.query(`SELECT 1 FROM schema_migrations WHERE version = '4.6.1' LIMIT 1`);
+    if (mig461.rows.length === 0) {
+      const triggerClean = await this.repairSupabaseSignupTrigger();
+      if (triggerClean) {
+        await this.pool.query(
+          `
+          INSERT INTO schema_migrations (version, description, applied_at)
+          VALUES ('4.6.1', 'Update handle_new_user trigger & column defaults for starter collectibles (no player_battle_pass)', NOW())
+          ON CONFLICT (version) DO NOTHING;
+          `
+        );
+      }
     }
   }
 
@@ -498,6 +513,162 @@ export class PostgresDatabaseRepository {
     if (bpExists) {
       await client.query(`DROP TABLE IF EXISTS public.player_battle_pass;`);
     }
+  }
+
+  /**
+   * Aligns column defaults and Supabase's `public.handle_new_user()` trigger
+   * with the post-Battle-Pass collectible schema (6 starter avatars, 2 starter card backs).
+   * Returns true if the trigger does not exist or is already clean; false if owned by another role and still outdated.
+   */
+  private async repairSupabaseSignupTrigger(): Promise<boolean> {
+    let hasHandleNewUser = false;
+    try {
+      const checkRes = await this.pool.query(`
+        SELECT EXISTS (
+          SELECT 1 FROM pg_proc p
+          JOIN pg_namespace n ON n.oid = p.pronamespace
+          WHERE n.nspname = 'public' AND p.proname = 'handle_new_user'
+        ) AS exists
+      `);
+      hasHandleNewUser = Boolean(checkRes.rows[0]?.exists);
+    } catch {
+      // pg-mem / lightweight adapters lack pg_proc introspection; schema.ts already sets clean defaults
+      return true;
+    }
+
+    try {
+      await this.pool.query(`ALTER TABLE public.profiles ALTER COLUMN avatar_icon SET DEFAULT 'the_outlaw'`);
+      await this.pool.query(`ALTER TABLE public.player_cosmetics ALTER COLUMN equipped_hat SET DEFAULT 'the_outlaw'`);
+    } catch {
+      // Ignore if table ownership prohibits ALTER COLUMN
+    }
+
+    if (!hasHandleNewUser) {
+      return true;
+    }
+
+    const procRes = await this.pool.query(`
+      SELECT
+        pg_get_userbyid(p.proowner) AS func_owner,
+        pg_get_functiondef(p.oid) AS def,
+        (SELECT r.rolsuper FROM pg_roles r WHERE r.rolname = current_user) AS is_super,
+        current_user AS cur_user
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public' AND p.proname = 'handle_new_user'
+      LIMIT 1
+    `);
+
+    if (procRes.rows.length === 0) {
+      return true;
+    }
+
+    const row = procRes.rows[0];
+    const funcDef = String(row.def || '');
+    const stillBroken = funcDef.includes('player_battle_pass') || !funcDef.includes('player_avatars');
+    if (!stillBroken) {
+      return true;
+    }
+
+    const canReplace = row.is_super || row.func_owner === row.cur_user;
+    if (!canReplace) {
+      console.error(
+        `[MIGRATION 4.6.1] ACTION REQUIRED: public.handle_new_user() is owned by '${row.func_owner}' (connected as '${row.cur_user}') and still references retired table public.player_battle_pass. Run supabase/migrations/20261115_fix_handle_new_user_signup.sql in the Supabase SQL Editor to restore new account signups.`
+      );
+      return false;
+    }
+
+    await this.pool.query(`
+      CREATE OR REPLACE FUNCTION public.handle_new_user()
+      RETURNS TRIGGER
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      SET search_path = public
+      AS $fn$
+      DECLARE
+        new_player_id TEXT;
+        new_username TEXT;
+        raw_avatar TEXT;
+        normalized_avatar TEXT;
+      BEGIN
+        new_player_id := 'JJ-' || UPPER(SUBSTRING(REPLACE(NEW.id::text, '-', '') FROM 1 FOR 6));
+        new_username := COALESCE(
+          NULLIF(TRIM(NEW.raw_user_meta_data->>'username'), ''),
+          'Bower_' || (FLOOR(1000 + RANDOM() * 9000))::text
+        );
+        raw_avatar := NULLIF(TRIM(COALESCE(NEW.raw_user_meta_data->>'avatar_icon', '')), '');
+        normalized_avatar := CASE raw_avatar
+          WHEN 'the_outlaw' THEN 'the_outlaw'
+          WHEN '🤠' THEN 'the_outlaw'
+          WHEN 'elven_trickster' THEN 'elven_trickster'
+          WHEN '🧝' THEN 'elven_trickster'
+          WHEN 'cyber_bot' THEN 'cyber_bot'
+          WHEN '🤖' THEN 'cyber_bot'
+          WHEN 'clever_fox' THEN 'clever_fox'
+          WHEN '🦊' THEN 'clever_fox'
+          WHEN 'velvet_gentleman' THEN 'velvet_gentleman'
+          WHEN '🎩' THEN 'velvet_gentleman'
+          WHEN 'iron_tactician' THEN 'iron_tactician'
+          WHEN '🪖' THEN 'iron_tactician'
+          WHEN '⚔️' THEN 'iron_tactician'
+          ELSE 'the_outlaw'
+        END;
+
+        INSERT INTO public.profiles (id, player_id, username, avatar_icon)
+        VALUES (NEW.id, new_player_id, new_username, normalized_avatar)
+        ON CONFLICT (id) DO NOTHING;
+
+        INSERT INTO public.player_settings (user_id) VALUES (NEW.id)
+        ON CONFLICT (user_id) DO NOTHING;
+
+        INSERT INTO public.player_ranks (user_id) VALUES (NEW.id)
+        ON CONFLICT (user_id) DO NOTHING;
+
+        INSERT INTO public.player_xp (user_id) VALUES (NEW.id)
+        ON CONFLICT (user_id) DO NOTHING;
+
+        INSERT INTO public.player_statistics (user_id) VALUES (NEW.id)
+        ON CONFLICT (user_id) DO NOTHING;
+
+        INSERT INTO public.player_cosmetics (user_id, equipped_hat, equipped_card_back, equipped_banner, equipped_title)
+        VALUES (NEW.id, normalized_avatar, 'classic_blue', 'default_navy', 'Recruit')
+        ON CONFLICT (user_id) DO NOTHING;
+
+        INSERT INTO public.player_avatars (id, user_id, avatar_id, source, unlocked_at)
+        VALUES
+          (gen_random_uuid(), NEW.id, 'the_outlaw', 'starter', NOW()),
+          (gen_random_uuid(), NEW.id, 'elven_trickster', 'starter', NOW()),
+          (gen_random_uuid(), NEW.id, 'cyber_bot', 'starter', NOW()),
+          (gen_random_uuid(), NEW.id, 'clever_fox', 'starter', NOW()),
+          (gen_random_uuid(), NEW.id, 'velvet_gentleman', 'starter', NOW()),
+          (gen_random_uuid(), NEW.id, 'iron_tactician', 'starter', NOW())
+        ON CONFLICT (user_id, avatar_id) DO NOTHING;
+
+        INSERT INTO public.player_card_backs (id, user_id, card_back_id, collection_id, source, unlocked_at)
+        VALUES
+          (gen_random_uuid(), NEW.id, 'classic_blue', NULL, 'starter', NOW()),
+          (gen_random_uuid(), NEW.id, 'classic_red', NULL, 'starter', NOW())
+        ON CONFLICT (user_id, card_back_id) DO NOTHING;
+
+        INSERT INTO public.cosmetic_inventory (id, user_id, category, item_id, unlocked_at)
+        VALUES
+          (gen_random_uuid(), NEW.id, 'hat', 'the_outlaw', NOW()),
+          (gen_random_uuid(), NEW.id, 'hat', 'elven_trickster', NOW()),
+          (gen_random_uuid(), NEW.id, 'hat', 'cyber_bot', NOW()),
+          (gen_random_uuid(), NEW.id, 'hat', 'clever_fox', NOW()),
+          (gen_random_uuid(), NEW.id, 'hat', 'velvet_gentleman', NOW()),
+          (gen_random_uuid(), NEW.id, 'hat', 'iron_tactician', NOW()),
+          (gen_random_uuid(), NEW.id, 'cardBack', 'classic_blue', NOW()),
+          (gen_random_uuid(), NEW.id, 'cardBack', 'classic_red', NOW()),
+          (gen_random_uuid(), NEW.id, 'banner', 'default_navy', NOW()),
+          (gen_random_uuid(), NEW.id, 'title', 'Recruit', NOW())
+        ON CONFLICT (user_id, category, item_id) DO NOTHING;
+
+        RETURN NEW;
+      END;
+      $fn$;
+    `);
+    return true;
   }
 
   // --- QUERY WITH RETRY FOR TRANSIENT FAILURES ---

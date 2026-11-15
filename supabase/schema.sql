@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   player_id TEXT UNIQUE NOT NULL,
   username TEXT UNIQUE NOT NULL,
-  avatar_icon TEXT NOT NULL DEFAULT '🤠',
+  avatar_icon TEXT NOT NULL DEFAULT 'the_outlaw',
   is_admin BOOLEAN NOT NULL DEFAULT FALSE,
   is_suspended BOOLEAN NOT NULL DEFAULT FALSE,
   is_banned BOOLEAN NOT NULL DEFAULT FALSE,
@@ -111,20 +111,96 @@ CREATE TABLE IF NOT EXISTS public.player_statistics (
 );
 
 -- ------------------------------------------------------------------------------
--- 6. SEASONAL BATTLE PASS (BOWER PASS)
+-- 6. COLLECTIBLE AVATARS, CARD PACKS & CARD BACKS (Replaced Battle Pass in v4.6)
 -- ------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.player_battle_pass (
+DROP TABLE IF EXISTS public.player_battle_pass CASCADE;
+
+CREATE TABLE IF NOT EXISTS public.avatar_catalog (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  theme TEXT NOT NULL,
+  rarity TEXT NOT NULL,
+  image_url TEXT NOT NULL,
+  unlocked_by_default BOOLEAN NOT NULL DEFAULT FALSE,
+  unlock_hint TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.player_avatars (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  season_id INT NOT NULL DEFAULT 1,
-  tier INT NOT NULL DEFAULT 1 CHECK (tier >= 1 AND tier <= 30),
-  xp INT NOT NULL DEFAULT 0,
-  tier_xp_required INT NOT NULL DEFAULT 500,
-  is_premium BOOLEAN NOT NULL DEFAULT FALSE,
-  claimed_free_tiers INT[] NOT NULL DEFAULT '{}',
-  claimed_premium_tiers INT[] NOT NULL DEFAULT '{}',
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(user_id, season_id)
+  avatar_id TEXT NOT NULL,
+  source TEXT NOT NULL DEFAULT 'starter',
+  unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, avatar_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.card_collections (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  theme TEXT NOT NULL,
+  description TEXT NOT NULL,
+  rarity TEXT NOT NULL,
+  card_back_id TEXT NOT NULL,
+  card_back_image_url TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.collectible_cards (
+  id TEXT PRIMARY KEY,
+  collection_id TEXT NOT NULL REFERENCES public.card_collections(id) ON DELETE CASCADE,
+  identity TEXT NOT NULL,
+  name TEXT NOT NULL,
+  rarity TEXT NOT NULL,
+  image_url TEXT NOT NULL,
+  UNIQUE(collection_id, identity)
+);
+
+CREATE TABLE IF NOT EXISTS public.player_card_packs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  source TEXT NOT NULL DEFAULT 'level_up',
+  source_ref TEXT NOT NULL,
+  earned_level INT,
+  status TEXT NOT NULL DEFAULT 'unopened',
+  earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  opened_at TIMESTAMPTZ,
+  UNIQUE(user_id, source_ref)
+);
+
+CREATE TABLE IF NOT EXISTS public.player_card_inventory (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  card_id TEXT NOT NULL,
+  collection_id TEXT NOT NULL,
+  identity TEXT NOT NULL,
+  rarity TEXT NOT NULL,
+  quantity INT NOT NULL DEFAULT 1,
+  first_acquired_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_acquired_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, card_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.player_card_backs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  card_back_id TEXT NOT NULL,
+  collection_id TEXT,
+  source TEXT NOT NULL DEFAULT 'collection',
+  unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, card_back_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.card_drop_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  pack_id UUID NOT NULL REFERENCES public.player_card_packs(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  card_id TEXT NOT NULL,
+  collection_id TEXT NOT NULL,
+  identity TEXT NOT NULL,
+  rarity TEXT NOT NULL,
+  slot_index INT NOT NULL,
+  was_duplicate BOOLEAN NOT NULL DEFAULT FALSE,
+  unlocked_card_back_id TEXT,
+  dropped_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- ------------------------------------------------------------------------------
@@ -145,7 +221,7 @@ CREATE TABLE IF NOT EXISTS public.player_achievements (
 -- ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.player_cosmetics (
   user_id UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
-  equipped_hat TEXT NOT NULL DEFAULT '🤠',
+  equipped_hat TEXT NOT NULL DEFAULT 'the_outlaw',
   equipped_card_back TEXT NOT NULL DEFAULT 'classic_blue',
   equipped_banner TEXT NOT NULL DEFAULT 'default_navy',
   equipped_title TEXT NOT NULL DEFAULT 'Recruit',
@@ -295,60 +371,110 @@ CREATE TABLE IF NOT EXISTS public.schema_migrations (
 -- 12. NEW USER AUTOMATIC INITIALIZATION (SUPABASE AUTH TRIGGER)
 -- ------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
   new_player_id TEXT;
   new_username TEXT;
+  raw_avatar TEXT;
+  normalized_avatar TEXT;
 BEGIN
-  -- Generate unique player identifier e.g. "JJ-8492"
-  new_player_id := 'JJ-' || UPPER(SUBSTRING(MD5(NEW.id::text || NOW()::text) FROM 1 FOR 4));
-  
+  -- Generate unique player identifier e.g. "JJ-A1B2C3"
+  new_player_id := 'JJ-' || UPPER(SUBSTRING(REPLACE(NEW.id::text, '-', '') FROM 1 FOR 6));
+
   -- Default username from metadata or random Bower alias
   new_username := COALESCE(
-    NEW.raw_user_meta_data->>'username',
+    NULLIF(TRIM(NEW.raw_user_meta_data->>'username'), ''),
     'Bower_' || (FLOOR(1000 + RANDOM() * 9000))::text
   );
 
+  raw_avatar := NULLIF(TRIM(COALESCE(NEW.raw_user_meta_data->>'avatar_icon', '')), '');
+  normalized_avatar := CASE raw_avatar
+    WHEN 'the_outlaw' THEN 'the_outlaw'
+    WHEN '🤠' THEN 'the_outlaw'
+    WHEN 'elven_trickster' THEN 'elven_trickster'
+    WHEN '🧝' THEN 'elven_trickster'
+    WHEN 'cyber_bot' THEN 'cyber_bot'
+    WHEN '🤖' THEN 'cyber_bot'
+    WHEN 'clever_fox' THEN 'clever_fox'
+    WHEN '🦊' THEN 'clever_fox'
+    WHEN 'velvet_gentleman' THEN 'velvet_gentleman'
+    WHEN '🎩' THEN 'velvet_gentleman'
+    WHEN 'iron_tactician' THEN 'iron_tactician'
+    WHEN '🪖' THEN 'iron_tactician'
+    WHEN '⚔️' THEN 'iron_tactician'
+    ELSE 'the_outlaw'
+  END;
+
   -- 1. Insert Profile
   INSERT INTO public.profiles (id, player_id, username, avatar_icon)
-  VALUES (
-    NEW.id,
-    new_player_id,
-    new_username,
-    COALESCE(NEW.raw_user_meta_data->>'avatar_icon', '🤠')
-  );
+  VALUES (NEW.id, new_player_id, new_username, normalized_avatar)
+  ON CONFLICT (id) DO NOTHING;
 
   -- 2. Insert Settings
-  INSERT INTO public.player_settings (user_id) VALUES (NEW.id);
+  INSERT INTO public.player_settings (user_id)
+  VALUES (NEW.id)
+  ON CONFLICT (user_id) DO NOTHING;
 
   -- 3. Insert Initial Ranks (Recruit Tier 9, 1200 MMR)
-  INSERT INTO public.player_ranks (user_id) VALUES (NEW.id);
+  INSERT INTO public.player_ranks (user_id)
+  VALUES (NEW.id)
+  ON CONFLICT (user_id) DO NOTHING;
 
   -- 4. Insert Initial XP
-  INSERT INTO public.player_xp (user_id) VALUES (NEW.id);
+  INSERT INTO public.player_xp (user_id)
+  VALUES (NEW.id)
+  ON CONFLICT (user_id) DO NOTHING;
 
   -- 5. Insert Statistics
-  INSERT INTO public.player_statistics (user_id) VALUES (NEW.id);
+  INSERT INTO public.player_statistics (user_id)
+  VALUES (NEW.id)
+  ON CONFLICT (user_id) DO NOTHING;
 
   -- 6. Insert Cosmetics Loadout
-  INSERT INTO public.player_cosmetics (user_id) VALUES (NEW.id);
+  INSERT INTO public.player_cosmetics (user_id, equipped_hat, equipped_card_back, equipped_banner, equipped_title)
+  VALUES (NEW.id, normalized_avatar, 'classic_blue', 'default_navy', 'Recruit')
+  ON CONFLICT (user_id) DO NOTHING;
 
-  -- 7. Insert Initial Cosmetic Inventory
-  INSERT INTO public.cosmetic_inventory (user_id, category, item_id)
+  -- 7. Insert Initial Illustrated Starter Avatars
+  INSERT INTO public.player_avatars (id, user_id, avatar_id, source, unlocked_at)
   VALUES
-    (NEW.id, 'hat', '🤠'),
-    (NEW.id, 'hat', '🧢'),
-    (NEW.id, 'cardBack', 'classic_blue'),
-    (NEW.id, 'cardBack', 'classic_red'),
-    (NEW.id, 'banner', 'default_navy'),
-    (NEW.id, 'title', 'Recruit');
+    (gen_random_uuid(), NEW.id, 'the_outlaw', 'starter', NOW()),
+    (gen_random_uuid(), NEW.id, 'elven_trickster', 'starter', NOW()),
+    (gen_random_uuid(), NEW.id, 'cyber_bot', 'starter', NOW()),
+    (gen_random_uuid(), NEW.id, 'clever_fox', 'starter', NOW()),
+    (gen_random_uuid(), NEW.id, 'velvet_gentleman', 'starter', NOW()),
+    (gen_random_uuid(), NEW.id, 'iron_tactician', 'starter', NOW())
+  ON CONFLICT (user_id, avatar_id) DO NOTHING;
 
-  -- 8. Insert Battle Pass Season 1 Track
-  INSERT INTO public.player_battle_pass (user_id, season_id) VALUES (NEW.id, 1);
+  -- 8. Insert Initial Starter Card Backs
+  INSERT INTO public.player_card_backs (id, user_id, card_back_id, collection_id, source, unlocked_at)
+  VALUES
+    (gen_random_uuid(), NEW.id, 'classic_blue', NULL, 'starter', NOW()),
+    (gen_random_uuid(), NEW.id, 'classic_red', NULL, 'starter', NOW())
+  ON CONFLICT (user_id, card_back_id) DO NOTHING;
+
+  -- 9. Insert Legacy Cosmetic Inventory Compatibility Rows
+  INSERT INTO public.cosmetic_inventory (id, user_id, category, item_id, unlocked_at)
+  VALUES
+    (gen_random_uuid(), NEW.id, 'hat', 'the_outlaw', NOW()),
+    (gen_random_uuid(), NEW.id, 'hat', 'elven_trickster', NOW()),
+    (gen_random_uuid(), NEW.id, 'hat', 'cyber_bot', NOW()),
+    (gen_random_uuid(), NEW.id, 'hat', 'clever_fox', NOW()),
+    (gen_random_uuid(), NEW.id, 'hat', 'velvet_gentleman', NOW()),
+    (gen_random_uuid(), NEW.id, 'hat', 'iron_tactician', NOW()),
+    (gen_random_uuid(), NEW.id, 'cardBack', 'classic_blue', NOW()),
+    (gen_random_uuid(), NEW.id, 'cardBack', 'classic_red', NOW()),
+    (gen_random_uuid(), NEW.id, 'banner', 'default_navy', NOW()),
+    (gen_random_uuid(), NEW.id, 'title', 'Recruit', NOW())
+  ON CONFLICT (user_id, category, item_id) DO NOTHING;
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- Trigger firing on every auth.users creation
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
@@ -364,7 +490,6 @@ ALTER TABLE public.player_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.player_ranks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.player_xp ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.player_statistics ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.player_battle_pass ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.player_achievements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.player_cosmetics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cosmetic_inventory ENABLE ROW LEVEL SECURITY;
@@ -399,9 +524,6 @@ CREATE POLICY "XP viewable by everyone"
 
 CREATE POLICY "Stats viewable by everyone"
   ON public.player_statistics FOR SELECT USING (true);
-
-CREATE POLICY "Battle pass viewable by user"
-  ON public.player_battle_pass FOR SELECT USING (auth.uid() = user_id);
 
 CREATE POLICY "Cosmetics viewable by everyone"
   ON public.player_cosmetics FOR SELECT USING (true);
