@@ -1,6 +1,6 @@
 {
   "roomCode": "8884C2",
-  "savedAt": 1794862274052,
+  "savedAt": 1794862581008,
   "room": {
     "id": "daa8feed-9070-4447-9af1-34ca56245a89",
     "code": "8884C2",
@@ -17,14 +17,16 @@
     "slots": [
       {
         "position": 0,
-        "isAI": false,
+        "isAI": true,
         "userId": "15e429bd-7878-4010-ac71-25b7f5b4e3e8",
-        "username": "SyncChecker",
+        "username": "SyncChecker (Bot)",
         "avatarIcon": "thunder_knight",
         "equippedCardBack": "wild_west",
         "rankTier": "9",
-        "connected": true,
-        "isReady": true
+        "connected": false,
+        "isReady": true,
+        "abandoned": true,
+        "aiDifficulty": "easy"
       },
       {
         "position": 1,
@@ -65,7 +67,10 @@
     "queueMode": "custom",
     "createdAt": 1794862274051,
     "lastActionAt": 1794862274051,
-    "resultsRecorded": false
+    "resultsRecorded": false,
+    "abandonedUserIds": [
+      "15e429bd-7878-4010-ac71-25b7f5b4e3e8"
+    ]
   },
   "state": {
     "players": [
@@ -109,79 +114,19 @@
         "rankTier": "9"
       }
     ],
-    "dealer": 0,
-    "currentTurn": 1,
-    "phase": "bidding_round_1",
+    "dealer": 2,
+    "currentTurn": 0,
+    "phase": "hand_scored",
     "deck": [
       {
-        "id": "clubs-A",
-        "suit": "clubs",
-        "rank": "A"
-      },
-      {
-        "id": "clubs-Q",
-        "suit": "clubs",
-        "rank": "Q"
-      },
-      {
-        "id": "hearts-J",
-        "suit": "hearts",
-        "rank": "J"
-      },
-      {
-        "id": "hearts-9",
-        "suit": "hearts",
-        "rank": "9"
-      },
-      {
-        "id": "diamonds-A",
-        "suit": "diamonds",
-        "rank": "A"
-      },
-      {
-        "id": "clubs-K",
-        "suit": "clubs",
-        "rank": "K"
-      },
-      {
-        "id": "diamonds-9",
-        "suit": "diamonds",
-        "rank": "9"
-      },
-      {
-        "id": "diamonds-10",
-        "suit": "diamonds",
+        "id": "spades-10",
+        "suit": "spades",
         "rank": "10"
       },
       {
-        "id": "spades-A",
-        "suit": "spades",
-        "rank": "A"
-      },
-      {
-        "id": "hearts-Q",
-        "suit": "hearts",
-        "rank": "Q"
-      },
-      {
-        "id": "spades-Q",
-        "suit": "spades",
-        "rank": "Q"
-      },
-      {
-        "id": "spades-9",
-        "suit": "spades",
-        "rank": "9"
-      },
-      {
-        "id": "hearts-A",
-        "suit": "hearts",
-        "rank": "A"
-      },
-      {
-        "id": "clubs-J",
-        "suit": "clubs",
-        "rank": "J"
+        "id": "diamonds-K",
+        "suit": "diamonds",
+        "rank": "K"
       },
       {
         "id": "hearts-10",
@@ -189,19 +134,29 @@
         "rank": "10"
       },
       {
-        "id": "diamonds-Q",
-        "suit": "diamonds",
-        "rank": "Q"
-      },
-      {
-        "id": "hearts-K",
-        "suit": "hearts",
-        "rank": "K"
-      },
-      {
-        "id": "diamonds-J",
-        "suit": "diamonds",
+        "id": "spades-J",
+        "suit": "spades",
         "rank": "J"
+      },
+      {
+        "id": "spades-A",
+        "suit": "spades",
+        "rank": "A"
+      },
+      {
+        "id": "clubs-10",
+        "suit": "clubs",
+        "rank": "10"
+      },
+      {
+        "id": "clubs-A",
+        "suit": "clubs",
+        "rank": "A"
+      },
+      {
+        "id": "clubs-K",
+        "suit": "clubs",
+        "rank": "K"
       },
       {
         "id": "clubs-9",
@@ -214,176 +169,383 @@
         "rank": "K"
       },
       {
-        "id": "spades-10",
-        "suit": "spades",
-        "rank": "10"
+        "id": "clubs-Q",
+        "suit": "clubs",
+        "rank": "Q"
       },
       {
-        "id": "diamonds-K",
+        "id": "diamonds-9",
         "suit": "diamonds",
-        "rank": "K"
+        "rank": "9"
       },
       {
-        "id": "spades-J",
-        "suit": "spades",
+        "id": "hearts-9",
+        "suit": "hearts",
+        "rank": "9"
+      },
+      {
+        "id": "clubs-J",
+        "suit": "clubs",
         "rank": "J"
       },
       {
-        "id": "clubs-10",
-        "suit": "clubs",
+        "id": "diamonds-10",
+        "suit": "diamonds",
         "rank": "10"
+      },
+      {
+        "id": "hearts-A",
+        "suit": "hearts",
+        "rank": "A"
+      },
+      {
+        "id": "diamonds-Q",
+        "suit": "diamonds",
+        "rank": "Q"
+      },
+      {
+        "id": "hearts-Q",
+        "suit": "hearts",
+        "rank": "Q"
+      },
+      {
+        "id": "hearts-J",
+        "suit": "hearts",
+        "rank": "J"
+      },
+      {
+        "id": "spades-9",
+        "suit": "spades",
+        "rank": "9"
+      },
+      {
+        "id": "diamonds-J",
+        "suit": "diamonds",
+        "rank": "J"
+      },
+      {
+        "id": "spades-Q",
+        "suit": "spades",
+        "rank": "Q"
+      },
+      {
+        "id": "hearts-K",
+        "suit": "hearts",
+        "rank": "K"
+      },
+      {
+        "id": "diamonds-A",
+        "suit": "diamonds",
+        "rank": "A"
       }
     ],
     "kitty": [
       {
-        "id": "spades-10",
-        "suit": "spades",
-        "rank": "10"
-      },
-      {
-        "id": "diamonds-K",
+        "id": "diamonds-J",
         "suit": "diamonds",
-        "rank": "K"
-      },
-      {
-        "id": "spades-J",
-        "suit": "spades",
         "rank": "J"
       },
       {
-        "id": "clubs-10",
-        "suit": "clubs",
-        "rank": "10"
+        "id": "spades-Q",
+        "suit": "spades",
+        "rank": "Q"
+      },
+      {
+        "id": "hearts-K",
+        "suit": "hearts",
+        "rank": "K"
+      },
+      {
+        "id": "diamonds-A",
+        "suit": "diamonds",
+        "rank": "A"
       }
     ],
     "hands": {
-      "0": [
-        {
-          "id": "hearts-9",
-          "suit": "hearts",
-          "rank": "9"
-        },
-        {
-          "id": "diamonds-10",
-          "suit": "diamonds",
-          "rank": "10"
-        },
-        {
-          "id": "spades-9",
-          "suit": "spades",
-          "rank": "9"
-        },
-        {
-          "id": "diamonds-Q",
-          "suit": "diamonds",
-          "rank": "Q"
-        },
-        {
-          "id": "spades-K",
-          "suit": "spades",
-          "rank": "K"
-        }
-      ],
-      "1": [
-        {
-          "id": "clubs-A",
-          "suit": "clubs",
-          "rank": "A"
-        },
-        {
-          "id": "diamonds-A",
-          "suit": "diamonds",
-          "rank": "A"
-        },
-        {
-          "id": "spades-A",
-          "suit": "spades",
-          "rank": "A"
-        },
-        {
-          "id": "hearts-A",
-          "suit": "hearts",
-          "rank": "A"
-        },
-        {
-          "id": "hearts-K",
-          "suit": "hearts",
-          "rank": "K"
-        }
-      ],
-      "2": [
-        {
-          "id": "clubs-Q",
-          "suit": "clubs",
-          "rank": "Q"
-        },
-        {
-          "id": "clubs-K",
-          "suit": "clubs",
-          "rank": "K"
-        },
-        {
-          "id": "hearts-Q",
-          "suit": "hearts",
-          "rank": "Q"
-        },
-        {
-          "id": "clubs-J",
-          "suit": "clubs",
-          "rank": "J"
-        },
-        {
-          "id": "diamonds-J",
-          "suit": "diamonds",
-          "rank": "J"
-        }
-      ],
-      "3": [
-        {
-          "id": "hearts-J",
-          "suit": "hearts",
-          "rank": "J"
-        },
-        {
-          "id": "diamonds-9",
-          "suit": "diamonds",
-          "rank": "9"
-        },
-        {
-          "id": "spades-Q",
-          "suit": "spades",
-          "rank": "Q"
-        },
-        {
-          "id": "hearts-10",
-          "suit": "hearts",
-          "rank": "10"
-        },
-        {
-          "id": "clubs-9",
-          "suit": "clubs",
-          "rank": "9"
-        }
-      ]
+      "0": [],
+      "1": [],
+      "2": [],
+      "3": []
     },
     "isAlone": false,
     "currentTrick": {
       "leadPlayer": 1,
-      "cards": []
+      "cards": [
+        {
+          "player": 1,
+          "card": {
+            "id": "hearts-10",
+            "suit": "hearts",
+            "rank": "10"
+          }
+        },
+        {
+          "player": 2,
+          "card": {
+            "id": "spades-J",
+            "suit": "spades",
+            "rank": "J"
+          }
+        },
+        {
+          "player": 3,
+          "card": {
+            "id": "spades-10",
+            "suit": "spades",
+            "rank": "10"
+          }
+        },
+        {
+          "player": 0,
+          "card": {
+            "id": "clubs-J",
+            "suit": "clubs",
+            "rank": "J"
+          }
+        }
+      ],
+      "leadSuit": "hearts",
+      "winner": 1,
+      "winningCard": {
+        "id": "hearts-10",
+        "suit": "hearts",
+        "rank": "10"
+      }
     },
-    "completedTricks": [],
+    "completedTricks": [
+      {
+        "leadPlayer": 3,
+        "cards": [
+          {
+            "player": 3,
+            "card": {
+              "id": "spades-A",
+              "suit": "spades",
+              "rank": "A"
+            }
+          },
+          {
+            "player": 0,
+            "card": {
+              "id": "spades-K",
+              "suit": "spades",
+              "rank": "K"
+            }
+          },
+          {
+            "player": 1,
+            "card": {
+              "id": "clubs-A",
+              "suit": "clubs",
+              "rank": "A"
+            }
+          },
+          {
+            "player": 2,
+            "card": {
+              "id": "spades-9",
+              "suit": "spades",
+              "rank": "9"
+            }
+          }
+        ],
+        "leadSuit": "spades",
+        "winner": 3,
+        "winningCard": {
+          "id": "spades-A",
+          "suit": "spades",
+          "rank": "A"
+        }
+      },
+      {
+        "leadPlayer": 3,
+        "cards": [
+          {
+            "player": 3,
+            "card": {
+              "id": "clubs-9",
+              "suit": "clubs",
+              "rank": "9"
+            }
+          },
+          {
+            "player": 0,
+            "card": {
+              "id": "clubs-10",
+              "suit": "clubs",
+              "rank": "10"
+            }
+          },
+          {
+            "player": 1,
+            "card": {
+              "id": "clubs-Q",
+              "suit": "clubs",
+              "rank": "Q"
+            }
+          },
+          {
+            "player": 2,
+            "card": {
+              "id": "clubs-K",
+              "suit": "clubs",
+              "rank": "K"
+            }
+          }
+        ],
+        "leadSuit": "clubs",
+        "winner": 2,
+        "winningCard": {
+          "id": "clubs-K",
+          "suit": "clubs",
+          "rank": "K"
+        }
+      },
+      {
+        "leadPlayer": 2,
+        "cards": [
+          {
+            "player": 2,
+            "card": {
+              "id": "diamonds-9",
+              "suit": "diamonds",
+              "rank": "9"
+            }
+          },
+          {
+            "player": 3,
+            "card": {
+              "id": "diamonds-Q",
+              "suit": "diamonds",
+              "rank": "Q"
+            }
+          },
+          {
+            "player": 0,
+            "card": {
+              "id": "diamonds-K",
+              "suit": "diamonds",
+              "rank": "K"
+            }
+          },
+          {
+            "player": 1,
+            "card": {
+              "id": "diamonds-10",
+              "suit": "diamonds",
+              "rank": "10"
+            }
+          }
+        ],
+        "leadSuit": "diamonds",
+        "winner": 0,
+        "winningCard": {
+          "id": "diamonds-K",
+          "suit": "diamonds",
+          "rank": "K"
+        }
+      },
+      {
+        "leadPlayer": 0,
+        "cards": [
+          {
+            "player": 0,
+            "card": {
+              "id": "hearts-Q",
+              "suit": "hearts",
+              "rank": "Q"
+            }
+          },
+          {
+            "player": 1,
+            "card": {
+              "id": "hearts-J",
+              "suit": "hearts",
+              "rank": "J"
+            }
+          },
+          {
+            "player": 2,
+            "card": {
+              "id": "hearts-A",
+              "suit": "hearts",
+              "rank": "A"
+            }
+          },
+          {
+            "player": 3,
+            "card": {
+              "id": "hearts-9",
+              "suit": "hearts",
+              "rank": "9"
+            }
+          }
+        ],
+        "leadSuit": "hearts",
+        "winner": 1,
+        "winningCard": {
+          "id": "hearts-J",
+          "suit": "hearts",
+          "rank": "J"
+        }
+      },
+      {
+        "leadPlayer": 1,
+        "cards": [
+          {
+            "player": 1,
+            "card": {
+              "id": "hearts-10",
+              "suit": "hearts",
+              "rank": "10"
+            }
+          },
+          {
+            "player": 2,
+            "card": {
+              "id": "spades-J",
+              "suit": "spades",
+              "rank": "J"
+            }
+          },
+          {
+            "player": 3,
+            "card": {
+              "id": "spades-10",
+              "suit": "spades",
+              "rank": "10"
+            }
+          },
+          {
+            "player": 0,
+            "card": {
+              "id": "clubs-J",
+              "suit": "clubs",
+              "rank": "J"
+            }
+          }
+        ],
+        "leadSuit": "hearts",
+        "winner": 1,
+        "winningCard": {
+          "id": "hearts-10",
+          "suit": "hearts",
+          "rank": "10"
+        }
+      }
+    ],
     "tricksWon": [
-      0,
-      0
+      2,
+      3
     ],
     "scores": [
-      0,
-      0
+      5,
+      6
     ],
     "matchStats": {
       "teamTricksWon": [
-        0,
-        0
+        15,
+        20
       ],
       "teamEuchres": [
         0,
@@ -391,16 +553,16 @@
       ],
       "teamMarches": [
         0,
-        0
+        1
       ],
       "teamLoners": [
-        0,
+        1,
         0
       ],
       "playerLoners": [
         0,
         0,
-        0,
+        1,
         0
       ]
     },
@@ -415,12 +577,266 @@
     "history": [
       "Game initialized.",
       "--- Hand started. Dealer: SyncChecker ---",
-      "Turned-up card is 10♠."
+      "Turned-up card is 10♠.",
+      "AceInTheHole passed.",
+      "EuchreMaven passed.",
+      "JackOfClubs passed.",
+      "SyncChecker passed.",
+      "10♠ turned down. Round 2 bidding begins.",
+      "AceInTheHole called HEARTS as trump.",
+      "AceInTheHole played A♣.",
+      "EuchreMaven played J♣.",
+      "JackOfClubs played 9♣.",
+      "SyncChecker played 9♥.",
+      "Trick won by SyncChecker with 9♥.",
+      "SyncChecker played 9♠.",
+      "AceInTheHole played A♠.",
+      "EuchreMaven played Q♥.",
+      "JackOfClubs played Q♠.",
+      "Trick won by EuchreMaven with Q♥.",
+      "EuchreMaven played Q♣.",
+      "JackOfClubs played 10♥.",
+      "SyncChecker played 10♦.",
+      "AceInTheHole played A♦.",
+      "Trick won by JackOfClubs with 10♥.",
+      "JackOfClubs played J♥ (Right Bower).",
+      "SyncChecker played Q♦.",
+      "AceInTheHole played K♥.",
+      "EuchreMaven played J♦ (Left Bower).",
+      "Trick won by JackOfClubs with J♥ (Right Bower).",
+      "JackOfClubs played 9♦.",
+      "SyncChecker played K♠.",
+      "AceInTheHole played A♥.",
+      "EuchreMaven played K♣.",
+      "Trick won by AceInTheHole with A♥.",
+      "Team Red made their bid with 3 tricks for 1 point.",
+      "Current score: Team Blue: 0 | Team Red: 1",
+      "--- Hand started. Dealer: AceInTheHole ---",
+      "Turned-up card is Q♦.",
+      "EuchreMaven passed.",
+      "JackOfClubs passed.",
+      "SyncChecker passed.",
+      "AceInTheHole picked up the Q♦.",
+      "AceInTheHole discarded a card. Trick play begins.",
+      "EuchreMaven played A♥.",
+      "JackOfClubs played K♦.",
+      "SyncChecker played K♥.",
+      "AceInTheHole played J♣.",
+      "Trick won by JackOfClubs with K♦.",
+      "JackOfClubs played A♣.",
+      "SyncChecker played 10♣.",
+      "AceInTheHole played A♠.",
+      "EuchreMaven played 9♣.",
+      "Trick won by JackOfClubs with A♣.",
+      "JackOfClubs played Q♣.",
+      "SyncChecker played J♥ (Left Bower).",
+      "AceInTheHole played J♦ (Right Bower).",
+      "EuchreMaven played J♠.",
+      "Trick won by AceInTheHole with J♦ (Right Bower).",
+      "AceInTheHole played 9♦.",
+      "EuchreMaven played 10♦.",
+      "JackOfClubs played K♣.",
+      "SyncChecker played 9♠.",
+      "Trick won by EuchreMaven with 10♦.",
+      "EuchreMaven played 10♥.",
+      "JackOfClubs played 10♠.",
+      "SyncChecker played Q♠.",
+      "AceInTheHole played Q♦.",
+      "Trick won by AceInTheHole with Q♦.",
+      "Team Red made their bid with 4 tricks for 1 point.",
+      "Current score: Team Blue: 0 | Team Red: 2",
+      "--- Hand started. Dealer: EuchreMaven ---",
+      "Turned-up card is K♠.",
+      "JackOfClubs ordered up the K♠.",
+      "EuchreMaven discarded a card. Trick play begins.",
+      "JackOfClubs played J♠ (Right Bower).",
+      "SyncChecker played 10♠.",
+      "AceInTheHole played A♠.",
+      "EuchreMaven played 9♠.",
+      "Trick won by JackOfClubs with J♠ (Right Bower).",
+      "JackOfClubs played J♣ (Left Bower).",
+      "SyncChecker played J♦.",
+      "AceInTheHole played Q♦.",
+      "EuchreMaven played K♠.",
+      "Trick won by JackOfClubs with J♣ (Left Bower).",
+      "JackOfClubs played 10♦.",
+      "SyncChecker played 9♦.",
+      "AceInTheHole played K♦.",
+      "EuchreMaven played A♦.",
+      "Trick won by EuchreMaven with A♦.",
+      "EuchreMaven played J♥.",
+      "JackOfClubs played Q♠.",
+      "SyncChecker played Q♥.",
+      "AceInTheHole played 9♥.",
+      "Trick won by JackOfClubs with Q♠.",
+      "JackOfClubs played K♣.",
+      "SyncChecker played A♥.",
+      "AceInTheHole played A♣.",
+      "EuchreMaven played 10♥.",
+      "Trick won by AceInTheHole with A♣.",
+      "Team Red made their bid with 4 tricks for 1 point.",
+      "Current score: Team Blue: 0 | Team Red: 3",
+      "--- Hand started. Dealer: JackOfClubs ---",
+      "Turned-up card is 9♠.",
+      "SyncChecker passed.",
+      "AceInTheHole passed.",
+      "EuchreMaven passed.",
+      "JackOfClubs passed.",
+      "9♠ turned down. Round 2 bidding begins.",
+      "SyncChecker called CLUBS as trump.",
+      "SyncChecker played J♦.",
+      "AceInTheHole played K♦.",
+      "EuchreMaven played A♦.",
+      "JackOfClubs played Q♦.",
+      "Trick won by EuchreMaven with A♦.",
+      "EuchreMaven played K♥.",
+      "JackOfClubs played 9♥.",
+      "SyncChecker played Q♣.",
+      "AceInTheHole played A♥.",
+      "Trick won by SyncChecker with Q♣.",
+      "SyncChecker played 10♦.",
+      "AceInTheHole played 9♣.",
+      "EuchreMaven played A♣.",
+      "JackOfClubs played J♥.",
+      "Trick won by EuchreMaven with A♣.",
+      "EuchreMaven played Q♥.",
+      "JackOfClubs played 10♥.",
+      "SyncChecker played 10♣.",
+      "AceInTheHole played J♠ (Left Bower).",
+      "Trick won by AceInTheHole with J♠ (Left Bower).",
+      "AceInTheHole played K♠.",
+      "EuchreMaven played 10♠.",
+      "JackOfClubs played Q♠.",
+      "SyncChecker played J♣ (Right Bower).",
+      "Trick won by SyncChecker with J♣ (Right Bower).",
+      "Team Blue made their bid with 4 tricks for 1 point.",
+      "Current score: Team Blue: 1 | Team Red: 3",
+      "--- Hand started. Dealer: SyncChecker ---",
+      "Turned-up card is A♠.",
+      "AceInTheHole passed.",
+      "EuchreMaven passed.",
+      "JackOfClubs passed.",
+      "SyncChecker passed.",
+      "A♠ turned down. Round 2 bidding begins.",
+      "AceInTheHole called DIAMONDS as trump.",
+      "AceInTheHole played J♦ (Right Bower).",
+      "EuchreMaven played 10♦.",
+      "JackOfClubs played 9♦.",
+      "SyncChecker played J♥ (Left Bower).",
+      "Trick won by AceInTheHole with J♦ (Right Bower).",
+      "AceInTheHole played Q♣.",
+      "EuchreMaven played J♣.",
+      "JackOfClubs played A♣.",
+      "SyncChecker played 9♣.",
+      "Trick won by JackOfClubs with A♣.",
+      "JackOfClubs played J♠.",
+      "SyncChecker played Q♥.",
+      "AceInTheHole played K♣.",
+      "EuchreMaven played 10♠.",
+      "Trick won by JackOfClubs with J♠.",
+      "JackOfClubs played K♠.",
+      "SyncChecker played 10♥.",
+      "AceInTheHole played 9♥.",
+      "EuchreMaven played A♥.",
+      "Trick won by JackOfClubs with K♠.",
+      "JackOfClubs played Q♦.",
+      "SyncChecker played 10♣.",
+      "AceInTheHole played K♦.",
+      "EuchreMaven played K♥.",
+      "Trick won by AceInTheHole with K♦.",
+      "Team Red won all 5 tricks (March) for 2 points!",
+      "Current score: Team Blue: 1 | Team Red: 5",
+      "--- Hand started. Dealer: AceInTheHole ---",
+      "Turned-up card is K♥.",
+      "EuchreMaven passed.",
+      "JackOfClubs passed.",
+      "SyncChecker passed.",
+      "AceInTheHole passed.",
+      "K♥ turned down. Round 2 bidding begins.",
+      "EuchreMaven called CLUBS as trump and is GOING ALONE!.",
+      "EuchreMaven played J♣ (Right Bower).",
+      "JackOfClubs played 9♣.",
+      "AceInTheHole played K♣.",
+      "Trick won by EuchreMaven with J♣ (Right Bower).",
+      "EuchreMaven played J♠ (Left Bower).",
+      "JackOfClubs played Q♦.",
+      "AceInTheHole played K♠.",
+      "Trick won by EuchreMaven with J♠ (Left Bower).",
+      "EuchreMaven played 10♠.",
+      "JackOfClubs played J♥.",
+      "AceInTheHole played 9♠.",
+      "Trick won by EuchreMaven with 10♠.",
+      "EuchreMaven played 10♣.",
+      "JackOfClubs played K♦.",
+      "AceInTheHole played 10♥.",
+      "Trick won by EuchreMaven with 10♣.",
+      "EuchreMaven played Q♣.",
+      "JackOfClubs played A♥.",
+      "AceInTheHole played 9♥.",
+      "Trick won by EuchreMaven with Q♣.",
+      "Team Blue called ALONE and swept all 5 tricks for 4 POINTS! 🏆",
+      "Current score: Team Blue: 5 | Team Red: 5",
+      "--- Hand started. Dealer: EuchreMaven ---",
+      "Turned-up card is J♦.",
+      "JackOfClubs passed.",
+      "SyncChecker passed.",
+      "AceInTheHole passed.",
+      "EuchreMaven passed.",
+      "J♦ turned down. Round 2 bidding begins.",
+      "JackOfClubs passed.",
+      "SyncChecker passed.",
+      "AceInTheHole called HEARTS as trump.",
+      "JackOfClubs played A♠.",
+      "SyncChecker played K♠.",
+      "AceInTheHole played A♣.",
+      "EuchreMaven played 9♠.",
+      "Trick won by JackOfClubs with A♠.",
+      "JackOfClubs played 9♣.",
+      "SyncChecker played 10♣.",
+      "AceInTheHole played Q♣.",
+      "EuchreMaven played K♣.",
+      "Trick won by EuchreMaven with K♣.",
+      "EuchreMaven played 9♦.",
+      "JackOfClubs played Q♦.",
+      "SyncChecker played K♦.",
+      "AceInTheHole played 10♦.",
+      "Trick won by SyncChecker with K♦.",
+      "SyncChecker played Q♥.",
+      "AceInTheHole played J♥ (Right Bower).",
+      "EuchreMaven played A♥.",
+      "JackOfClubs played 9♥.",
+      "Trick won by AceInTheHole with J♥ (Right Bower).",
+      "AceInTheHole played 10♥.",
+      "EuchreMaven played J♠.",
+      "JackOfClubs played 10♠.",
+      "SyncChecker played J♣.",
+      "Trick won by AceInTheHole with 10♥.",
+      "Team Red made their bid with 3 tricks for 1 point.",
+      "Current score: Team Blue: 5 | Team Red: 6"
     ],
     "upCard": {
-      "id": "spades-10",
-      "suit": "spades",
-      "rank": "10"
+      "id": "diamonds-J",
+      "suit": "diamonds",
+      "rank": "J"
+    },
+    "trumpSuit": "hearts",
+    "callingPlayer": 1,
+    "callingTeam": 1,
+    "lastHandResult": {
+      "callingTeam": 1,
+      "calledAlone": false,
+      "trumpSuit": "hearts",
+      "tricksWon": [
+        2,
+        3
+      ],
+      "pointsAwarded": [
+        0,
+        1
+      ],
+      "isMarch": false,
+      "isEuchre": false,
+      "message": "Team Red made their bid with 3 tricks for 1 point."
     }
   }
 }
