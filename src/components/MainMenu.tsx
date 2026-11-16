@@ -431,29 +431,14 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             <div className="relative flex flex-col items-center justify-center py-1 sm:py-2">
               <div className="pointer-events-none absolute w-56 h-28 rounded-full bg-gradient-to-r from-emerald-500/25 via-amber-400/20 to-emerald-500/25 blur-2xl" />
 
-              {/* Functional Clickable Jack of Clubs (Right Bower) Hero Card */}
-              <button
-                onClick={() => {
-                  sounds.playUiClick();
-                  onOpenLeaderboard();
-                }}
-                className="relative flex flex-col items-center justify-center cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95 focus:outline-none group mb-2"
-                title="Season 1: Bower Sovereign — Tap to View World Rankings"
-              >
-                <div className="relative drop-shadow-[0_12px_28px_rgba(245,158,11,0.35)]">
-                  <CardView
-                    card={{ id: 'hero-jack-clubs', rank: 'J', suit: 'clubs' }}
-                    trumpSuit="clubs"
-                    size="md"
-                    isPlayable={false}
-                  />
-                  {/* Trophy / Ranking Floating Badge */}
-                  <div className="absolute -bottom-1.5 -right-2 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-amber-600 border-2 border-slate-950 flex items-center gap-1 shadow-lg text-slate-950 text-[10px] font-black">
-                    <span>🏆</span>
-                    <span className="uppercase tracking-tight">Rank</span>
-                  </div>
-                </div>
-              </button>
+              {/* Static 3-Card Bower Fan Artwork (Rock-solid, non-clickable image) */}
+              <div className="relative flex items-center justify-center select-none pointer-events-none mb-1">
+                <img
+                  src="/assets/bower_3card_fan.svg"
+                  alt="Bower JJ 3-Card Bower Fan"
+                  className="w-64 sm:w-72 h-auto max-h-28 sm:max-h-32 object-contain select-none pointer-events-none drop-shadow-[0_12px_24px_rgba(0,0,0,0.5)]"
+                />
+              </div>
 
               {/* Single-Line Compact Rank & LP Pill */}
               <button
