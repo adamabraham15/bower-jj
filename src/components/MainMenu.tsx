@@ -434,7 +434,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               {/* Static 3-Card Bower Fan Artwork (Rock-solid, non-clickable image) */}
               <div className="relative flex items-center justify-center select-none pointer-events-none mb-1">
                 <img
-                  src="/assets/bower_3card_fan.svg"
+                  src="/assets/bower_3card_fan.svg?v=clean"
                   alt="Bower JJ 3-Card Bower Fan"
                   className="w-64 sm:w-72 h-auto max-h-28 sm:max-h-32 object-contain select-none pointer-events-none drop-shadow-[0_12px_24px_rgba(0,0,0,0.5)]"
                 />
