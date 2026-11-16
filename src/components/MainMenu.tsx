@@ -115,33 +115,33 @@ export const MainMenu: React.FC<MainMenuProps> = ({
     switch (quickMode) {
       case 'ranked_solo':
         return {
-          icon: <Zap className="w-4 h-4 text-amber-400 fill-amber-400 flex-shrink-0" />,
+          icon: <Zap className="w-5 h-5 text-amber-400 fill-amber-400 flex-shrink-0" />,
           title: 'Ranked Solo Queue',
-          sub: '10 pts',
+          sub: '10 pts • Earn Rank LP',
         };
       case 'unranked':
         return {
-          icon: <Shield className="w-4 h-4 text-cyan-400 flex-shrink-0" />,
+          icon: <Shield className="w-5 h-5 text-cyan-400 flex-shrink-0" />,
           title: 'Casual Unranked',
-          sub: '10 pts',
+          sub: '10 pts • Practice & XP',
         };
       case 'rivalry':
         return {
-          icon: <Swords className="w-4 h-4 text-cyan-300 flex-shrink-0" />,
+          icon: <Swords className="w-5 h-5 text-cyan-300 flex-shrink-0" />,
           title: 'Friendly Rivalry',
-          sub: 'Head-to-Head',
+          sub: 'Head-to-Head 1v1',
         };
       case 'private':
         return {
-          icon: <Users className="w-4 h-4 text-amber-300 flex-shrink-0" />,
+          icon: <Users className="w-5 h-5 text-amber-300 flex-shrink-0" />,
           title: 'Private Lobby',
-          sub: 'Room Code',
+          sub: 'Custom Room Code',
         };
       case 'ai_bots':
         return {
-          icon: <Bot className="w-4 h-4 text-emerald-400 flex-shrink-0" />,
+          icon: <Bot className="w-5 h-5 text-emerald-400 flex-shrink-0" />,
           title: `Play Bots (${selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)})`,
-          sub: `${targetScore} pts`,
+          sub: `${targetScore} pts • Instant Offline AI`,
         };
     }
   };
@@ -327,28 +327,42 @@ export const MainMenu: React.FC<MainMenuProps> = ({
         }}
       >
         <div className="w-full max-w-[430px] lg:max-w-[470px] lg:bg-[#111726]/95 lg:border lg:border-slate-800/90 lg:rounded-3xl lg:shadow-[0_24px_80px_rgba(0,0,0,0.75)] lg:p-5 flex flex-col justify-between flex-1 my-auto">
-          {/* Top Header Bar: Brand Logo | "Play" | Audio & Cloud Controls */}
+          {/* Top Header Bar: BOWER JJ Emblem Logo & Controls (Play removed) */}
           <div>
             <header className="flex items-center justify-between py-1">
-              {/* Left: Bower JJ Logo */}
+              {/* Left: Quick Profile Avatar Button */}
               <button
                 onClick={() => {
                   sounds.playUiClick();
                   onOpenProfile();
                 }}
-                className="relative group flex items-center gap-2 cursor-pointer"
-                title="BOWER JJ — Competitive Euchre"
+                className="flex items-center gap-2 p-1 sm:p-1.5 rounded-2xl bg-[#161f30] hover:bg-[#1c273d] border border-slate-700/80 shadow-sm transition-all cursor-pointer group"
+                title="View Profile & Career Stats"
               >
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 p-[2px] shadow-md shadow-amber-500/20 flex items-center justify-center">
-                  <div className="w-full h-full rounded-[10px] bg-[#0f1624] flex flex-col items-center justify-center px-0.5">
-                    <span className="text-[7px] font-black tracking-tighter text-amber-200 leading-none">BOWER</span>
-                    <span className="text-xs font-black text-amber-400 leading-none mt-0.5">JJ</span>
-                  </div>
+                <AvatarPortrait avatarId={profile.avatarIcon} size="xs" />
+                <div className="hidden sm:flex flex-col text-left pr-1">
+                  <span className="text-[11px] font-black text-white truncate max-w-[85px]">{profile.username}</span>
+                  <span className="text-[9px] font-bold text-amber-400">LVL {profile.level}</span>
                 </div>
               </button>
 
-              {/* Center: "Play" Title */}
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">Play</h1>
+              {/* Center: Cool BOWER JJ Logo Emblem filling the top */}
+              <div className="flex items-center gap-2.5 select-none">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 p-[1.5px] shadow-lg shadow-amber-500/25 flex items-center justify-center">
+                  <div className="w-full h-full rounded-[9.5px] bg-[#0c121e] flex flex-col items-center justify-center">
+                    <span className="text-[7px] sm:text-[8px] font-black tracking-tighter text-amber-300 leading-none">BOWER</span>
+                    <span className="text-xs sm:text-sm font-black text-amber-400 leading-none mt-0.5">JJ</span>
+                  </div>
+                </div>
+                <div className="flex flex-col text-left">
+                  <h1 className="text-xl sm:text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400 drop-shadow-[0_2px_12px_rgba(251,191,36,0.35)] leading-none">
+                    BOWER JJ
+                  </h1>
+                  <span className="text-[8px] sm:text-[9px] font-black tracking-[0.22em] text-emerald-400 uppercase leading-none mt-1">
+                    SOVEREIGN EUCHRE
+                  </span>
+                </div>
+              </div>
 
               {/* Right: Audio Popover & Cloud Status */}
               <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#161f30] border border-slate-700/80 shadow-inner">
@@ -380,7 +394,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             </header>
 
             {/* Profile Identity Pill */}
-            <div className="flex flex-col items-center mt-1 mb-1.5">
+            <div className="flex flex-col items-center mt-1 mb-1">
               <button
                 onClick={() => {
                   sounds.playUiClick();
@@ -388,8 +402,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 }}
                 className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#161f30]/95 hover:bg-[#1d283d] border border-slate-700/80 shadow-sm transition-all active:scale-95 cursor-pointer"
               >
-                <AvatarPortrait avatarId={profile.avatarIcon} size="xs" />
-                <span className="text-xs font-black text-white max-w-[120px] truncate">{profile.username}</span>
+                <span className="text-xs font-black text-white max-w-[130px] truncate">{profile.username}</span>
                 <span className="text-slate-500 text-xs">•</span>
                 <span className="text-xs font-bold text-slate-300">LVL {profile.level}</span>
                 <span className="text-slate-500 text-xs">•</span>
@@ -415,10 +428,10 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             </div>
 
             {/* =================================================================
-                HERO TWIN-BOWER EMBLEM + RANK LP PILL
+                HERO TWIN-BOWER EMBLEM + RANK LP PILL (Enlarged for Accessibility)
             ================================================================= */}
-            <div className="relative flex flex-col items-center justify-center py-1">
-              <div className="pointer-events-none absolute w-48 h-24 rounded-full bg-gradient-to-r from-emerald-500/20 via-amber-400/15 to-emerald-500/20 blur-xl" />
+            <div className="relative flex flex-col items-center justify-center py-1 sm:py-2">
+              <div className="pointer-events-none absolute w-56 h-28 rounded-full bg-gradient-to-r from-emerald-500/25 via-amber-400/20 to-emerald-500/25 blur-2xl" />
 
               <div
                 onClick={() => {
@@ -428,47 +441,49 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 className="relative flex items-center justify-center cursor-pointer group"
                 title="Season 1: Bower Sovereign — View World Rankings"
               >
-                <span className="text-amber-400/80 text-lg -mr-2 select-none transform -scale-x-100 rotate-12">
+                <span className="text-amber-400/90 text-2xl sm:text-3xl -mr-3 select-none transform -scale-x-100 rotate-12 drop-shadow">
                   🌿
                 </span>
 
-                {/* Compact Fan of 3 Jack Bower Cards */}
-                <div className="relative flex items-center justify-center h-20 w-28">
+                {/* Enlarged Accessible Fan of 3 Jack Bower Cards */}
+                <div className="relative flex items-center justify-center h-24 sm:h-28 w-34 sm:w-40">
                   {/* Left Card: Jack of Spades */}
-                  <div className="absolute -left-1 w-12 h-17 rounded-lg bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 p-[1.5px] shadow-lg transform -rotate-16 -translate-x-2 group-hover:-rotate-20 transition-transform">
-                    <div className="w-full h-full rounded-[6.5px] bg-gradient-to-b from-slate-900 to-slate-950 flex flex-col justify-between p-1 border border-amber-300/40">
+                  <div className="absolute -left-2 w-15 h-22 sm:w-17 sm:h-25 rounded-xl bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 p-[2px] shadow-xl transform -rotate-16 -translate-x-3 group-hover:-rotate-20 transition-transform">
+                    <div className="w-full h-full rounded-[9px] bg-gradient-to-b from-slate-900 to-slate-950 flex flex-col justify-between p-1.5 border border-amber-300/40">
                       <div className="text-left leading-none">
-                        <div className="text-[10px] font-black text-amber-300">J</div>
-                        <div className="text-[9px] text-amber-400">♠</div>
+                        <div className="text-xs sm:text-sm font-black text-amber-300">J</div>
+                        <div className="text-[11px] sm:text-xs font-black text-amber-400">♠</div>
                       </div>
-                      <div className="text-center text-base text-amber-300/90">♠</div>
+                      <div className="text-center text-xl sm:text-2xl text-amber-300/90 drop-shadow">♠</div>
                     </div>
                   </div>
 
-                  {/* Middle Card: Golden Bower */}
-                  <div className="absolute w-12 h-17 rounded-lg bg-gradient-to-b from-yellow-200 via-amber-400 to-amber-600 p-[1.5px] shadow-lg transform -rotate-3 -translate-y-0.5 z-10 group-hover:-translate-y-1.5 transition-transform">
-                    <div className="w-full h-full rounded-[6.5px] bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 flex flex-col justify-between p-1 text-slate-950">
+                  {/* Middle Card: Golden Bower Jack of Clubs */}
+                  <div className="absolute w-15 h-22 sm:w-17 sm:h-25 rounded-xl bg-gradient-to-b from-yellow-200 via-amber-400 to-amber-600 p-[2px] shadow-2xl transform -rotate-3 -translate-y-1 z-10 group-hover:-translate-y-2 transition-transform">
+                    <div className="w-full h-full rounded-[9px] bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 flex flex-col justify-between p-1.5 text-slate-950">
                       <div className="text-left leading-none">
-                        <div className="text-[10px] font-black">J</div>
-                        <div className="text-[9px] font-black">♣</div>
+                        <div className="text-xs sm:text-sm font-black">J</div>
+                        <div className="text-[11px] sm:text-xs font-black">♣</div>
                       </div>
-                      <div className="text-center text-base font-black">♣</div>
+                      <div className="text-center text-xl sm:text-2xl font-black drop-shadow">♣</div>
                     </div>
                   </div>
 
                   {/* Right Card: Emerald Sovereign Jack of Clubs */}
-                  <div className="absolute right-0 w-13 h-17 rounded-lg bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 p-[1.5px] shadow-[0_6px_20px_rgba(16,185,129,0.35)] transform rotate-12 translate-x-2 z-20 group-hover:rotate-16 transition-transform">
-                    <div className="w-full h-full rounded-[6.5px] bg-gradient-to-br from-emerald-800 via-emerald-900 to-slate-950 flex flex-col justify-between p-1 border border-emerald-400/40">
+                  <div className="absolute right-0 w-16 h-22 sm:w-18 sm:h-25 rounded-xl bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 p-[2px] shadow-[0_8px_24px_rgba(16,185,129,0.4)] transform rotate-12 translate-x-3 z-20 group-hover:rotate-16 transition-transform">
+                    <div className="w-full h-full rounded-[9px] bg-gradient-to-br from-emerald-800 via-emerald-900 to-slate-950 flex flex-col justify-between p-1.5 border border-emerald-400/50">
                       <div className="text-left leading-none">
-                        <div className="text-[10px] font-black text-amber-300">J</div>
-                        <div className="text-[9px] text-amber-300">♣</div>
+                        <div className="text-xs sm:text-sm font-black text-amber-300">J</div>
+                        <div className="text-[11px] sm:text-xs font-black text-amber-300">♣</div>
                       </div>
-                      <div className="text-center text-lg text-amber-300 drop-shadow">♣</div>
+                      <div className="text-center text-xl sm:text-2xl text-amber-300 drop-shadow">♣</div>
                     </div>
                   </div>
                 </div>
 
-                <span className="text-amber-400/80 text-lg -ml-2 select-none -rotate-12">🌿</span>
+                <span className="text-amber-400/90 text-2xl sm:text-3xl -ml-3 select-none -rotate-12 drop-shadow">
+                  🌿
+                </span>
               </div>
 
               {/* Single-Line Compact Rank & LP Pill */}
@@ -477,16 +492,16 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                   sounds.playUiClick();
                   onOpenLeaderboard();
                 }}
-                className="relative z-30 -mt-2 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#151d2e] hover:bg-[#1c263b] border border-amber-400/50 shadow-md transition-all active:scale-95 cursor-pointer"
+                className="relative z-30 -mt-1.5 inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#151d2e] hover:bg-[#1c263b] border border-amber-400/60 shadow-lg transition-all active:scale-95 cursor-pointer"
               >
-                <span className="w-4 h-4 rounded bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 font-black text-[10px] flex items-center justify-center shadow">
+                <span className="w-5 h-5 rounded-md bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 font-black text-xs flex items-center justify-center shadow">
                   {profile.rankTier}
                 </span>
-                <span className="text-xs font-black text-white">
+                <span className="text-xs sm:text-sm font-black text-white">
                   Rank <span className="text-amber-400">{profile.rankTier}</span>
                 </span>
                 <span className="text-slate-500 text-xs">•</span>
-                <span className="text-[11px] font-bold text-slate-300">{profile.rankPoints}/100 LP</span>
+                <span className="text-xs font-bold text-slate-200">{profile.rankPoints}/100 LP</span>
               </button>
             </div>
           </div>
@@ -494,8 +509,8 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           {/* =================================================================
               UNIFIED GAME MODE SELECTOR + GIANT 3D "START GAME" CTA
           ================================================================= */}
-          <div className="my-2 space-y-2">
-            {/* The Slide-Down "Select Game Mode" Pill */}
+          <div className="my-1.5 space-y-1.5 w-full">
+            {/* The Slide-Down "Select Game Mode" Pill (Larger & Tactile) */}
             <div className="relative">
               <button
                 onClick={() => {
@@ -503,25 +518,34 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                   setIsQuickSelectorOpen((prev) => !prev);
                   setIsBotsDrawerOpen(false);
                 }}
-                className="w-full py-2.5 px-3.5 rounded-2xl bg-[#161f30] hover:bg-[#1c273d] border border-slate-700/80 flex items-center justify-between shadow-sm transition-all cursor-pointer"
+                className="w-full py-3 sm:py-3.5 px-3.5 sm:px-4 rounded-2xl bg-[#151e2f] hover:bg-[#1b263b] border-2 border-slate-700/80 hover:border-amber-400/60 flex items-center justify-between shadow-md transition-all cursor-pointer group"
               >
-                <div className="flex items-center gap-2 min-w-0">
-                  {activeModeMeta.icon}
-                  <span className="text-xs font-black uppercase tracking-wider text-amber-300 flex-shrink-0">
-                    Select Game Mode:
-                  </span>
-                  <span className="text-xs sm:text-sm font-black text-white truncate">
-                    {activeModeMeta.title}
-                  </span>
-                  <span className="text-slate-400 text-xs font-bold hidden sm:inline flex-shrink-0">
-                    • {activeModeMeta.sub}
-                  </span>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-500/15 border border-amber-400/35 flex items-center justify-center flex-shrink-0 shadow-inner">
+                    {activeModeMeta.icon}
+                  </div>
+                  <div className="text-left min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-amber-300">
+                        Select Game Mode
+                      </span>
+                      <span className="text-slate-500 text-[10px]">•</span>
+                      <span className="text-[10px] sm:text-xs text-slate-300 font-semibold truncate">
+                        {activeModeMeta.sub}
+                      </span>
+                    </div>
+                    <div className="text-sm sm:text-base font-black text-white leading-tight truncate">
+                      {activeModeMeta.title}
+                    </div>
+                  </div>
                 </div>
-                <ChevronDown
-                  className={`w-4 h-4 text-slate-400 ml-1.5 flex-shrink-0 transition-transform duration-200 ${
-                    isQuickSelectorOpen ? 'rotate-180 text-amber-400' : ''
-                  }`}
-                />
+                <div className="flex items-center gap-1 pl-2 flex-shrink-0">
+                  <ChevronDown
+                    className={`w-5 h-5 text-amber-400 transition-transform duration-200 ${
+                      isQuickSelectorOpen ? 'rotate-180 text-amber-300 scale-110' : 'group-hover:translate-y-0.5'
+                    }`}
+                  />
+                </div>
               </button>
 
               {/* The Slide-Down Modal/Drawer (Holds ALL game modes in one clean menu) */}
@@ -546,31 +570,31 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                           id: 'ranked_solo',
                           label: 'Ranked Solo Queue',
                           desc: 'Competitive MMR • 10 pts • Earn Rank LP',
-                          icon: <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />,
+                          icon: <Zap className="w-5 h-5 text-amber-400 fill-amber-400" />,
                         },
                         {
                           id: 'unranked',
                           label: 'Casual Play (Unranked)',
                           desc: 'Zero rank loss • Practice & Earn XP',
-                          icon: <Shield className="w-4 h-4 text-cyan-400" />,
+                          icon: <Shield className="w-5 h-5 text-cyan-400" />,
                         },
                         {
                           id: 'rivalry',
                           label: 'Friendly Rivalry',
                           desc: 'Challenge a friend head-to-head',
-                          icon: <Swords className="w-4 h-4 text-cyan-300" />,
+                          icon: <Swords className="w-5 h-5 text-cyan-300" />,
                         },
                         {
                           id: 'private',
                           label: 'Private Room Lobby',
                           desc: 'Play with friends using room code',
-                          icon: <Users className="w-4 h-4 text-amber-300" />,
+                          icon: <Users className="w-5 h-5 text-amber-300" />,
                         },
                         {
                           id: 'ai_bots',
                           label: 'Play Bots (Instant AI)',
                           desc: `${selectedDifficulty.toUpperCase()} • ${targetScore} pts • Offline & Ready`,
-                          icon: <Bot className="w-4 h-4 text-emerald-400" />,
+                          icon: <Bot className="w-5 h-5 text-emerald-400" />,
                         },
                       ] as const
                     ).map((opt) => (
@@ -583,20 +607,20 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                             setIsQuickSelectorOpen(false);
                           }
                         }}
-                        className={`w-full px-3 py-2 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                        className={`w-full px-3.5 py-2.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
                           quickMode === opt.id
                             ? 'bg-emerald-500/15 border-emerald-400/70 text-white'
                             : 'bg-[#182235] border-slate-800 text-slate-300 hover:bg-[#1e2a40]'
                         }`}
                       >
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex items-center gap-3">
                           {opt.icon}
                           <div>
-                            <div className="text-xs font-black">{opt.label}</div>
-                            <div className="text-[10px] text-slate-400">{opt.desc}</div>
+                            <div className="text-sm font-black">{opt.label}</div>
+                            <div className="text-[11px] text-slate-400">{opt.desc}</div>
                           </div>
                         </div>
-                        {quickMode === opt.id && <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />}
+                        {quickMode === opt.id && <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
                       </button>
                     ))}
                   </div>
@@ -614,7 +638,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                                 sounds.playUiClick();
                                 setSelectedDifficulty(d);
                               }}
-                              className={`px-2 py-0.5 rounded text-[11px] font-black capitalize cursor-pointer ${
+                              className={`px-2.5 py-1 rounded-lg text-xs font-black capitalize cursor-pointer ${
                                 selectedDifficulty === d
                                   ? 'bg-emerald-500 text-slate-950'
                                   : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -636,7 +660,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                                 sounds.playUiClick();
                                 setTargetScore(pts);
                               }}
-                              className={`px-2 py-0.5 rounded text-[11px] font-black cursor-pointer ${
+                              className={`px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer ${
                                 targetScore === pts
                                   ? 'bg-amber-400 text-slate-950'
                                   : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -650,7 +674,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
 
                       <button
                         onClick={() => setIsQuickSelectorOpen(false)}
-                        className="w-full py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold text-xs cursor-pointer"
+                        className="w-full py-2 rounded-xl bg-emerald-500/20 text-emerald-300 font-bold text-xs cursor-pointer"
                       >
                         Confirm &amp; Close Selector
                       </button>
@@ -663,53 +687,59 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             {/* Tactile 3D Green "Start Game" Primary CTA Button */}
             <button
               onClick={handleStartSelectedGame}
-              className="w-full py-3.5 sm:py-4 rounded-2xl bg-gradient-to-b from-[#34d378] via-[#27ae60] to-[#1e8e4c] hover:brightness-105 active:translate-y-0.5 text-white font-black text-lg sm:text-xl tracking-tight shadow-[0_4px_0_#146435,0_10px_25px_rgba(39,174,96,0.35)] border-t border-emerald-300/40 transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-3.5 sm:py-4 rounded-2xl bg-gradient-to-b from-[#34d378] via-[#22c55e] to-[#15803d] hover:brightness-105 active:translate-y-0.5 text-white font-black text-lg sm:text-xl tracking-tight shadow-[0_4px_0_#146435,0_10px_25px_rgba(39,174,96,0.35)] border-t border-emerald-300/40 transition-all cursor-pointer flex items-center justify-center gap-2.5"
             >
-              <Play className="w-5 h-5 fill-white" />
+              <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-white" />
               <span>Start Game</span>
             </button>
           </div>
 
           {/* =================================================================
-              COMPACT ACTION BUTTONS (Clean, no scroll, zero redundancy)
+              COMPACT ACTION BUTTONS (Enlarged Imagery for Accessibility)
           ================================================================= */}
-          <div className="space-y-2 mt-1">
+          <div className="space-y-2 mt-0.5 w-full">
             {/* ROW 1: PLAY A FRIEND (Private Lobby) */}
-            <div className="rounded-2xl bg-[#161f30] border border-slate-700/75 overflow-hidden shadow-sm transition-all">
+            <div className="rounded-2xl bg-[#161f30] border border-slate-700/75 overflow-hidden shadow-sm transition-all hover:border-sky-400/50">
               <button
                 onClick={() => {
                   sounds.playUiClick();
                   onOpenMatchmaking('private');
                 }}
-                className="w-full px-3.5 py-3 hover:bg-[#1c273d] flex items-center justify-between transition-colors cursor-pointer"
+                className="w-full px-3.5 py-2.5 sm:py-3 hover:bg-[#1c273d] flex items-center justify-between transition-colors cursor-pointer group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-xl shadow-inner flex-shrink-0">
+                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-sky-500/20 to-sky-700/15 border border-sky-400/40 flex items-center justify-center text-2xl shadow-inner flex-shrink-0 group-hover:scale-105 transition-transform">
                     🤝
                   </div>
                   <div className="text-left">
-                    <div className="text-sm font-black text-white">Play a Friend</div>
+                    <div className="text-sm sm:text-base font-black text-white group-hover:text-sky-300 transition-colors">
+                      Play a Friend
+                    </div>
+                    <div className="text-[11px] text-slate-400 font-medium">Private room code • Challenge a buddy</div>
                   </div>
                 </div>
-                <span className="text-xs font-bold text-slate-400">Private Lobby ›</span>
+                <span className="text-xs font-bold text-sky-400/80 group-hover:text-sky-300">Private ›</span>
               </button>
             </div>
 
             {/* ROW 2: PLAY BOTS (Instant AI Practice + Settings) */}
-            <div className="rounded-2xl bg-[#161f30] border border-slate-700/75 overflow-hidden shadow-sm transition-all">
+            <div className="rounded-2xl bg-[#161f30] border border-slate-700/75 overflow-hidden shadow-sm transition-all hover:border-emerald-400/50">
               <button
                 onClick={() => {
                   sounds.playUiClick();
                   setIsBotsDrawerOpen((prev) => !prev);
                 }}
-                className="w-full px-3.5 py-3 hover:bg-[#1c273d] flex items-center justify-between transition-colors cursor-pointer"
+                className="w-full px-3.5 py-2.5 sm:py-3 hover:bg-[#1c273d] flex items-center justify-between transition-colors cursor-pointer group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-xl shadow-inner flex-shrink-0">
+                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/15 border border-emerald-400/40 flex items-center justify-center text-2xl shadow-inner flex-shrink-0 group-hover:scale-105 transition-transform">
                     🤖
                   </div>
                   <div className="text-left">
-                    <span className="text-sm font-black text-white block leading-tight">Play Bots</span>
+                    <span className="text-sm sm:text-base font-black text-white group-hover:text-emerald-300 transition-colors block leading-tight">
+                      Play Bots
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-medium">Instant offline AI practice</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -798,7 +828,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             </div>
 
             {/* ROW 3: CARD VAULT & PACKS */}
-            <div className="rounded-2xl bg-[#161f30] border border-slate-700/75 overflow-hidden shadow-sm transition-all">
+            <div className="rounded-2xl bg-[#161f30] border border-slate-700/75 overflow-hidden shadow-sm transition-all hover:border-amber-400/50">
               <div
                 onClick={() => {
                   sounds.playUiClick();
@@ -808,10 +838,10 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                     onOpenCollection('collections');
                   }
                 }}
-                className="w-full px-3.5 py-3 hover:bg-[#1c273d] flex items-center justify-between transition-colors cursor-pointer"
+                className="w-full px-3.5 py-2.5 sm:py-3 hover:bg-[#1c273d] flex items-center justify-between transition-colors cursor-pointer group"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="relative w-8 h-10 rounded-md overflow-hidden border border-amber-400/70 shadow-sm flex-shrink-0 bg-slate-950">
+                  <div className="relative w-11 h-15 sm:w-12 sm:h-16 rounded-xl overflow-hidden border-2 border-amber-400/80 shadow-md flex-shrink-0 bg-slate-950 group-hover:scale-105 transition-transform">
                     <img
                       src={PACK_ARTWORK_URL}
                       alt="Bower JJ Pack"
@@ -819,14 +849,14 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                     />
                   </div>
                   <div className="text-left min-w-0">
-                    <span className="text-sm font-black text-white block truncate">
+                    <span className="text-sm sm:text-base font-black text-white group-hover:text-amber-300 transition-colors block truncate">
                       Card Vault &amp; Packs
                     </span>
-                    {unopenedPacksCount > 0 && (
-                      <span className="text-[10px] font-bold text-amber-300 block">
-                        Tap to unseal booster packs!
-                      </span>
-                    )}
+                    <span className="text-[11px] text-amber-300/80 font-medium block truncate">
+                      {unopenedPacksCount > 0
+                        ? `${unopenedPacksCount} booster pack${unopenedPacksCount > 1 ? 's' : ''} ready to open!`
+                        : 'Collect 10 card decks & custom backs'}
+                    </span>
                   </div>
                 </div>
 
@@ -837,7 +867,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                       <span>{unopenedPacksCount}</span>
                     </span>
                   ) : (
-                    <span className="text-xs font-bold text-slate-400">Vault ›</span>
+                    <span className="text-xs font-bold text-amber-400/80 group-hover:text-amber-300">Vault ›</span>
                   )}
                 </div>
               </div>
