@@ -358,9 +358,6 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                   <h1 className="text-xl sm:text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400 drop-shadow-[0_2px_12px_rgba(251,191,36,0.35)] leading-none">
                     BOWER JJ
                   </h1>
-                  <span className="text-[8px] sm:text-[9px] font-black tracking-[0.22em] text-emerald-400 uppercase leading-none mt-1">
-                    SOVEREIGN EUCHRE
-                  </span>
                 </div>
               </div>
 

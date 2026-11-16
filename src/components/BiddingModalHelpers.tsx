@@ -167,6 +167,9 @@ export const CenterKittyDisplay: React.FC<CenterKittyDisplayProps> = ({
           Turned-Up Card
         </span>
         <CardView card={upCard} size="md" isPlayable={false} />
+        <span className="mt-1 text-[10px] font-bold text-amber-200/90 bg-slate-950/85 border border-amber-500/30 px-2.5 py-0.5 rounded-full uppercase">
+          {formatCardName(upCard)} • {upCard.suit.toUpperCase()}
+        </span>
       </div>
     );
   }

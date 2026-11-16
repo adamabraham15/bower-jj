@@ -418,9 +418,27 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
         yourTeam={getPlayerTeam(yourPos)}
       />
 
-      {/* Main Felt Arena (Unified Royal Midnight Casino Table) */}
-      <main className="relative flex-1 min-h-0 bg-gradient-to-b from-[#0b111e] via-[#0e1626] to-[#080d17] flex items-center justify-center p-2 sm:p-6 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(245,158,11,0.04)_0%,_transparent_70%)] pointer-events-none" />
+      {/* Main Felt Arena (Modern Royal Midnight Casino Table) */}
+      <main className="relative flex-1 min-h-0 bg-gradient-to-b from-[#080e1a] via-[#0c1424] to-[#060a12] flex items-center justify-center p-2 sm:p-6 overflow-hidden">
+        {/* Modern Ambient Felt Vignette */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_rgba(245,158,11,0.07)_0%,_rgba(12,20,36,0.5)_50%,_transparent_80%)] pointer-events-none" />
+
+        {/* Subtle Modern Luxury Geometric Table Seal */}
+        <div className="absolute flex flex-col items-center justify-center pointer-events-none select-none">
+          <div className="w-72 h-72 sm:w-96 sm:h-96 rounded-full border border-amber-400/[0.08] flex flex-col items-center justify-center p-6">
+            <div className="w-full h-full rounded-full border border-dashed border-amber-400/[0.05] flex flex-col items-center justify-center">
+              <span className="text-2xl sm:text-4xl font-black tracking-[0.35em] text-amber-200/[0.08] uppercase font-sans">
+                BOWER JJ
+              </span>
+              <div className="flex items-center gap-2 mt-1.5 text-amber-400/[0.08] text-xs">
+                <span>♠</span>
+                <span>♥</span>
+                <span>♣</span>
+                <span>♦</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* 4 Seated Player Pods */}
         {[0, 1, 2, 3].map(pos => (
@@ -430,7 +448,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
         ))}
 
         {/* Center Trick Arena */}
-        <div className="relative w-72 h-72 sm:w-84 sm:h-84 rounded-full border border-amber-400/25 bg-slate-950/45 backdrop-blur-xs flex items-center justify-center shadow-2xl">
+        <div className="relative w-72 h-72 sm:w-84 sm:h-84 rounded-full border-2 border-amber-400/25 bg-[#070d18]/65 shadow-[0_0_50px_rgba(0,0,0,0.8),inset_0_0_30px_rgba(245,158,11,0.04)] backdrop-blur-xs flex items-center justify-center">
           {/* Turned-up Card (Round 1) / Turned-down Card (Round 2) */}
           <CenterKittyDisplay
             phase={serverState.phase}
@@ -761,8 +779,8 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             )}
           </div>
 
-          {/* Hand Cards (Only Your Cards exist here!) */}
-          <div className="flex justify-center items-center -space-x-2 sm:-space-x-3 max-w-full overflow-x-auto px-4 py-2 min-h-[130px]">
+          {/* Hand Cards (Clear positive spacing — zero overlapping symbols) */}
+          <div className="flex justify-center items-center space-x-1.5 sm:space-x-2.5 max-w-full overflow-x-auto px-4 py-2 min-h-[130px]">
             {serverState.yourHand.map((card, idx) => {
               const isLegal = serverState.phase === 'playing'
                 ? isCardPlayLegal(card, serverState.yourHand, serverState.currentTrick, serverState.trumpSuit)

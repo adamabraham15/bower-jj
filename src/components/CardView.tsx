@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { Card, Suit } from '../engine/types';
-import { isRightBower, isLeftBower, getEffectiveSuit } from '../engine/cards';
+import { isRightBower, isLeftBower } from '../engine/cards';
 import { getCardBackDefinition, RARITY_META } from '../config/collectiblesCatalog';
 
 interface CardViewProps {
@@ -29,37 +29,33 @@ const SIZE_CONFIG = {
     w: 36,
     h: 52,
     rankClass: 'text-[10px] font-black',
-    cornerIconClass: 'w-2.5 h-2.5',
-    centerIconClass: 'w-4 h-4',
-    ribbonClass: 'text-[7px] py-0.5',
-    suitLabelClass: 'text-[7px]',
+    cornerIconClass: 'w-2 h-2',
+    centerIconClass: 'w-3.5 h-3.5',
+    ribbonClass: 'text-[6px] py-0.5',
   },
   sm: {
     w: 64,
     h: 92,
     rankClass: 'text-sm font-black',
-    cornerIconClass: 'w-3.5 h-3.5',
-    centerIconClass: 'w-7 h-7',
-    ribbonClass: 'text-[8px] py-0.5',
-    suitLabelClass: 'text-[8px]',
+    cornerIconClass: 'w-3 h-3',
+    centerIconClass: 'w-6 h-6',
+    ribbonClass: 'text-[7px] sm:text-[8px] py-0.5',
   },
   md: {
     w: 80,
     h: 116,
     rankClass: 'text-base font-black',
-    cornerIconClass: 'w-4 h-4',
-    centerIconClass: 'w-10 h-10',
-    ribbonClass: 'text-[9px] py-0.5',
-    suitLabelClass: 'text-[9px]',
+    cornerIconClass: 'w-3.5 h-3.5',
+    centerIconClass: 'w-8 h-8',
+    ribbonClass: 'text-[8px] sm:text-[9px] py-0.5',
   },
   lg: {
     w: 100,
     h: 144,
     rankClass: 'text-lg font-black',
-    cornerIconClass: 'w-5 h-5',
-    centerIconClass: 'w-12 h-12',
-    ribbonClass: 'text-[10px] py-1',
-    suitLabelClass: 'text-[10px]',
+    cornerIconClass: 'w-4.5 h-4.5',
+    centerIconClass: 'w-10 h-10',
+    ribbonClass: 'text-[9px] sm:text-[10px] py-1',
   },
 };
 
@@ -75,19 +71,24 @@ export const SuitIcon: React.FC<{ suit: Suit; className?: string }> = ({ suit, c
     case 'diamonds':
       return (
         <svg viewBox="0 0 24 24" className={`${className} fill-red-600 drop-shadow-sm flex-shrink-0`}>
-          <path d="M12 2L4 12l8 10 8-10L12 2z" />
+          <path d="M12 2.5L4.5 12 12 21.5 19.5 12z" />
         </svg>
       );
     case 'spades':
       return (
         <svg viewBox="0 0 24 24" className={`${className} fill-black drop-shadow-sm flex-shrink-0`}>
-          <path d="M12 2C8.5 6.5 4 11 4 14.5a4.5 4.5 0 0 0 7.5 3.3L10.5 21h3l-1-3.2A4.5 4.5 0 0 0 20 14.5C20 11 15.5 6.5 12 2z" />
+          <path d="M12 2.5C8.8 6.8 5 10.8 5 14.2a4.2 4.2 0 0 0 7 3.1l-.8 3.7h1.6l-.8-3.7a4.2 4.2 0 0 0 7-3.1c0-3.4-3.8-7.4-7-11.7z" />
         </svg>
       );
     case 'clubs':
       return (
         <svg viewBox="0 0 24 24" className={`${className} fill-black drop-shadow-sm flex-shrink-0`}>
-          <path d="M12 2a4 4 0 0 0-3.5 6A4 4 0 0 0 4.5 12a4 4 0 0 0 4 4c.6 0 1.2-.1 1.7-.4L9.5 21h5l-.7-5.4c.5.3 1.1.4 1.7.4a4 4 0 0 0 4-4 4 4 0 0 0-4-4 4 4 0 0 0-3.5-2z" />
+          {/* Authentic Standard Casino Trefoil Club */}
+          <circle cx="12" cy="7.2" r="3.7" />
+          <circle cx="7.4" cy="13.2" r="3.7" />
+          <circle cx="16.6" cy="13.2" r="3.7" />
+          <circle cx="12" cy="11.8" r="2.2" />
+          <path d="M11 12.2c-.6 2.4-1.5 5.8-3 8.3h8c-1.5-2.5-2.4-5.9-3-8.3h-2z" />
         </svg>
       );
   }
@@ -164,10 +165,7 @@ export const CardView: React.FC<CardViewProps> = ({
 
   const isRight = isRightBower(card, trumpSuit);
   const isLeft = isLeftBower(card, trumpSuit);
-  const effectiveSuit = getEffectiveSuit(card, trumpSuit);
-
   const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
-  const suitLabel = card.suit.toUpperCase();
 
   return (
     <div
@@ -218,7 +216,7 @@ export const CardView: React.FC<CardViewProps> = ({
         )}
         {isLeft && (
           <div className={`absolute top-0 right-0 left-0 bg-gradient-to-r from-amber-200 via-yellow-200 to-amber-400 text-slate-950 font-black ${cfg.ribbonClass} text-center tracking-wider uppercase z-10 shadow-sm leading-none`}>
-            LEFT BOWER
+            {trumpSuit ? `LEFT BOWER • ${trumpSuit.toUpperCase()}` : 'LEFT BOWER'}
           </div>
         )}
         {badge && !isRight && !isLeft && (
@@ -227,33 +225,28 @@ export const CardView: React.FC<CardViewProps> = ({
           </div>
         )}
 
+        {/* Modern Faint Card Face Watermark */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.04] select-none">
+          <span className="text-[10px] sm:text-[12px] font-black tracking-[0.2em] text-slate-900 rotate-45 uppercase font-sans">
+            BOWER JJ
+          </span>
+        </div>
+
         {/* Top Left Corner */}
-        <div className={`absolute top-1 left-1.5 flex flex-col items-center leading-none ${isRight || isLeft || badge ? 'mt-3 sm:mt-3.5' : ''}`}>
+        <div className={`absolute left-1 sm:left-1.5 flex flex-col items-center leading-none ${isRight || isLeft || badge ? 'top-3.5 sm:top-4' : 'top-1 sm:top-1.5'}`}>
           <span className={`${cfg.rankClass} ${isRed ? 'text-red-600' : 'text-black'}`}>
             {card.rank}
           </span>
           <SuitIcon suit={card.suit} className={cfg.cornerIconClass} />
         </div>
 
-        {/* Center Giant Suit Pip & Bower Indicators */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-1">
+        {/* Center Suit Pip (Clean, Proportional, No text collisions!) */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-1">
           <SuitIcon suit={card.suit} className={cfg.centerIconClass} />
-
-          {/* Explicit Suit Label under Pip for 100% Clarity */}
-          <span className={`${cfg.suitLabelClass} font-black uppercase tracking-tighter mt-0.5 ${isRed ? 'text-red-600' : 'text-black'}`}>
-            {suitLabel}
-          </span>
-
-          {/* Left Bower Effective Suit Tag */}
-          {isLeft && trumpSuit && (
-            <span className="text-[7px] sm:text-[8px] font-black text-slate-950 bg-amber-200/95 px-1 rounded-sm mt-0.5 uppercase tracking-tight leading-tight shadow-sm">
-              IS {trumpSuit.toUpperCase()}
-            </span>
-          )}
         </div>
 
         {/* Bottom Right Corner (Inverted) */}
-        <div className="absolute bottom-1 right-1.5 flex flex-col items-center leading-none rotate-180">
+        <div className="absolute bottom-1 sm:bottom-1.5 right-1 sm:right-1.5 flex flex-col items-center leading-none rotate-180">
           <span className={`${cfg.rankClass} ${isRed ? 'text-red-600' : 'text-black'}`}>
             {card.rank}
           </span>
