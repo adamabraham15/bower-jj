@@ -57,11 +57,37 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
   const [joinCodeInput, setJoinCodeInput] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'create' | 'join'>('create');
-  const [invitedFriends, setInvitedFriends] = useState<Set<string>>(new Set());
+  const [localPendingInvites, setLocalPendingInvites] = useState<Record<string, number>>({});
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
   const [aiFillDifficulty, setAiFillDifficulty] = useState<AIDifficulty>('medium');
 
   useEffect(() => {
     if (!isOpen) return;
+    setNowMs(Date.now());
+    const tick = setInterval(() => {
+      const currentNow = Date.now();
+      setNowMs(currentNow);
+      setLocalPendingInvites((prev) => {
+        let changed = false;
+        const next: Record<string, number> = {};
+        for (const [uid, exp] of Object.entries(prev)) {
+          if (exp > currentNow) {
+            next[uid] = exp;
+          } else {
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setLocalPendingInvites({});
+      return;
+    }
 
     const unsubscribe = multiplayerClient.setCallbacks({
       onAuth: () => {
@@ -70,6 +96,27 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
       onRoom: (room) => {
         setCurrentRoom(room);
         setErrorMessage(null);
+        const seatedIds = new Set(
+          room.slots.filter((s): s is PlayerSlot => Boolean(s && !s.isAI && s.userId)).map((s) => s.userId!)
+        );
+        if (room.pendingInvites !== undefined) {
+          const synced: Record<string, number> = {};
+          const currentNow = Date.now();
+          for (const [uid, exp] of Object.entries(room.pendingInvites)) {
+            if (exp > currentNow && !seatedIds.has(uid)) {
+              synced[uid] = exp;
+            }
+          }
+          setLocalPendingInvites(synced);
+        } else {
+          setLocalPendingInvites((prev) => {
+            const next = { ...prev };
+            for (const uid of seatedIds) {
+              delete next[uid];
+            }
+            return next;
+          });
+        }
         if (room.status === 'playing') {
           sounds.playVictoryFanfare();
           onMatchFound();
@@ -170,8 +217,8 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
   const handleInviteFriend = (friend: FriendSummary) => {
     if (!currentRoom) return;
     sounds.playUiClick();
+    setLocalPendingInvites((prev) => ({ ...prev, [friend.userId]: Date.now() + 30000 }));
     multiplayerClient.sendPartyInvite(friend.userId, 'rivals');
-    setInvitedFriends(prev => new Set(prev).add(friend.userId));
   };
 
   const handleUpdateRule = (patch: any) => {
@@ -581,7 +628,23 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
 
                     <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
                       {friends.filter(f => f.isOnline).map((fr) => {
-                        const isInvited = invitedFriends.has(fr.userId);
+                        const humanCount = currentRoom?.slots.filter(s => s && !s.isAI).length || 0;
+                        const isSeatedInLobby = Boolean(
+                          currentRoom?.slots.some(
+                            (s) =>
+                              s &&
+                              !s.isAI &&
+                              (s.userId === fr.userId || s.username.toLowerCase() === fr.username.toLowerCase())
+                          )
+                        );
+                        const serverExp = currentRoom?.pendingInvites?.[fr.userId];
+                        const effectiveExp =
+                          currentRoom?.pendingInvites !== undefined ? serverExp : localPendingInvites[fr.userId];
+                        const remainingSec = effectiveExp ? Math.max(0, Math.ceil((effectiveExp - nowMs) / 1000)) : 0;
+                        const isPendingInvite = !isSeatedInLobby && remainingSec > 0;
+                        const isLobbyFullForHumans = !isSeatedInLobby && humanCount >= 4;
+                        const isDisabled = isSeatedInLobby || isPendingInvite || isLobbyFullForHumans;
+
                         return (
                           <div
                             key={fr.userId}
@@ -594,14 +657,24 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
 
                             <button
                               onClick={() => handleInviteFriend(fr)}
-                              disabled={isInvited}
+                              disabled={isDisabled}
                               className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-all ${
-                                isInvited
+                                isSeatedInLobby
                                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                  : isPendingInvite
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-400/50 animate-pulse'
+                                  : isLobbyFullForHumans
+                                  ? 'bg-slate-800 text-slate-500 border border-slate-700'
                                   : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950'
                               }`}
                             >
-                              {isInvited ? 'Invited ✓' : 'Invite'}
+                              {isSeatedInLobby
+                                ? 'In Lobby ✓'
+                                : isPendingInvite
+                                ? `Pending (${remainingSec}s)`
+                                : isLobbyFullForHumans
+                                ? 'Lobby Full'
+                                : 'Invite'}
                             </button>
                           </div>
                         );

@@ -50,8 +50,10 @@ import {
   TurnActiveDot,
   CenterKittyDisplay,
   TurnedDownNoticeChip,
+  TrickProgressStrip,
   isActiveDecisionPhase,
 } from './BiddingModalHelpers';
+import { AudioControlsPopover } from './AudioControlsPopover';
 import { RankBadge, RankTier } from './RankBadge';
 import { PostMatchModal } from './PostMatchModal';
 import { PublicProfileModal, PublicPlayerData } from './PublicProfileModal';
@@ -524,16 +526,7 @@ export const GameTable: React.FC<GameTableProps> = ({
           >
             <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
-          <button
-            onClick={() => {
-              sounds.playUiClick();
-              onToggleMute();
-            }}
-            title="Toggle Audio"
-            className="p-1 sm:p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-gray-300"
-          >
-            {isMuted ? <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" /> : <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
-          </button>
+          <AudioControlsPopover compact />
           <button
             onClick={() => {
               sounds.playUiClick();
@@ -546,6 +539,13 @@ export const GameTable: React.FC<GameTableProps> = ({
           </button>
         </div>
       </header>
+
+      {/* Visible Mobile & Desktop Trick Counter Strip */}
+      <TrickProgressStrip
+        tricksWon={state.tricksWon}
+        phase={state.phase}
+        yourTeam={0}
+      />
 
       {/* Main Playing Felt Area */}
       <main className="relative flex-1 min-h-0 bg-gradient-to-b from-[#071920] via-[#052225] to-[#031317] flex items-center justify-center p-2 sm:p-6 overflow-hidden">

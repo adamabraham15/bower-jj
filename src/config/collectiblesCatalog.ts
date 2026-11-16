@@ -593,3 +593,131 @@ export const BOT_CARD_BACK_BY_DIFFICULTY: Record<'easy' | 'medium' | 'hard', str
   medium: 'cybernetic',
   hard: 'dark_royalty',
 };
+
+/**
+ * Large curated pool of realistic, creative Euchre player usernames for AI opponents & partners.
+ */
+export const BOT_PLAYER_NAMES: readonly string[] = [
+  'RightBowerRex',
+  'LeftJackLarry',
+  'MidwestLoner',
+  'TrumpCaller99',
+  'BarnDanceAce',
+  'KittyRaider',
+  'MichiganMarch',
+  'CrossSuitQueen',
+  'EuchreValkyrie',
+  'NoirCardShark',
+  'LoneWolfJack',
+  'HoosierHustler',
+  'BuckeyeBower',
+  'EuchreBaron',
+  'TableCaptain',
+  'DealerStickDan',
+  'AceInTheHole',
+  'NextSuitNate',
+  'GreenSuitGabe',
+  'VelvetTrickster',
+  'ShadowDealer',
+  'SpadeSovereign',
+  'DiamondDuchess',
+  'ClubCommander',
+  'HeartbreakerJJ',
+  'RustBeltRoyal',
+  'GreatLakesFox',
+  'SilentPartner',
+  'FourPointSweep',
+  'RenegadeJack',
+  'EuchreOutlaw',
+  'BowerBandit',
+  'FrostbiteAce',
+  'TacticalTess',
+  'MapleLeafLoner',
+  'CardCounterKai',
+  'RiverboatRory',
+  'TopDeckTara',
+  'TrickStealer',
+  'GrandMarchGus',
+  'EuchreSensei',
+  'DoubleBower',
+  'TurnCardTina',
+  'PassOrPickPete',
+  'OrderUpOwen',
+  'MidnightMaverick',
+  'GoldenJackal',
+  'SlyShortSuit',
+  'SingletonSam',
+  'LeadTrumpLeo',
+  'EuchreEnigma',
+  'HighNoonHank',
+  'CrownedJack',
+  'SilverSpurSal',
+  'ObsidianAce',
+  'NeonTrickster',
+  'AstraDealer',
+  'VanguardVic',
+  'JadeEmperor',
+  'CinderQueen',
+  'HarlequinHex',
+  'RunicRogue',
+  'StarlightSuits',
+  'BowerBluffer',
+  ' EuchreMaven'.trim(),
+  'LakeshoreLoner',
+  ' EuchreHawk'.trim(),
+  'CopperJack',
+  'TrumpWhisperer',
+  'FifthTrickFinn',
+  'UpCardUrsula',
+  'SoloSweepSid',
+  'BadgerStateAce',
+  'MotorCityJack',
+  'CardTableCleo',
+  'RoyalFlushRoy',
+  'JackOfSpades',
+  'JackOfClubs',
+  'JackOfHearts',
+  'JackOfDiamonds',
+];
+
+/**
+ * Picks `count` unique randomized bot usernames, avoiding any names in `excludeNames`.
+ */
+export function pickRandomBotNames(count: number, excludeNames?: Iterable<string>): string[] {
+  const excluded = new Set<string>();
+  if (excludeNames) {
+    for (const n of excludeNames) {
+      if (n) excluded.add(n.trim().toLowerCase());
+    }
+  }
+
+  const available = BOT_PLAYER_NAMES.filter((name) => !excluded.has(name.toLowerCase()));
+  // Fisher-Yates shuffle on a copy
+  const pool = [...(available.length >= count ? available : BOT_PLAYER_NAMES)];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = pool[i];
+    pool[i] = pool[j];
+    pool[j] = tmp;
+  }
+
+  const chosen: string[] = [];
+  const chosenLower = new Set<string>(excluded);
+  for (const candidate of pool) {
+    if (chosen.length >= count) break;
+    if (!chosenLower.has(candidate.toLowerCase())) {
+      chosen.push(candidate);
+      chosenLower.add(candidate.toLowerCase());
+    }
+  }
+
+  while (chosen.length < count) {
+    const fallback = `BowerShark${Math.floor(100 + Math.random() * 900)}`;
+    if (!chosenLower.has(fallback.toLowerCase())) {
+      chosen.push(fallback);
+      chosenLower.add(fallback.toLowerCase());
+    }
+  }
+
+  return chosen;
+}

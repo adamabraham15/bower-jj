@@ -854,6 +854,11 @@ export async function createMultiplayerServer(
             break;
           }
 
+          case 'PARTY_INVITE_DECLINE': {
+            activeRm.declinePartyInvite(uid, msg.partyRoomCode);
+            break;
+          }
+
           case 'GET_PROFILE': {
             const profile = await activeDb.getUserProfile(msg.targetUserId, msg.targetUsername, uid);
             if (profile) {

@@ -15,6 +15,8 @@ import {
   UserAccount,
   ServerMessage,
   RankTier,
+  FriendSummary,
+  LeaderboardEntry,
 } from './types';
 import {
   PlayerPosition,
@@ -31,6 +33,7 @@ import {
   BOT_AVATAR_BY_DIFFICULTY,
   BOT_CARD_BACK_BY_DIFFICULTY,
   DEFAULT_CARD_BACK_ID,
+  pickRandomBotNames,
   resolveAvatarId,
   resolveCardBackId,
 } from '../src/config/collectiblesCatalog';
@@ -78,11 +81,13 @@ export class RoomManager {
   private gameStates: Map<string, EuchreGameState> = new Map();
   private connections: Map<string, ClientConnection> = new Map(); // userId -> ClientConnection
   private disconnectTimers: Map<string, NodeJS.Timeout> = new Map(); // `${roomCode}_${position}` -> timer
+  private inviteTimers: Map<string, NodeJS.Timeout> = new Map(); // `${roomCode}_${invitedUserId}` -> timer
   private soloQueue: string[] = []; // Array of userIds waiting in queue
   private matchTimer: NodeJS.Timeout | null = null;
   private cleanupTimer: NodeJS.Timeout | null = null;
   public trickResolutionDelayMs: number = 1800;
   public aiTurnDelayMs: number = 750;
+  public inviteExpiryMs: number = 30000;
   public pgRepo?: PostgresDatabaseRepository;
   private userCache: Map<string, UserAccount> = new Map();
 
@@ -122,6 +127,40 @@ export class RoomManager {
       clearTimeout(t);
     }
     this.disconnectTimers.clear();
+    for (const t of this.inviteTimers.values()) {
+      clearTimeout(t);
+    }
+    this.inviteTimers.clear();
+  }
+
+  private clearPendingInvite(roomCode: string, invitedUserId: string): boolean {
+    const timerKey = `${roomCode}_${invitedUserId}`;
+    const timer = this.inviteTimers.get(timerKey);
+    if (timer) {
+      clearTimeout(timer);
+      this.inviteTimers.delete(timerKey);
+    }
+    const room = this.rooms.get(roomCode);
+    if (room?.pendingInvites && room.pendingInvites[invitedUserId] !== undefined) {
+      delete room.pendingInvites[invitedUserId];
+      return true;
+    }
+    return false;
+  }
+
+  private clearAllRoomPendingInvites(roomCode: string): void {
+    const room = this.rooms.get(roomCode);
+    if (room?.pendingInvites) {
+      for (const uid of Object.keys(room.pendingInvites)) {
+        const timerKey = `${roomCode}_${uid}`;
+        const timer = this.inviteTimers.get(timerKey);
+        if (timer) {
+          clearTimeout(timer);
+          this.inviteTimers.delete(timerKey);
+        }
+      }
+      room.pendingInvites = {};
+    }
   }
 
   public getActiveRoomCount(): number {
@@ -571,6 +610,7 @@ export class RoomManager {
       status: 'lobby',
       rules: { ...DEFAULT_RULES, ...rules },
       slots: [hostSlot, null, null, null],
+      pendingInvites: {},
       isMatchmade: false,
       queueMode,
       createdAt: Date.now(),
@@ -724,22 +764,28 @@ export class RoomManager {
 
     const existing = room.slots.findIndex(s => s && s.userId === userId);
     if (existing !== -1) {
+      this.clearPendingInvite(room.code, userId);
       conn.roomCode = room.code;
       return room;
     }
 
     // In Rivals mode, ensure Friend 2 is placed at Seat 1 (Team 1, Opposing team from Host at Seat 0, Team 0)
     let emptyIdx: number;
-    if (room.queueMode === 'rivals' && room.slots[1] === null) {
+    if (room.queueMode === 'rivals' && (room.slots[1] === null || room.slots[1]?.isAI)) {
       emptyIdx = 1;
     } else {
       emptyIdx = room.slots.findIndex(s => s === null);
+      if (emptyIdx === -1) {
+        // Allow human invitee to replace a lobby AI placeholder seat
+        emptyIdx = room.slots.findIndex(s => s !== null && s.isAI);
+      }
     }
 
     if (emptyIdx === -1) {
       throw new Error('Room is full');
     }
 
+    this.clearPendingInvite(room.code, userId);
     const userAcc = this.getCachedUser(userId);
 
     const slot: PlayerSlot = {
@@ -792,23 +838,28 @@ export class RoomManager {
 
     const aiAvatars = BOT_AVATAR_BY_DIFFICULTY[difficulty] || BOT_AVATAR_BY_DIFFICULTY.medium;
     const aiCardBack = BOT_CARD_BACK_BY_DIFFICULTY[difficulty] || DEFAULT_CARD_BACK_ID;
-    const aiNames = ['West (Bot)', 'Partner (Bot)', 'East (Bot)'];
-
+    const existingNames = room.slots.filter((s): s is PlayerSlot => s !== null).map((s) => s.username);
+    const emptySeatIndices: number[] = [];
     for (let i = 0; i < 4; i++) {
       if (room.slots[i] === null) {
-        room.slots[i] = {
-          position: i as PlayerPosition,
-          isAI: true,
-          aiDifficulty: difficulty,
-          username: aiNames[i - 1] || `Bot ${i}`,
-          avatarIcon: aiAvatars[i % aiAvatars.length],
-          equippedCardBack: aiCardBack,
-          rankTier: displayTier,
-          connected: true,
-          isReady: true,
-        };
+        emptySeatIndices.push(i);
       }
     }
+    const randomBotNames = pickRandomBotNames(emptySeatIndices.length, existingNames);
+
+    emptySeatIndices.forEach((seatIdx, idx) => {
+      room.slots[seatIdx] = {
+        position: seatIdx as PlayerPosition,
+        isAI: true,
+        aiDifficulty: difficulty,
+        username: randomBotNames[idx] || `BowerShark${seatIdx}`,
+        avatarIcon: aiAvatars[seatIdx % aiAvatars.length],
+        equippedCardBack: aiCardBack,
+        rankTier: displayTier,
+        connected: true,
+        isReady: true,
+      };
+    });
 
     this.broadcastRoom(room.code, {
       type: 'ROOM_UPDATE',
@@ -900,6 +951,7 @@ export class RoomManager {
     const initialState = initializeGame(players, room.rules, firstDealer);
     this.gameStates.set(room.code, initialState);
     room.status = 'playing';
+    this.clearAllRoomPendingInvites(room.code);
     this.persistActiveMatch(room.code);
 
     this.broadcastRoom(room.code, {
@@ -961,10 +1013,17 @@ export class RoomManager {
     const room = this.rooms.get(conn.roomCode);
     if (!room) throw new Error('Room not found');
     if (room.hostUserId !== hostUserId) throw new Error('Only the room host can remove players');
-    if (targetPosition === 0) throw new Error('Host cannot kick themselves');
 
     const targetSlot = room.slots[targetPosition];
+    if (targetPosition === 0 && (!targetSlot || targetSlot.userId === hostUserId)) {
+      throw new Error('Host cannot kick themselves');
+    }
+    if (targetSlot && targetSlot.userId === hostUserId) {
+      throw new Error('Host cannot kick themselves');
+    }
+
     if (targetSlot && targetSlot.userId) {
+      this.clearPendingInvite(room.code, targetSlot.userId);
       const kickedConn = this.connections.get(targetSlot.userId);
       if (kickedConn) {
         kickedConn.roomCode = undefined;
@@ -998,6 +1057,8 @@ export class RoomManager {
     const room = this.rooms.get(roomCode);
     if (!room) return;
 
+    this.clearPendingInvite(roomCode, userId);
+
     const slotIdx = room.slots.findIndex(s => s && s.userId === userId);
     if (slotIdx === -1) return;
 
@@ -1011,6 +1072,7 @@ export class RoomManager {
           room.hostUserId = nextHuman.userId;
         } else {
           // No human players remain in the lobby: clean up the empty room
+          this.clearAllRoomPendingInvites(roomCode);
           this.clearActiveMatchSnapshot(roomCode);
           this.gameStates.delete(roomCode);
           this.rooms.delete(roomCode);
@@ -1894,7 +1956,77 @@ export class RoomManager {
 
     const hostPos = room.slots.findIndex(s => s && s.userId === userId);
 
-    // Immediately provide authoritative room state to the inviter
+    const friendConn = this.connections.get(friendUserId);
+    if (!friendConn || friendConn.ws.readyState !== WebSocket.OPEN) {
+      this.clearPendingInvite(room.code, friendUserId);
+      this.sendToUser(userId, {
+        type: 'ROOM_UPDATE',
+        room,
+        yourPosition: hostPos !== -1 ? (hostPos as PlayerPosition) : 0,
+      });
+      this.sendToUser(userId, { type: 'ERROR', message: 'Friend is currently offline' });
+      return;
+    }
+
+    if (room.slots.some(s => s && !s.isAI && s.userId === friendUserId)) {
+      this.clearPendingInvite(room.code, friendUserId);
+      this.broadcastRoom(room.code, {
+        type: 'ROOM_UPDATE',
+        room,
+      });
+      this.sendToUser(userId, {
+        type: 'NOTICE',
+        message: `${friendConn.username} is already in the lobby!`,
+      });
+      return;
+    }
+
+    const humanCount = room.slots.filter(s => s && !s.isAI).length;
+    if (humanCount >= 4) {
+      this.sendToUser(userId, { type: 'ERROR', message: 'Lobby is full (4/4 players seated)' });
+      return;
+    }
+
+    const now = Date.now();
+    if (!room.pendingInvites) {
+      room.pendingInvites = {};
+    }
+    for (const [k, exp] of Object.entries(room.pendingInvites)) {
+      if (exp <= now) {
+        this.clearPendingInvite(room.code, k);
+      }
+    }
+
+    const expiresAt = now + this.inviteExpiryMs;
+    this.clearPendingInvite(room.code, friendUserId);
+    room.pendingInvites[friendUserId] = expiresAt;
+
+    const timerKey = `${room.code}_${friendUserId}`;
+    const expTimer = setTimeout(() => {
+      this.inviteTimers.delete(timerKey);
+      const activeRoom = this.rooms.get(room.code);
+      if (
+        activeRoom &&
+        activeRoom.status === 'lobby' &&
+        activeRoom.pendingInvites &&
+        activeRoom.pendingInvites[friendUserId] !== undefined
+      ) {
+        delete activeRoom.pendingInvites[friendUserId];
+        this.broadcastRoom(activeRoom.code, {
+          type: 'ROOM_UPDATE',
+          room: activeRoom,
+        });
+        this.sendToUser(userId, {
+          type: 'NOTICE',
+          title: 'Invite Expired',
+          message: `Invitation to ${friendConn.username} expired.`,
+        });
+      }
+    }, this.inviteExpiryMs);
+    if (typeof expTimer.unref === 'function') expTimer.unref();
+    this.inviteTimers.set(timerKey, expTimer);
+
+    // Immediately provide authoritative room state (with pendingInvites) to the inviter & room
     this.sendToUser(userId, {
       type: 'ROOM_UPDATE',
       room,
@@ -1908,24 +2040,41 @@ export class RoomManager {
       });
     }
 
-    const friendConn = this.connections.get(friendUserId);
-    if (!friendConn || friendConn.ws.readyState !== WebSocket.OPEN) {
-      this.sendToUser(userId, { type: 'ERROR', message: 'Friend is currently offline' });
-      return;
-    }
-
     this.sendToUser(friendUserId, {
       type: 'PARTY_INVITE_RECEIVED',
       fromUsername: conn.username,
       fromAvatar: conn.avatarIcon,
       roomCode: room.code,
       mode: room.queueMode,
+      expiresAt,
     });
 
     this.sendToUser(userId, {
       type: 'NOTICE',
       message: `Challenged ${friendConn.username} to ${room.queueMode === 'rivals' ? 'Friendly Rivalry' : 'Custom Lobby'} match!`,
     });
+  }
+
+  public declinePartyInvite(userId: string, roomCode: string): void {
+    const conn = this.connections.get(userId);
+    const targetCode = roomCode.trim().toUpperCase();
+    const room = this.rooms.get(targetCode);
+    if (!room) return;
+
+    this.clearPendingInvite(room.code, userId);
+
+    this.broadcastRoom(room.code, {
+      type: 'ROOM_UPDATE',
+      room,
+    });
+
+    if (room.hostUserId) {
+      this.sendToUser(room.hostUserId, {
+        type: 'NOTICE',
+        title: 'Invite Declined',
+        message: `${conn?.username || 'Player'} declined the lobby invitation.`,
+      });
+    }
   }
 
   private validateActionContext(

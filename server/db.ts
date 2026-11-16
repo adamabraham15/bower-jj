@@ -1034,7 +1034,7 @@ class Database {
     targetUsername?: string,
     requestingUserId?: string
   ): PublicPlayerData | null {
-    let targetUser: UserAccount | undefined;
+    let targetUser: UserAccount | null | undefined;
     if (targetUserId) {
       targetUser = this.getUserById(targetUserId);
     }

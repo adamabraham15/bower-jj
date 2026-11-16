@@ -30,6 +30,7 @@ import { AIDifficulty, EuchreHouseRules, DEFAULT_RULES } from '../engine/types';
 import { QueueType } from './MatchmakingModal';
 import { sounds } from '../audio/sound';
 import { AvatarPortrait } from './AvatarPortrait';
+import { AudioControlsPopover } from './AudioControlsPopover';
 import { CARD_COLLECTIONS, PACK_ARTWORK_URL, RARITY_META } from '../config/collectiblesCatalog';
 
 interface MainMenuProps {
@@ -140,16 +141,8 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             <span className="hidden sm:inline text-xs font-black">Rankings</span>
           </button>
 
-          {/* Sound Mute */}
-          <button
-            onClick={() => {
-              sounds.playUiClick();
-              onToggleMute();
-            }}
-            className="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-gray-300"
-          >
-            {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4" />}
-          </button>
+          {/* Music & Sound Controls */}
+          <AudioControlsPopover />
 
           {/* Account Authentication Button */}
           {isAuthenticated ? (

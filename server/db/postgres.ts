@@ -91,7 +91,10 @@ export class PostgresDatabaseRepository {
       this.pool = poolOrConfig as pg.Pool;
       this.isPoolOwner = false;
     } else {
-      const config = typeof poolOrConfig === 'string' ? { connectionString: poolOrConfig } : poolOrConfig || {};
+      const config: PostgresConfig =
+        typeof poolOrConfig === 'string'
+          ? { connectionString: poolOrConfig }
+          : (poolOrConfig as PostgresConfig) || {};
       const connectionString = config.connectionString || process.env.DATABASE_URL;
 
       let ssl: any = config.ssl;

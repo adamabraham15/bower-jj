@@ -52,6 +52,7 @@ import {
   resolveCardBackId,
   BOT_AVATAR_BY_DIFFICULTY,
   BOT_CARD_BACK_BY_DIFFICULTY,
+  pickRandomBotNames,
 } from './config/collectiblesCatalog';
 
 const STORAGE_KEY = 'bower_jj_player_profile';
@@ -216,7 +217,7 @@ export const App: React.FC = () => {
   const [isLobbyOpen, setIsLobbyOpen] = useState(false);
   const [lobbyInitialMode, setLobbyInitialMode] = useState<LobbyGameMode>('custom');
   const [isEmoteWheelOpen, setIsEmoteWheelOpen] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(() => sounds.getMuted());
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authModalReason, setAuthModalReason] = useState<string | undefined>();
   const [authModalInitialTab, setAuthModalInitialTab] = useState<'login' | 'register'>('register');
@@ -230,6 +231,18 @@ export const App: React.FC = () => {
   useEffect(() => {
     authUserRef.current = authUser;
   }, [authUser]);
+
+  // Smoothly crossfade background music between Lobby and Active Gameplay scenes
+  useEffect(() => {
+    sounds.setMusicScene(currentView === 'menu' ? 'lobby' : 'game');
+  }, [currentView]);
+
+  // Sync mute state with SoundEngine preferences
+  useEffect(() => {
+    return sounds.subscribe(prefs => {
+      setIsMuted(prefs.sfxMuted && !prefs.musicEnabled);
+    });
+  }, []);
 
   const [lastMatchRankUpdate, setLastMatchRankUpdate] = useState<{
     oldTier: RankTier;
@@ -273,7 +286,20 @@ export const App: React.FC = () => {
     fromAvatar: string;
     roomCode: string;
     mode?: string;
+    expiresAt?: number;
   } | null>(null);
+
+  // Auto-expire incoming party invite prompt when its 30s expiration window passes
+  useEffect(() => {
+    if (!partyInvite) return;
+    const expiryMs = partyInvite.expiresAt
+      ? Math.max(1000, partyInvite.expiresAt - Date.now())
+      : 30000;
+    const timer = setTimeout(() => {
+      setPartyInvite(null);
+    }, expiryMs);
+    return () => clearTimeout(timer);
+  }, [partyInvite]);
 
   // Active emotes on table: position -> emote
   const [activeEmotes, setActiveEmotes] = useState<Record<number, { text?: string; emoji?: string }>>({});
@@ -865,6 +891,7 @@ export const App: React.FC = () => {
   const handleStartAIMatch = (difficulty: AIDifficulty, rules: EuchreHouseRules) => {
     const botAvatars = BOT_AVATAR_BY_DIFFICULTY[difficulty];
     const botCardBack = BOT_CARD_BACK_BY_DIFFICULTY[difficulty];
+    const [botNameWest, botNamePartner, botNameEast] = pickRandomBotNames(3, [profile.username]);
     const players: Player[] = [
       {
         id: 'p0',
@@ -877,7 +904,7 @@ export const App: React.FC = () => {
       },
       {
         id: 'p1',
-        name: 'West (Bot)',
+        name: botNameWest,
         position: 1,
         isAI: true,
         aiDifficulty: difficulty,
@@ -886,7 +913,7 @@ export const App: React.FC = () => {
       },
       {
         id: 'p2',
-        name: 'Partner (Bot)',
+        name: botNamePartner,
         position: 2,
         isAI: true,
         aiDifficulty: difficulty,
@@ -895,7 +922,7 @@ export const App: React.FC = () => {
       },
       {
         id: 'p3',
-        name: 'East (Bot)',
+        name: botNameEast,
         position: 3,
         isAI: true,
         aiDifficulty: difficulty,
@@ -916,6 +943,11 @@ export const App: React.FC = () => {
     oppScore: number,
     stats?: { tricksWon?: number; euchres?: number; marches?: number; successfulLoners?: number }
   ) => {
+    const oppNames =
+      activeGameState?.players
+        ? [activeGameState.players[1]?.name, activeGameState.players[3]?.name].filter(Boolean)
+        : ['EuchreBot West', 'EuchreBot East'];
+
     setProfile(prev => {
       const nextWins = won ? prev.wins + 1 : prev.wins;
       const nextLosses = won ? prev.losses : prev.losses + 1;
@@ -941,7 +973,7 @@ export const App: React.FC = () => {
         won,
         score: `${userScore} - ${oppScore}`,
         lpChange: won ? 20 : -15,
-        opponentNames: ['BowerAI North', 'BowerAI East', 'BowerAI West'],
+        opponentNames: oppNames,
       };
 
       return {
@@ -978,7 +1010,7 @@ export const App: React.FC = () => {
           euchres: stats?.euchres || 0,
           marches: stats?.marches || 0,
           successfulLoners: stats?.successfulLoners || 0,
-          opponentNames: ['BowerAI West', 'BowerAI East'],
+          opponentNames: oppNames,
         })
         .then(async (serverRes) => {
           if (serverRes?.ok && serverRes.user) {
@@ -1147,7 +1179,10 @@ export const App: React.FC = () => {
               Accept Challenge
             </button>
             <button
-              onClick={() => setPartyInvite(null)}
+              onClick={() => {
+                multiplayerClient.declinePartyInvite(partyInvite.roomCode);
+                setPartyInvite(null);
+              }}
               className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-gray-300 text-xs font-bold"
             >
               Decline

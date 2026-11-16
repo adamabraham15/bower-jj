@@ -129,7 +129,7 @@ export class MultiplayerClient {
     lpChange: number;
     didRankUp: boolean;
   }) => void;
-  private onPartyInviteCallback?: (invite: { fromUsername: string; fromAvatar: string; roomCode: string; mode?: string }) => void;
+  private onPartyInviteCallback?: (invite: { fromUsername: string; fromAvatar: string; roomCode: string; mode?: string; expiresAt?: number }) => void;
   private onProfileCallback?: (profile: PublicPlayerData) => void;
   private onMatchmakingStatsCallback?: (stats: MatchmakingStats) => void;
   private onNoticeCallback?: (message: string, title?: string) => void;
@@ -177,7 +177,7 @@ export class MultiplayerClient {
       lpChange: number;
       didRankUp: boolean;
     }) => void;
-    onPartyInvite?: (invite: { fromUsername: string; fromAvatar: string; roomCode: string; mode?: string }) => void;
+    onPartyInvite?: (invite: { fromUsername: string; fromAvatar: string; roomCode: string; mode?: string; expiresAt?: number }) => void;
     onProfile?: (profile: PublicPlayerData) => void;
     onMatchmakingStats?: (stats: MatchmakingStats) => void;
     onNotice?: (message: string, title?: string) => void;
@@ -755,6 +755,10 @@ export class MultiplayerClient {
   public acceptPartyInvite(partyRoomCode: string) {
     const code = this.prepareRoomJoin(partyRoomCode);
     this.send({ type: 'PARTY_INVITE_ACCEPT', partyRoomCode: code });
+  }
+
+  public declinePartyInvite(partyRoomCode: string) {
+    this.send({ type: 'PARTY_INVITE_DECLINE', partyRoomCode: partyRoomCode.trim().toUpperCase() });
   }
 
   public fetchProfile(targetUserId?: string, targetUsername?: string) {

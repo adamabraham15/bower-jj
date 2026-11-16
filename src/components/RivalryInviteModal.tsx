@@ -41,9 +41,32 @@ export const RivalryInviteModal: React.FC<RivalryInviteModalProps> = ({
 }) => {
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
-  const [invitedFriendId, setInvitedFriendId] = useState<string | null>(null);
+  const [localPendingInvites, setLocalPendingInvites] = useState<Record<string, number>>({});
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
   const [usernameInput, setUsernameInput] = useState('');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  // Tick every second so pending invites expire automatically
+  useEffect(() => {
+    if (!isOpen) return;
+    const timer = setInterval(() => {
+      const now = Date.now();
+      setNowMs(now);
+      setLocalPendingInvites(prev => {
+        let changed = false;
+        const next: Record<string, number> = {};
+        for (const [id, exp] of Object.entries(prev)) {
+          if (exp > now) {
+            next[id] = exp;
+          } else {
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -61,6 +84,22 @@ export const RivalryInviteModal: React.FC<RivalryInviteModalProps> = ({
     const unsubscribe = multiplayerClient.setCallbacks({
       onRoom: (room) => {
         setCurrentRoom(room);
+        setLocalPendingInvites(prev => {
+          const now = Date.now();
+          const next: Record<string, number> = {};
+          if (room.pendingInvites) {
+            for (const [uid, exp] of Object.entries(room.pendingInvites)) {
+              if (exp > now) next[uid] = exp;
+            }
+          }
+          for (const [uid, exp] of Object.entries(prev)) {
+            const isSeated = room.slots.some(s => s && !s.isAI && s.userId === uid);
+            if (!isSeated && exp > now && (!room.pendingInvites || room.pendingInvites[uid])) {
+              next[uid] = exp;
+            }
+          }
+          return next;
+        });
         if (room.status === 'playing') {
           sounds.playVictoryFanfare();
           onMatchFound();
@@ -109,7 +148,8 @@ export const RivalryInviteModal: React.FC<RivalryInviteModalProps> = ({
 
   const handleInviteFriend = (friendId: string, friendName: string) => {
     sounds.playUiClick();
-    setInvitedFriendId(friendId);
+    const expiresAt = Date.now() + 30000;
+    setLocalPendingInvites(prev => ({ ...prev, [friendId]: expiresAt }));
     multiplayerClient.sendPartyInvite(friendId, 'rivals');
     setStatusMessage(`Invitation sent to ${friendName}! Waiting for them to accept...`);
   };
@@ -328,7 +368,17 @@ export const RivalryInviteModal: React.FC<RivalryInviteModalProps> = ({
             ) : (
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {friends.map(friend => {
-                  const isInvited = invitedFriendId === friend.userId;
+                  const isSeatedInRoom = Boolean(
+                    currentRoom?.slots.some(
+                      s => s && !s.isAI && (s.userId === friend.userId || s.username.toLowerCase() === friend.username.toLowerCase())
+                    )
+                  );
+                  const serverExp = currentRoom?.pendingInvites?.[friend.userId] || 0;
+                  const localExp = localPendingInvites[friend.userId] || 0;
+                  const activeExp = Math.max(serverExp, localExp);
+                  const remainingSecs = activeExp > nowMs ? Math.ceil((activeExp - nowMs) / 1000) : 0;
+                  const isInvited = !isSeatedInRoom && remainingSecs > 0;
+                  const canInvite = friend.isOnline && !isSeatedInRoom && !isInvited;
 
                   return (
                     <div
@@ -358,7 +408,7 @@ export const RivalryInviteModal: React.FC<RivalryInviteModalProps> = ({
                             </span>
                           </div>
                           <span className="text-[10px] text-gray-400">
-                            {friend.isOnline ? 'Available to play' : 'Offline'}
+                            {isSeatedInRoom ? 'Seated in lobby' : friend.isOnline ? 'Available to play' : 'Offline'}
                           </span>
                         </div>
                       </div>
@@ -367,19 +417,26 @@ export const RivalryInviteModal: React.FC<RivalryInviteModalProps> = ({
                         <RankBadge tier={friend.rankTier} points={friend.rankPoints} size="sm" />
                         <button
                           onClick={() => handleInviteFriend(friend.userId, friend.username)}
-                          disabled={!friend.isOnline}
+                          disabled={!canInvite}
                           className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center space-x-1 shadow-md transition-all active:scale-95 ${
-                            isInvited
-                              ? 'bg-emerald-600 text-white'
+                            isSeatedInRoom
+                              ? 'bg-cyan-900/60 text-cyan-200 border border-cyan-500/40 cursor-default'
+                              : isInvited
+                              ? 'bg-emerald-600/80 text-white cursor-default'
                               : friend.isOnline
                               ? 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-black'
                               : 'bg-slate-700 text-gray-500 cursor-not-allowed'
                           }`}
                         >
-                          {isInvited ? (
+                          {isSeatedInRoom ? (
                             <>
                               <Check className="w-3.5 h-3.5" />
-                              <span>Invited</span>
+                              <span>In Lobby</span>
+                            </>
+                          ) : isInvited ? (
+                            <>
+                              <Clock className="w-3.5 h-3.5 animate-pulse" />
+                              <span>Pending ({remainingSecs}s)</span>
                             </>
                           ) : (
                             <>

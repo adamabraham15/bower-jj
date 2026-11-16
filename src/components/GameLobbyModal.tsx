@@ -29,6 +29,7 @@ import { AIDifficulty, PlayerPosition } from '../engine/types';
 import { multiplayerClient } from '../services/multiplayerClient';
 import { sounds } from '../audio/sound';
 import { AvatarPortrait } from './AvatarPortrait';
+import { AudioControlsPopover } from './AudioControlsPopover';
 import { getCardBackDefinition } from '../config/collectiblesCatalog';
 
 export type LobbyGameMode = 'rivals' | 'custom';
@@ -55,7 +56,8 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
   const [currentRoom, setCurrentRoom] = useState<Room | null>(multiplayerClient.getCurrentRoom());
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
-  const [invitedFriends, setInvitedFriends] = useState<Set<string>>(new Set());
+  const [localPendingInvites, setLocalPendingInvites] = useState<Record<string, number>>({});
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
   const [usernameInput, setUsernameInput] = useState('');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [aiFillDifficulty, setAiFillDifficulty] = useState<AIDifficulty>('medium');
@@ -63,19 +65,51 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
   const onMatchFoundRef = useRef(onMatchFound);
   onMatchFoundRef.current = onMatchFound;
 
+  // Live 1-second ticker so invite expiration countdowns update & auto-clear without manual refresh
+  useEffect(() => {
+    if (!isOpen) return;
+    setNowMs(Date.now());
+    const tick = setInterval(() => {
+      const currentNow = Date.now();
+      setNowMs(currentNow);
+      setLocalPendingInvites((prev) => {
+        let changed = false;
+        const next: Record<string, number> = {};
+        for (const [uid, exp] of Object.entries(prev)) {
+          if (exp > currentNow) {
+            next[uid] = exp;
+          } else {
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [isOpen]);
+
   useEffect(() => {
     if (!isOpen) {
       setCurrentRoom(null);
       setStatusMessage(null);
+      setLocalPendingInvites({});
       return;
     }
 
     multiplayerClient.connect();
+    multiplayerClient.fetchFriends();
+
+    const friendsRefreshInterval = setInterval(() => {
+      multiplayerClient.fetchFriends();
+    }, 8000);
 
     // Check if an active lobby room already exists (e.g. joined via code, invite, or link)
     const activeRoom = multiplayerClient.getCurrentRoom();
     if (activeRoom && activeRoom.status === 'lobby') {
       setCurrentRoom(activeRoom);
+      if (activeRoom.pendingInvites) {
+        setLocalPendingInvites({ ...activeRoom.pendingInvites });
+      }
     } else {
       setCurrentRoom(null);
       if (!multiplayerClient.isPendingJoin()) {
@@ -87,6 +121,28 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
     const unsubscribe = multiplayerClient.setCallbacks({
       onRoom: (room) => {
         setCurrentRoom(room);
+        // Synchronize pending invite state with authoritative server room state & current seated players
+        const seatedIds = new Set(
+          room.slots.filter((s): s is PlayerSlot => Boolean(s && !s.isAI && s.userId)).map((s) => s.userId!)
+        );
+        if (room.pendingInvites !== undefined) {
+          const synced: Record<string, number> = {};
+          const currentNow = Date.now();
+          for (const [uid, exp] of Object.entries(room.pendingInvites)) {
+            if (exp > currentNow && !seatedIds.has(uid)) {
+              synced[uid] = exp;
+            }
+          }
+          setLocalPendingInvites(synced);
+        } else {
+          setLocalPendingInvites((prev) => {
+            const next = { ...prev };
+            for (const uid of seatedIds) {
+              delete next[uid];
+            }
+            return next;
+          });
+        }
         if (room.status === 'playing') {
           sounds.playVictoryFanfare();
           onMatchFoundRef.current();
@@ -105,7 +161,14 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
       },
     });
 
+    const handleBeforeUnload = () => {
+      multiplayerClient.leaveRoom();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
+      clearInterval(friendsRefreshInterval);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       unsubscribe();
     };
   }, [isOpen, initialMode]);
@@ -188,16 +251,17 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
   };
 
   const handleInviteFriend = (friend: FriendSummary) => {
-    if (!currentRoom) return;
+    if (!currentRoom || humanCount >= 4) return;
     sounds.playUiClick();
+    const expiresAt = Date.now() + 30000;
+    setLocalPendingInvites((prev) => ({ ...prev, [friend.userId]: expiresAt }));
     multiplayerClient.sendPartyInvite(friend.userId, currentMode === 'rivals' ? 'rivals' : 'custom');
-    setInvitedFriends(prev => new Set(prev).add(friend.userId));
     setStatusMessage(`Invitation sent to ${friend.username}!`);
   };
 
   const handleInviteByUsername = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!usernameInput.trim()) return;
+    if (!usernameInput.trim() || humanCount >= 4) return;
     sounds.playUiClick();
     multiplayerClient.sendPartyInvite(undefined, currentMode === 'rivals' ? 'rivals' : 'custom', usernameInput.trim());
     setStatusMessage(`Challenge sent to ${usernameInput.trim()}!`);
@@ -241,12 +305,15 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={handleClose}
-            className="w-8 h-8 rounded-full bg-slate-800 text-gray-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center space-x-2">
+            <AudioControlsPopover compact />
+            <button
+              onClick={handleClose}
+              className="w-8 h-8 rounded-full bg-slate-800 text-gray-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Content Body */}
@@ -668,15 +735,36 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                 <UserPlus className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Invite Online Friends</span>
               </span>
-              <span className="text-[10px] text-emerald-400">
-                {onlineFriends.length} Online
-              </span>
+              <div className="flex items-center space-x-2 text-[10px]">
+                <span className={humanCount >= 4 ? 'text-amber-400 font-black' : 'text-cyan-300 font-bold'}>
+                  {4 - humanCount} {4 - humanCount === 1 ? 'Slot' : 'Slots'} Open
+                </span>
+                <span className="text-slate-600">•</span>
+                <span className="text-emerald-400">
+                  {onlineFriends.length} Online
+                </span>
+              </div>
             </div>
 
             {onlineFriends.length > 0 && (
               <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
                 {onlineFriends.map((fr) => {
-                  const isInvited = invitedFriends.has(fr.userId);
+                  const isSeatedInLobby = Boolean(
+                    currentRoom?.slots.some(
+                      (s) =>
+                        s &&
+                        !s.isAI &&
+                        (s.userId === fr.userId || s.username.toLowerCase() === fr.username.toLowerCase())
+                    )
+                  );
+                  const serverExp = currentRoom?.pendingInvites?.[fr.userId];
+                  const effectiveExp =
+                    currentRoom?.pendingInvites !== undefined ? serverExp : localPendingInvites[fr.userId];
+                  const remainingSec = effectiveExp ? Math.max(0, Math.ceil((effectiveExp - nowMs) / 1000)) : 0;
+                  const isPendingInvite = !isSeatedInLobby && remainingSec > 0;
+                  const isLobbyFullForHumans = !isSeatedInLobby && humanCount >= 4;
+                  const isDisabled = isSeatedInLobby || isPendingInvite || isLobbyFullForHumans;
+
                   return (
                     <div
                       key={fr.userId}
@@ -684,19 +772,39 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                     >
                       <div className="flex items-center space-x-2">
                         <AvatarPortrait avatarId={fr.avatarIcon} size="xs" />
-                        <span className="font-bold text-white text-[11px]">{fr.username}</span>
+                        <div>
+                          <span className="font-bold text-white text-[11px] block">{fr.username}</span>
+                          {isSeatedInLobby && (
+                            <span className="text-[9px] text-emerald-400 font-bold">Seated in Lobby</span>
+                          )}
+                          {isPendingInvite && (
+                            <span className="text-[9px] text-amber-300 font-bold">
+                              Invite expires in {remainingSec}s
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <button
                         onClick={() => handleInviteFriend(fr)}
-                        disabled={isInvited}
-                        className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-all ${
-                          isInvited
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                            : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950'
+                        disabled={isDisabled}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${
+                          isSeatedInLobby
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 cursor-default'
+                            : isPendingInvite
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-400/50 cursor-default animate-pulse'
+                            : isLobbyFullForHumans
+                            ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                            : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-sm active:scale-95 cursor-pointer'
                         }`}
                       >
-                        {isInvited ? 'Invited ✓' : 'Invite'}
+                        {isSeatedInLobby
+                          ? 'In Lobby ✓'
+                          : isPendingInvite
+                          ? `Pending (${remainingSec}s)`
+                          : isLobbyFullForHumans
+                          ? 'Lobby Full'
+                          : 'Invite'}
                       </button>
                     </div>
                   );
@@ -707,17 +815,19 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
             <form onSubmit={handleInviteByUsername} className="flex space-x-2 pt-1">
               <input
                 type="text"
-                placeholder="Challenge player by username..."
+                disabled={humanCount >= 4}
+                placeholder={humanCount >= 4 ? 'Lobby is full (4/4 players)' : 'Challenge player by username...'}
                 value={usernameInput}
                 onChange={e => setUsernameInput(e.target.value)}
-                className="flex-1 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-cyan-400 font-mono"
+                className="flex-1 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-cyan-400 font-mono disabled:opacity-50"
               />
               <button
                 type="submit"
-                className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center space-x-1"
+                disabled={humanCount >= 4 || !usernameInput.trim()}
+                className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white font-bold text-xs flex items-center space-x-1"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>Send</span>
+                <span>{humanCount >= 4 ? 'Full' : 'Send'}</span>
               </button>
             </form>
           </div>

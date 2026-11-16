@@ -21,11 +21,11 @@ export type RankTier = '9' | '10' | 'Q' | 'K' | 'A' | 'BOWER_JJ';
 export interface MatchRecord {
   id: string;
   date: number;
-  mode: 'ranked_solo' | 'ranked_rivals' | 'ranked_duo' | 'unranked' | 'private' | 'ai';
+  mode: 'ranked_solo' | 'ranked_rivals' | 'ranked_duo' | 'unranked' | 'private' | 'ai' | 'Ranked Abandonment (Penalty)';
   won: boolean;
   score: string; // e.g. "10 - 6"
   lpChange: number;
-  mmrChange: number;
+  mmrChange?: number;
   opponentNames: string[];
 }
 
@@ -194,6 +194,7 @@ export interface Room {
   queueMode?: 'solo' | 'rivals' | 'duo' | 'casual' | 'custom';
   partyLeaderId?: string;
   partyMembers?: string[];
+  pendingInvites?: Record<string, number>; // Map of invited userId -> expiresAt timestamp (ms)
   createdAt: number;
   lastActionAt: number;
   resultsRecorded?: boolean; // Atomic match results flag
@@ -311,6 +312,7 @@ export type ClientMessage =
   | { type: 'EQUIP_COSMETIC'; category: 'hat' | 'cardBack' | 'banner' | 'title'; itemId?: string }
   | { type: 'PARTY_INVITE_SEND'; friendUserId?: string; friendUsername?: string; mode?: 'rivals' | 'custom' | 'duo' }
   | { type: 'PARTY_INVITE_ACCEPT'; partyRoomCode: string }
+  | { type: 'PARTY_INVITE_DECLINE'; partyRoomCode: string }
   | { type: 'GET_PROFILE'; targetUserId?: string; targetUsername?: string }
   | { type: 'REPORT_PLAYER'; targetUserId?: string; targetUsername?: string; reason: string }
   | { type: 'ROOM_UPDATE_RULES'; rules: Partial<EuchreHouseRules> }
@@ -334,7 +336,7 @@ export type ServerMessage =
   | { type: 'PACK_OPENED'; result: PackOpenResult }
   | { type: 'PACK_EARNED'; count: number; totalUnopened: number; reason: string; level?: number; unlockedAvatars?: string[] }
   | { type: 'RANK_UPDATE'; oldTier: RankTier; newTier: RankTier; oldPoints: number; newPoints: number; lpChange: number; didRankUp: boolean }
-  | { type: 'PARTY_INVITE_RECEIVED'; fromUsername: string; fromAvatar: string; roomCode: string; mode?: string }
+  | { type: 'PARTY_INVITE_RECEIVED'; fromUsername: string; fromAvatar: string; roomCode: string; mode?: string; expiresAt?: number }
   | { type: 'PROFILE_DATA'; profile: PublicPlayerData }
   | { type: 'MATCHMAKING_STATS'; stats: MatchmakingStats }
   | { type: 'NOTICE'; message: string; title?: string }

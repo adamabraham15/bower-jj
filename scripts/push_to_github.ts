@@ -36,13 +36,14 @@ function getFilesToCommit(dir: string, baseDir: string = dir): string[] {
       relPath.startsWith('node_modules') ||
       relPath.startsWith('dist') ||
       relPath.startsWith('.git') ||
+      relPath.startsWith('data') ||
       relPath === '.env' ||
       relPath.endsWith('.bat') ||
       relPath.endsWith('.vbs') ||
       relPath.endsWith('.exe') ||
       relPath.endsWith('.log') ||
       relPath.includes('ecosystem') ||
-      relPath.includes('db.json.backup') ||
+      relPath.includes('db.json') ||
       relPath.endsWith('.tmp')
     ) {
       continue;
@@ -89,17 +90,30 @@ async function main() {
   const latestCommitSha = refData.object.sha;
   console.log(`Latest commit SHA: ${latestCommitSha}`);
 
-  const files = getFilesToCommit(process.cwd());
-  console.log(`Uploading ${files.length} files as blobs...`);
+  const remoteTree = await ghFetch(`/repos/${OWNER}/${REPO}/git/trees/${latestCommitSha}?recursive=1`);
+  const remoteShaByPath = new Map<string, string>();
+  for (const item of remoteTree.tree || []) {
+    if (item.type === 'blob') {
+      remoteShaByPath.set(item.path, item.sha);
+    }
+  }
 
+  const crypto = await import('crypto');
+  const files = getFilesToCommit(process.cwd());
   const treeItems: any[] = [];
   let uploaded = 0;
 
   for (const file of files) {
     const fullPath = path.join(process.cwd(), file);
     const content = fs.readFileSync(fullPath);
-    const isBinary = content.includes(0);
+    const gitHeader = Buffer.from(`blob ${content.length}\0`, 'utf8');
+    const localBlobSha = crypto.createHash('sha1').update(Buffer.concat([gitHeader, content])).digest('hex');
 
+    if (remoteShaByPath.get(file) === localBlobSha) {
+      continue;
+    }
+
+    const isBinary = content.includes(0);
     const blobData = await ghFetch(`/repos/${OWNER}/${REPO}/git/blobs`, {
       method: 'POST',
       body: JSON.stringify({
@@ -116,12 +130,15 @@ async function main() {
     });
 
     uploaded++;
-    if (uploaded % 20 === 0 || uploaded === files.length) {
-      console.log(`Uploaded ${uploaded}/${files.length} files...`);
-    }
+    console.log(`Uploaded changed file (${uploaded}): ${file}`);
   }
 
-  console.log(`Creating Git tree with ${treeItems.length} entries...`);
+  if (treeItems.length === 0) {
+    console.log('No files changed compared to heads/main.');
+    return;
+  }
+
+  console.log(`Creating Git tree with ${treeItems.length} changed entries...`);
   const treeData = await ghFetch(`/repos/${OWNER}/${REPO}/git/trees`, {
     method: 'POST',
     body: JSON.stringify({
@@ -135,7 +152,7 @@ async function main() {
   const commitData = await ghFetch(`/repos/${OWNER}/${REPO}/git/commits`, {
     method: 'POST',
     body: JSON.stringify({
-      message: 'feat: Initial production staging release of BOWER JJ (Stage 4.6)',
+      message: 'feat: Gameplay & UI Enhancement Update (Lobby Invite Sync, 3D Pack Opening, Bot Names, Mobile Trick Counter, Chill Lo-Fi Music)',
       tree: treeData.sha,
       parents: [latestCommitSha]
     })

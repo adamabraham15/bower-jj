@@ -33,7 +33,7 @@ export const supabaseAdmin: SupabaseClient | null = isServerSupabaseConfigured
         persistSession: false,
       },
       realtime: {
-        transport: WebSocket,
+        transport: WebSocket as any,
       },
     })
   : null;
