@@ -32,6 +32,7 @@ import { QueueType } from './MatchmakingModal';
 import { sounds } from '../audio/sound';
 import { AvatarPortrait } from './AvatarPortrait';
 import { AudioControlsPopover } from './AudioControlsPopover';
+import { CardView } from './CardView';
 import { CARD_COLLECTIONS, PACK_ARTWORK_URL, RARITY_META } from '../config/collectiblesCatalog';
 
 interface MainMenuProps {
@@ -430,58 +431,29 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             <div className="relative flex flex-col items-center justify-center py-1 sm:py-2">
               <div className="pointer-events-none absolute w-56 h-28 rounded-full bg-gradient-to-r from-emerald-500/25 via-amber-400/20 to-emerald-500/25 blur-2xl" />
 
-              <div
+              {/* Functional Clickable Jack of Clubs (Right Bower) Hero Card */}
+              <button
                 onClick={() => {
                   sounds.playUiClick();
                   onOpenLeaderboard();
                 }}
-                className="relative flex items-center justify-center cursor-pointer group"
-                title="Season 1: Bower Sovereign — View World Rankings"
+                className="relative flex flex-col items-center justify-center cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95 focus:outline-none group mb-2"
+                title="Season 1: Bower Sovereign — Tap to View World Rankings"
               >
-                <span className="text-amber-400/90 text-2xl sm:text-3xl -mr-3 select-none transform -scale-x-100 rotate-12 drop-shadow">
-                  🌿
-                </span>
-
-                {/* Enlarged Accessible Fan of 3 Jack Bower Cards */}
-                <div className="relative flex items-center justify-center h-24 sm:h-28 w-34 sm:w-40">
-                  {/* Left Card: Jack of Spades */}
-                  <div className="absolute -left-2 w-15 h-22 sm:w-17 sm:h-25 rounded-xl bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 p-[2px] shadow-xl transform -rotate-16 -translate-x-3 group-hover:-rotate-20 transition-transform">
-                    <div className="w-full h-full rounded-[9px] bg-gradient-to-b from-slate-900 to-slate-950 flex flex-col justify-between p-1.5 border border-amber-300/40">
-                      <div className="text-left leading-none">
-                        <div className="text-xs sm:text-sm font-black text-amber-300">J</div>
-                        <div className="text-[11px] sm:text-xs font-black text-amber-400">♠</div>
-                      </div>
-                      <div className="text-center text-xl sm:text-2xl text-amber-300/90 drop-shadow">♠</div>
-                    </div>
-                  </div>
-
-                  {/* Middle Card: Golden Bower Jack of Clubs */}
-                  <div className="absolute w-15 h-22 sm:w-17 sm:h-25 rounded-xl bg-gradient-to-b from-yellow-200 via-amber-400 to-amber-600 p-[2px] shadow-2xl transform -rotate-3 -translate-y-1 z-10 group-hover:-translate-y-2 transition-transform">
-                    <div className="w-full h-full rounded-[9px] bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 flex flex-col justify-between p-1.5 text-slate-950">
-                      <div className="text-left leading-none">
-                        <div className="text-xs sm:text-sm font-black">J</div>
-                        <div className="text-[11px] sm:text-xs font-black">♣</div>
-                      </div>
-                      <div className="text-center text-xl sm:text-2xl font-black drop-shadow">♣</div>
-                    </div>
-                  </div>
-
-                  {/* Right Card: Emerald Sovereign Jack of Clubs */}
-                  <div className="absolute right-0 w-16 h-22 sm:w-18 sm:h-25 rounded-xl bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 p-[2px] shadow-[0_8px_24px_rgba(16,185,129,0.4)] transform rotate-12 translate-x-3 z-20 group-hover:rotate-16 transition-transform">
-                    <div className="w-full h-full rounded-[9px] bg-gradient-to-br from-emerald-800 via-emerald-900 to-slate-950 flex flex-col justify-between p-1.5 border border-emerald-400/50">
-                      <div className="text-left leading-none">
-                        <div className="text-xs sm:text-sm font-black text-amber-300">J</div>
-                        <div className="text-[11px] sm:text-xs font-black text-amber-300">♣</div>
-                      </div>
-                      <div className="text-center text-xl sm:text-2xl text-amber-300 drop-shadow">♣</div>
-                    </div>
+                <div className="relative drop-shadow-[0_12px_28px_rgba(245,158,11,0.35)]">
+                  <CardView
+                    card={{ id: 'hero-jack-clubs', rank: 'J', suit: 'clubs' }}
+                    trumpSuit="clubs"
+                    size="md"
+                    isPlayable={false}
+                  />
+                  {/* Trophy / Ranking Floating Badge */}
+                  <div className="absolute -bottom-1.5 -right-2 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-amber-600 border-2 border-slate-950 flex items-center gap-1 shadow-lg text-slate-950 text-[10px] font-black">
+                    <span>🏆</span>
+                    <span className="uppercase tracking-tight">Rank</span>
                   </div>
                 </div>
-
-                <span className="text-amber-400/90 text-2xl sm:text-3xl -ml-3 select-none -rotate-12 drop-shadow">
-                  🌿
-                </span>
-              </div>
+              </button>
 
               {/* Single-Line Compact Rank & LP Pill */}
               <button
