@@ -447,9 +447,9 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           {/* =================================================================
               HERO TWIN-BOWER EMBLEM + RANK LP PILL
           ================================================================= */}
-          <div className="relative flex flex-col items-center justify-center py-3 my-1">
+          <div className="relative flex flex-col items-center justify-center py-1.5">
             {/* Ambient Emerald/Gold Spotlight Behind Cards */}
-            <div className="pointer-events-none absolute w-56 h-36 rounded-full bg-gradient-to-r from-emerald-500/25 via-amber-400/20 to-emerald-500/25 blur-2xl" />
+            <div className="pointer-events-none absolute w-52 h-28 rounded-full bg-gradient-to-r from-emerald-500/25 via-amber-400/20 to-emerald-500/25 blur-2xl" />
 
             {/* Twin Jack Bowers Crest */}
             <div
@@ -461,66 +461,68 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               title="Season 1: Bower Sovereign — View World Rankings"
             >
               {/* Left Wreath Wing */}
-              <span className="text-amber-400/80 text-2xl sm:text-3xl -mr-2 select-none transform -scale-x-100 rotate-12">
+              <span className="text-amber-400/80 text-xl sm:text-2xl -mr-2 select-none transform -scale-x-100 rotate-12">
                 🌿
               </span>
 
               {/* Fan of 3 Jack Bower Cards */}
-              <div className="relative flex items-center justify-center h-28 sm:h-32 w-36 sm:w-40">
+              <div className="relative flex items-center justify-center h-24 sm:h-28 w-32 sm:w-36">
                 {/* Left Card: Jack of Spades */}
-                <div className="absolute -left-1 w-16 sm:w-[70px] h-24 sm:h-[100px] rounded-xl bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 p-[2px] shadow-xl transform -rotate-16 -translate-x-3 group-hover:-rotate-20 transition-transform">
+                <div className="absolute -left-1 w-14 sm:w-16 h-20 sm:h-24 rounded-xl bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 p-[2px] shadow-xl transform -rotate-16 -translate-x-2.5 group-hover:-rotate-20 transition-transform">
                   <div className="w-full h-full rounded-[10px] bg-gradient-to-b from-slate-900 to-slate-950 flex flex-col justify-between p-1.5 border border-amber-300/40">
                     <div className="text-left leading-none">
-                      <div className="text-xs sm:text-sm font-black text-amber-300">J</div>
-                      <div className="text-xs text-amber-400">♠</div>
+                      <div className="text-[11px] sm:text-xs font-black text-amber-300">J</div>
+                      <div className="text-[10px] text-amber-400">♠</div>
                     </div>
-                    <div className="text-center text-xl sm:text-2xl text-amber-300/90 drop-shadow">♠</div>
+                    <div className="text-center text-lg sm:text-xl text-amber-300/90 drop-shadow">♠</div>
                   </div>
                 </div>
 
                 {/* Middle Card: Golden Bower */}
-                <div className="absolute w-16 sm:w-[70px] h-24 sm:h-[100px] rounded-xl bg-gradient-to-b from-yellow-200 via-amber-400 to-amber-600 p-[2px] shadow-xl transform -rotate-3 -translate-y-1.5 z-10 group-hover:-translate-y-2.5 transition-transform">
+                <div className="absolute w-14 sm:w-16 h-20 sm:h-24 rounded-xl bg-gradient-to-b from-yellow-200 via-amber-400 to-amber-600 p-[2px] shadow-xl transform -rotate-3 -translate-y-1 z-10 group-hover:-translate-y-2 transition-transform">
                   <div className="w-full h-full rounded-[10px] bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 flex flex-col justify-between p-1.5 text-slate-950">
                     <div className="text-left leading-none">
-                      <div className="text-xs sm:text-sm font-black">J</div>
-                      <div className="text-xs font-black">♣</div>
+                      <div className="text-[11px] sm:text-xs font-black">J</div>
+                      <div className="text-[10px] font-black">♣</div>
                     </div>
-                    <div className="text-center text-xl sm:text-2xl font-black">♣</div>
+                    <div className="text-center text-lg sm:text-xl font-black">♣</div>
                   </div>
                 </div>
 
                 {/* Right Front Card: Emerald Sovereign Jack of Clubs */}
-                <div className="absolute right-0 w-[68px] sm:w-[74px] h-24 sm:h-[102px] rounded-xl bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 p-[2.5px] shadow-[0_10px_28px_rgba(16,185,129,0.4)] transform rotate-12 translate-x-3 z-20 group-hover:rotate-16 transition-transform">
+                <div className="absolute right-0 w-15 sm:w-[66px] h-20 sm:h-24 rounded-xl bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 p-[2px] shadow-[0_10px_28px_rgba(16,185,129,0.4)] transform rotate-12 translate-x-2.5 z-20 group-hover:rotate-16 transition-transform">
                   <div className="w-full h-full rounded-[9px] bg-gradient-to-br from-emerald-800 via-emerald-900 to-slate-950 flex flex-col justify-between p-1.5 border border-emerald-400/40">
                     <div className="text-left leading-none">
-                      <div className="text-xs sm:text-sm font-black text-amber-300">J</div>
-                      <div className="text-xs text-amber-300">♣</div>
+                      <div className="text-[11px] sm:text-xs font-black text-amber-300">J</div>
+                      <div className="text-[10px] text-amber-300">♣</div>
                     </div>
-                    <div className="text-center text-2xl sm:text-3xl text-amber-300 drop-shadow-[0_2px_8px_rgba(251,191,36,0.5)]">
+                    <div className="text-center text-xl sm:text-2xl text-amber-300 drop-shadow-[0_2px_8px_rgba(251,191,36,0.5)]">
                       ♣
                     </div>
-                    <div className="h-1 w-full rounded-full bg-amber-400/40" />
+                    <div className="h-0.5 w-full rounded-full bg-amber-400/40" />
                   </div>
                 </div>
               </div>
 
               {/* Right Wreath Wing */}
-              <span className="text-amber-400/80 text-2xl sm:text-3xl -ml-2 select-none -rotate-12">🌿</span>
+              <span className="text-amber-400/80 text-xl sm:text-2xl -ml-2 select-none -rotate-12">🌿</span>
             </div>
 
-            {/* Overlapping Rank & LP Pill */}
+            {/* Overlapping Single-Line Rank & LP Pill */}
             <button
               onClick={() => {
                 sounds.playUiClick();
                 onOpenLeaderboard();
               }}
-              className="relative z-30 -mt-3 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#151d2e] hover:bg-[#1c263b] border border-amber-400/50 shadow-[0_6px_20px_rgba(0,0,0,0.65)] transition-all active:scale-95 cursor-pointer"
+              className="relative z-30 -mt-2.5 inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#151d2e] hover:bg-[#1c263b] border border-amber-400/50 shadow-[0_6px_20px_rgba(0,0,0,0.65)] transition-all active:scale-95 cursor-pointer"
             >
-              <RankBadge tier={profile.rankTier} points={profile.rankPoints} size="sm" />
-              <span className="text-xs sm:text-sm font-bold text-white">
-                Rank <strong className="text-amber-400">{profile.rankTier}</strong>
+              <span className="w-5 h-5 rounded-md bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 font-black text-[11px] flex items-center justify-center shadow">
+                {profile.rankTier}
               </span>
-              <span className="text-slate-500">•</span>
+              <span className="text-xs font-black text-white">
+                Rank <span className="text-amber-400">{profile.rankTier}</span>
+              </span>
+              <span className="text-slate-500 text-xs">•</span>
               <span className="text-xs font-bold text-slate-300">{profile.rankPoints}/100 LP</span>
             </button>
           </div>
