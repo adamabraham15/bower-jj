@@ -256,8 +256,8 @@ export class PostgresDatabaseRepository {
         );
       }
 
-      // Run Migration 4.6.0 only when not yet applied (or if player_battle_pass still needs retirement)
-      if (!appliedVersions.has('4.6.0') || bpStillExists) {
+      // Run Migration 4.6.0 only when not yet applied
+      if (!appliedVersions.has('4.6.0')) {
         await this.runCollectibleOverhaulMigrationTx(client);
         await client.query(
           `
