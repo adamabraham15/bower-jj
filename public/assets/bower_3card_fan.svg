@@ -175,19 +175,17 @@
   </g>
 
   <!-- =====================================================================
-       CARD 2 (CENTER - ELEVATED): GOLDEN BOWER JACK OF CLUBS (Right Bower)
+       CARD 2 (CENTER - ELEVATED): GOLDEN BOWER JACK OF CLUBS
   ===================================================================== -->
   <g transform="translate(170, 88)" filter="url(#shadowMid)">
     <!-- Card Base & 24K Gold Border -->
     <rect x="-40" y="-60" width="80" height="120" rx="9" fill="url(#goldCardFace)" stroke="url(#goldBorder)" stroke-width="2.5" />
-    
-    <!-- Top RIGHT BOWER Ribbon -->
-    <rect x="-37" y="-57" width="74" height="16" rx="4" fill="#0f172a" />
-    <text x="0" y="-46" fill="#fbbf24" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="8.5" text-anchor="middle" letter-spacing="1.2">RIGHT BOWER</text>
+    <!-- Inner Fine Inset Border -->
+    <rect x="-36" y="-56" width="72" height="112" rx="6" fill="none" stroke="#b45309" stroke-opacity="0.3" stroke-width="0.8" />
 
     <!-- Top Left Corner Index -->
-    <text x="-30" y="-26" fill="#0f172a" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="15">J</text>
-    <g transform="translate(-25, -17) scale(0.75)" fill="#0f172a">
+    <text x="-30" y="-38" fill="#0f172a" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="15">J</text>
+    <g transform="translate(-25, -29) scale(0.75)" fill="#0f172a">
       <circle cx="0" cy="-4" r="3.2" />
       <circle cx="-3.8" cy="1.5" r="3.2" />
       <circle cx="3.8" cy="1.5" r="3.2" />
@@ -196,7 +194,7 @@
     </g>
 
     <!-- Center Standard Casino Trefoil Club (Authentic, Crisp, Solid Jet Black) -->
-    <g transform="translate(0, 8) scale(2.0)" fill="#0f172a">
+    <g transform="translate(0, 0) scale(2.0)" fill="#0f172a">
       <circle cx="0" cy="-4.8" r="4.2" />
       <circle cx="-5.2" cy="2.2" r="4.2" />
       <circle cx="5.2" cy="2.2" r="4.2" />
@@ -206,8 +204,8 @@
 
     <!-- Bottom Right Inverted Index -->
     <g transform="rotate(180)">
-      <text x="-30" y="-26" fill="#0f172a" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="15">J</text>
-      <g transform="translate(-25, -17) scale(0.75)" fill="#0f172a">
+      <text x="-30" y="-38" fill="#0f172a" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="15">J</text>
+      <g transform="translate(-25, -29) scale(0.75)" fill="#0f172a">
         <circle cx="0" cy="-4" r="3.2" />
         <circle cx="-3.8" cy="1.5" r="3.2" />
         <circle cx="3.8" cy="1.5" r="3.2" />
