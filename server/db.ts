@@ -14,6 +14,7 @@ import {
   PublicPlayerData,
   MatchmakingStats,
   PlayerCollectionState,
+  UnopenedPackItem,
   PackOpenResult,
   DrawnCardResult,
 } from './types';
@@ -883,10 +884,11 @@ class Database {
     let pack: UnopenedPackItem;
     if (idx === -1) {
       const uLower = (user.username || '').trim().toLowerCase();
-      if (uLower === 'brojo' || uLower === 'turkeysub' || user.isAdmin) {
+      if (uLower === 'brojo' || uLower === 'turkeysub' || Boolean((user as any).isAdmin)) {
         pack = {
           id: `unlimited_on_the_fly_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
           source: 'admin_grant',
+          sourceRef: `unlimited_refill_${Date.now()}`,
           earnedLevel: 99,
           earnedAt: Date.now(),
         };

@@ -37,6 +37,7 @@ function getFilesToCommit(dir: string, baseDir: string = dir): string[] {
       relPath.startsWith('dist') ||
       relPath.startsWith('.git') ||
       relPath.startsWith('data') ||
+      relPath.startsWith('server/data') ||
       relPath === '.env' ||
       relPath.endsWith('.bat') ||
       relPath.endsWith('.vbs') ||
@@ -105,6 +106,7 @@ async function main() {
 
   for (const file of files) {
     const fullPath = path.join(process.cwd(), file);
+    if (!fs.existsSync(fullPath)) continue;
     const content = fs.readFileSync(fullPath);
     const gitHeader = Buffer.from(`blob ${content.length}\0`, 'utf8');
     const localBlobSha = crypto.createHash('sha1').update(Buffer.concat([gitHeader, content])).digest('hex');
