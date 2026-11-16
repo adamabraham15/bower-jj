@@ -383,4 +383,27 @@ describe('Collectibles, Card Packs & Server Validation', () => {
     expect(syncMsg.state.slots[1]?.equippedCardBack).toBeTruthy();
     rm.cleanup();
   });
+
+  it('allows unlimited pack opening for testing accounts (Brojo / Turkeysub)', async () => {
+    const pool = createTestPostgresPool();
+    const repo = new PostgresDatabaseRepository(pool);
+    await repo.initSchema();
+
+    const { user: brojo } = await repo.getOrCreateUser('Brojo', '🤠');
+    expect(brojo.unopenedPacksCount).toBe(0);
+
+    // Opening pack should succeed on the fly for Brojo
+    const openRes = await repo.openCardPack(brojo.id);
+    expect(openRes.success).toBe(true);
+    expect(openRes.result?.cards.length).toBe(5);
+
+    // Non-test account with 0 packs must fail
+    const { user: regular } = await repo.getOrCreateUser('RegularPlayer', '🤠');
+    expect(regular.unopenedPacksCount).toBe(0);
+    const failRes = await repo.openCardPack(regular.id);
+    expect(failRes.success).toBe(false);
+    expect(failRes.error).toBe('No unopened card packs available.');
+
+    await repo.close();
+  });
 });

@@ -1,0 +1,598 @@
+{
+  "roomCode": "66CC51",
+  "savedAt": 1794863073237,
+  "room": {
+    "id": "14841dec-371e-449b-9282-42409954aa8e",
+    "code": "66CC51",
+    "hostUserId": "5b976ea5-0be1-40cd-93e9-1a6fe33f3bc1",
+    "status": "playing",
+    "rules": {
+      "targetScore": 10,
+      "stickTheDealer": true,
+      "allowAloneCalls": true,
+      "canCallTurnedDownSuit": false,
+      "partnerOrderUpGoesAlone": true,
+      "canadianLoner": true
+    },
+    "slots": [
+      {
+        "position": 0,
+        "isAI": true,
+        "userId": "5b976ea5-0be1-40cd-93e9-1a6fe33f3bc1",
+        "username": "SyncChecker (Bot)",
+        "avatarIcon": "thunder_knight",
+        "equippedCardBack": "wild_west",
+        "rankTier": "9",
+        "connected": false,
+        "isReady": true,
+        "abandoned": true,
+        "aiDifficulty": "easy"
+      },
+      {
+        "position": 1,
+        "isAI": true,
+        "aiDifficulty": "hard",
+        "username": "FifthTrickFinn",
+        "avatarIcon": "arcane_archmage",
+        "equippedCardBack": "dark_royalty",
+        "rankTier": "9",
+        "connected": true,
+        "isReady": true
+      },
+      {
+        "position": 2,
+        "isAI": true,
+        "aiDifficulty": "hard",
+        "username": "EuchreValkyrie",
+        "avatarIcon": "bower_king",
+        "equippedCardBack": "dark_royalty",
+        "rankTier": "9",
+        "connected": true,
+        "isReady": true
+      },
+      {
+        "position": 3,
+        "isAI": true,
+        "aiDifficulty": "hard",
+        "username": "EuchreEnigma",
+        "avatarIcon": "cosmic_emissary",
+        "equippedCardBack": "dark_royalty",
+        "rankTier": "9",
+        "connected": true,
+        "isReady": true
+      }
+    ],
+    "pendingInvites": {},
+    "isMatchmade": false,
+    "queueMode": "custom",
+    "createdAt": 1794862939198,
+    "lastActionAt": 1794862939198,
+    "resultsRecorded": false,
+    "abandonedUserIds": [
+      "5b976ea5-0be1-40cd-93e9-1a6fe33f3bc1"
+    ]
+  },
+  "state": {
+    "players": [
+      {
+        "id": "5b976ea5-0be1-40cd-93e9-1a6fe33f3bc1",
+        "name": "SyncChecker",
+        "position": 0,
+        "isAI": false,
+        "avatarId": "thunder_knight",
+        "cardBack": "wild_west",
+        "rankTier": "9"
+      },
+      {
+        "id": "ai_1",
+        "name": "FifthTrickFinn",
+        "position": 1,
+        "isAI": true,
+        "aiDifficulty": "hard",
+        "avatarId": "arcane_archmage",
+        "cardBack": "dark_royalty",
+        "rankTier": "9"
+      },
+      {
+        "id": "ai_2",
+        "name": "EuchreValkyrie",
+        "position": 2,
+        "isAI": true,
+        "aiDifficulty": "hard",
+        "avatarId": "bower_king",
+        "cardBack": "dark_royalty",
+        "rankTier": "9"
+      },
+      {
+        "id": "ai_3",
+        "name": "EuchreEnigma",
+        "position": 3,
+        "isAI": true,
+        "aiDifficulty": "hard",
+        "avatarId": "cosmic_emissary",
+        "cardBack": "dark_royalty",
+        "rankTier": "9"
+      }
+    ],
+    "dealer": 0,
+    "currentTurn": 0,
+    "phase": "trick_resolving",
+    "deck": [
+      {
+        "id": "clubs-K",
+        "suit": "clubs",
+        "rank": "K"
+      },
+      {
+        "id": "clubs-J",
+        "suit": "clubs",
+        "rank": "J"
+      },
+      {
+        "id": "diamonds-J",
+        "suit": "diamonds",
+        "rank": "J"
+      },
+      {
+        "id": "clubs-Q",
+        "suit": "clubs",
+        "rank": "Q"
+      },
+      {
+        "id": "spades-A",
+        "suit": "spades",
+        "rank": "A"
+      },
+      {
+        "id": "diamonds-A",
+        "suit": "diamonds",
+        "rank": "A"
+      },
+      {
+        "id": "spades-Q",
+        "suit": "spades",
+        "rank": "Q"
+      },
+      {
+        "id": "clubs-A",
+        "suit": "clubs",
+        "rank": "A"
+      },
+      {
+        "id": "spades-J",
+        "suit": "spades",
+        "rank": "J"
+      },
+      {
+        "id": "spades-K",
+        "suit": "spades",
+        "rank": "K"
+      },
+      {
+        "id": "hearts-10",
+        "suit": "hearts",
+        "rank": "10"
+      },
+      {
+        "id": "clubs-10",
+        "suit": "clubs",
+        "rank": "10"
+      },
+      {
+        "id": "diamonds-Q",
+        "suit": "diamonds",
+        "rank": "Q"
+      },
+      {
+        "id": "spades-10",
+        "suit": "spades",
+        "rank": "10"
+      },
+      {
+        "id": "hearts-A",
+        "suit": "hearts",
+        "rank": "A"
+      },
+      {
+        "id": "diamonds-10",
+        "suit": "diamonds",
+        "rank": "10"
+      },
+      {
+        "id": "hearts-J",
+        "suit": "hearts",
+        "rank": "J"
+      },
+      {
+        "id": "diamonds-9",
+        "suit": "diamonds",
+        "rank": "9"
+      },
+      {
+        "id": "hearts-K",
+        "suit": "hearts",
+        "rank": "K"
+      },
+      {
+        "id": "spades-9",
+        "suit": "spades",
+        "rank": "9"
+      },
+      {
+        "id": "hearts-9",
+        "suit": "hearts",
+        "rank": "9"
+      },
+      {
+        "id": "hearts-Q",
+        "suit": "hearts",
+        "rank": "Q"
+      },
+      {
+        "id": "diamonds-K",
+        "suit": "diamonds",
+        "rank": "K"
+      },
+      {
+        "id": "clubs-9",
+        "suit": "clubs",
+        "rank": "9"
+      }
+    ],
+    "kitty": [
+      {
+        "id": "hearts-9",
+        "suit": "hearts",
+        "rank": "9"
+      },
+      {
+        "id": "hearts-Q",
+        "suit": "hearts",
+        "rank": "Q"
+      },
+      {
+        "id": "diamonds-K",
+        "suit": "diamonds",
+        "rank": "K"
+      },
+      {
+        "id": "clubs-9",
+        "suit": "clubs",
+        "rank": "9"
+      }
+    ],
+    "hands": {
+      "0": [
+        {
+          "id": "clubs-10",
+          "suit": "clubs",
+          "rank": "10"
+        },
+        {
+          "id": "diamonds-10",
+          "suit": "diamonds",
+          "rank": "10"
+        }
+      ],
+      "1": [
+        {
+          "id": "spades-J",
+          "suit": "spades",
+          "rank": "J"
+        },
+        {
+          "id": "diamonds-Q",
+          "suit": "diamonds",
+          "rank": "Q"
+        }
+      ],
+      "2": [
+        {
+          "id": "spades-K",
+          "suit": "spades",
+          "rank": "K"
+        },
+        {
+          "id": "diamonds-9",
+          "suit": "diamonds",
+          "rank": "9"
+        }
+      ],
+      "3": [
+        {
+          "id": "diamonds-J",
+          "suit": "diamonds",
+          "rank": "J"
+        },
+        {
+          "id": "hearts-A",
+          "suit": "hearts",
+          "rank": "A"
+        }
+      ]
+    },
+    "isAlone": false,
+    "currentTrick": {
+      "leadPlayer": 1,
+      "cards": [
+        {
+          "player": 1,
+          "card": {
+            "id": "clubs-K",
+            "suit": "clubs",
+            "rank": "K"
+          }
+        },
+        {
+          "player": 2,
+          "card": {
+            "id": "diamonds-A",
+            "suit": "diamonds",
+            "rank": "A"
+          }
+        },
+        {
+          "player": 3,
+          "card": {
+            "id": "hearts-K",
+            "suit": "hearts",
+            "rank": "K"
+          }
+        },
+        {
+          "player": 0,
+          "card": {
+            "id": "clubs-A",
+            "suit": "clubs",
+            "rank": "A"
+          }
+        }
+      ],
+      "leadSuit": "clubs",
+      "winner": 3,
+      "winningCard": {
+        "id": "hearts-K",
+        "suit": "hearts",
+        "rank": "K"
+      }
+    },
+    "completedTricks": [
+      {
+        "leadPlayer": 1,
+        "cards": [
+          {
+            "player": 1,
+            "card": {
+              "id": "hearts-J",
+              "suit": "hearts",
+              "rank": "J"
+            }
+          },
+          {
+            "player": 2,
+            "card": {
+              "id": "clubs-J",
+              "suit": "clubs",
+              "rank": "J"
+            }
+          },
+          {
+            "player": 3,
+            "card": {
+              "id": "hearts-10",
+              "suit": "hearts",
+              "rank": "10"
+            }
+          },
+          {
+            "player": 0,
+            "card": {
+              "id": "hearts-9",
+              "suit": "hearts",
+              "rank": "9"
+            }
+          }
+        ],
+        "leadSuit": "hearts",
+        "winner": 1,
+        "winningCard": {
+          "id": "hearts-J",
+          "suit": "hearts",
+          "rank": "J"
+        }
+      },
+      {
+        "leadPlayer": 1,
+        "cards": [
+          {
+            "player": 1,
+            "card": {
+              "id": "spades-A",
+              "suit": "spades",
+              "rank": "A"
+            }
+          },
+          {
+            "player": 2,
+            "card": {
+              "id": "spades-10",
+              "suit": "spades",
+              "rank": "10"
+            }
+          },
+          {
+            "player": 3,
+            "card": {
+              "id": "spades-Q",
+              "suit": "spades",
+              "rank": "Q"
+            }
+          },
+          {
+            "player": 0,
+            "card": {
+              "id": "clubs-Q",
+              "suit": "clubs",
+              "rank": "Q"
+            }
+          }
+        ],
+        "leadSuit": "spades",
+        "winner": 1,
+        "winningCard": {
+          "id": "spades-A",
+          "suit": "spades",
+          "rank": "A"
+        }
+      }
+    ],
+    "tricksWon": [
+      0,
+      2
+    ],
+    "scores": [
+      0,
+      2
+    ],
+    "matchStats": {
+      "teamTricksWon": [
+        2,
+        8
+      ],
+      "teamEuchres": [
+        0,
+        0
+      ],
+      "teamMarches": [
+        0,
+        0
+      ],
+      "teamLoners": [
+        0,
+        0
+      ],
+      "playerLoners": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "rules": {
+      "targetScore": 10,
+      "stickTheDealer": true,
+      "allowAloneCalls": true,
+      "canCallTurnedDownSuit": false,
+      "partnerOrderUpGoesAlone": true,
+      "canadianLoner": true
+    },
+    "history": [
+      "Game initialized.",
+      "--- Hand started. Dealer: EuchreValkyrie ---",
+      "Turned-up card is 10♠.",
+      "EuchreEnigma ordered up the 10♠ and is GOING ALONE!",
+      "EuchreValkyrie discarded a card. Trick play begins.",
+      "EuchreEnigma played J♠ (Right Bower).",
+      "SyncChecker played Q♠.",
+      "EuchreValkyrie played 10♠.",
+      "Trick won by EuchreEnigma with J♠ (Right Bower).",
+      "EuchreEnigma played J♣ (Left Bower).",
+      "SyncChecker played 10♥.",
+      "EuchreValkyrie played A♠.",
+      "Trick won by EuchreEnigma with J♣ (Left Bower).",
+      "EuchreEnigma played A♣.",
+      "SyncChecker played 10♣.",
+      "EuchreValkyrie played 9♣.",
+      "Trick won by EuchreEnigma with A♣.",
+      "EuchreEnigma played K♦.",
+      "SyncChecker played 10♦.",
+      "EuchreValkyrie played A♦.",
+      "Trick won by EuchreValkyrie with A♦.",
+      "EuchreValkyrie played Q♣.",
+      "EuchreEnigma played K♠.",
+      "SyncChecker played K♥.",
+      "Trick won by EuchreEnigma with K♠.",
+      "Team Red made their bid with 4 tricks for 1 point.",
+      "Current score: Team Blue: 0 | Team Red: 1",
+      "--- Hand started. Dealer: EuchreEnigma ---",
+      "Turned-up card is A♣.",
+      "SyncChecker passed.",
+      "FifthTrickFinn passed.",
+      "EuchreValkyrie passed.",
+      "EuchreEnigma picked up the A♣.",
+      "EuchreEnigma discarded a card. Trick play begins.",
+      "SyncChecker played 9♥.",
+      "FifthTrickFinn played Q♣.",
+      "EuchreValkyrie played Q♥.",
+      "EuchreEnigma played Q♦.",
+      "Trick won by FifthTrickFinn with Q♣.",
+      "FifthTrickFinn played A♠.",
+      "EuchreValkyrie played 9♠.",
+      "EuchreEnigma played A♦.",
+      "SyncChecker played 10♠.",
+      "Trick won by FifthTrickFinn with A♠.",
+      "FifthTrickFinn played K♦.",
+      "EuchreValkyrie played J♣ (Right Bower).",
+      "EuchreEnigma played 10♣.",
+      "SyncChecker played 9♣.",
+      "Trick won by EuchreValkyrie with J♣ (Right Bower).",
+      "EuchreValkyrie played A♥.",
+      "EuchreEnigma played A♣.",
+      "SyncChecker played 10♥.",
+      "FifthTrickFinn played Q♠.",
+      "Trick won by EuchreEnigma with A♣.",
+      "EuchreEnigma played J♠ (Left Bower).",
+      "SyncChecker played J♥.",
+      "FifthTrickFinn played 9♦.",
+      "EuchreValkyrie played K♥.",
+      "Trick won by EuchreEnigma with J♠ (Left Bower).",
+      "Team Red made their bid with 4 tricks for 1 point.",
+      "Current score: Team Blue: 0 | Team Red: 2",
+      "--- Hand started. Dealer: SyncChecker ---",
+      "Turned-up card is 9♥.",
+      "FifthTrickFinn passed.",
+      "EuchreValkyrie passed.",
+      "EuchreEnigma ordered up the 9♥.",
+      "SyncChecker discarded a card. Trick play begins.",
+      "FifthTrickFinn played J♥ (Right Bower).",
+      "EuchreValkyrie played J♣.",
+      "EuchreEnigma played 10♥.",
+      "SyncChecker played 9♥.",
+      "Trick won by FifthTrickFinn with J♥ (Right Bower).",
+      "FifthTrickFinn played A♠.",
+      "EuchreValkyrie played 10♠.",
+      "EuchreEnigma played Q♠.",
+      "SyncChecker played Q♣.",
+      "Trick won by FifthTrickFinn with A♠.",
+      "FifthTrickFinn played K♣.",
+      "EuchreValkyrie played A♦.",
+      "EuchreEnigma played K♥.",
+      "SyncChecker played A♣.",
+      "Trick won by EuchreEnigma with K♥."
+    ],
+    "upCard": {
+      "id": "hearts-9",
+      "suit": "hearts",
+      "rank": "9"
+    },
+    "trumpSuit": "hearts",
+    "callingPlayer": 3,
+    "callingTeam": 1,
+    "lastHandResult": {
+      "callingTeam": 1,
+      "calledAlone": false,
+      "trumpSuit": "clubs",
+      "tricksWon": [
+        1,
+        4
+      ],
+      "pointsAwarded": [
+        0,
+        1
+      ],
+      "isMarch": false,
+      "isEuchre": false,
+      "message": "Team Red made their bid with 4 tricks for 1 point."
+    }
+  }
+}

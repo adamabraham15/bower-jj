@@ -1,6 +1,6 @@
 {
   "roomCode": "FC4227",
-  "savedAt": 1794862557309,
+  "savedAt": 1794863077582,
   "room": {
     "id": "c9bbb2aa-a053-4a27-94f8-cc6ab2843585",
     "code": "FC4227",
@@ -17,14 +17,16 @@
     "slots": [
       {
         "position": 0,
-        "isAI": false,
+        "isAI": true,
         "userId": "1d663564-9238-40c6-8146-c90208405d40",
-        "username": "RankAlice",
+        "username": "RankAlice (Bot)",
         "avatarIcon": "the_outlaw",
         "equippedCardBack": "classic_blue",
         "rankTier": "9",
-        "connected": true,
-        "isReady": true
+        "connected": false,
+        "isReady": true,
+        "abandoned": true,
+        "aiDifficulty": "easy"
       },
       {
         "position": 1,
@@ -65,7 +67,10 @@
     "queueMode": "solo",
     "createdAt": 1794862556529,
     "lastActionAt": 1794862556529,
-    "resultsRecorded": false
+    "resultsRecorded": false,
+    "abandonedUserIds": [
+      "1d663564-9238-40c6-8146-c90208405d40"
+    ]
   },
   "state": {
     "players": [
@@ -109,98 +114,13 @@
         "rankTier": "9"
       }
     ],
-    "dealer": 0,
-    "currentTurn": 2,
-    "phase": "bidding_round_1",
+    "dealer": 2,
+    "currentTurn": 1,
+    "phase": "playing",
     "deck": [
       {
-        "id": "hearts-K",
+        "id": "hearts-A",
         "suit": "hearts",
-        "rank": "K"
-      },
-      {
-        "id": "diamonds-9",
-        "suit": "diamonds",
-        "rank": "9"
-      },
-      {
-        "id": "hearts-J",
-        "suit": "hearts",
-        "rank": "J"
-      },
-      {
-        "id": "diamonds-K",
-        "suit": "diamonds",
-        "rank": "K"
-      },
-      {
-        "id": "diamonds-Q",
-        "suit": "diamonds",
-        "rank": "Q"
-      },
-      {
-        "id": "spades-J",
-        "suit": "spades",
-        "rank": "J"
-      },
-      {
-        "id": "diamonds-10",
-        "suit": "diamonds",
-        "rank": "10"
-      },
-      {
-        "id": "clubs-A",
-        "suit": "clubs",
-        "rank": "A"
-      },
-      {
-        "id": "clubs-Q",
-        "suit": "clubs",
-        "rank": "Q"
-      },
-      {
-        "id": "spades-9",
-        "suit": "spades",
-        "rank": "9"
-      },
-      {
-        "id": "spades-A",
-        "suit": "spades",
-        "rank": "A"
-      },
-      {
-        "id": "spades-Q",
-        "suit": "spades",
-        "rank": "Q"
-      },
-      {
-        "id": "clubs-9",
-        "suit": "clubs",
-        "rank": "9"
-      },
-      {
-        "id": "clubs-10",
-        "suit": "clubs",
-        "rank": "10"
-      },
-      {
-        "id": "diamonds-J",
-        "suit": "diamonds",
-        "rank": "J"
-      },
-      {
-        "id": "hearts-9",
-        "suit": "hearts",
-        "rank": "9"
-      },
-      {
-        "id": "hearts-Q",
-        "suit": "hearts",
-        "rank": "Q"
-      },
-      {
-        "id": "diamonds-A",
-        "suit": "diamonds",
         "rank": "A"
       },
       {
@@ -209,16 +129,6 @@
         "rank": "K"
       },
       {
-        "id": "spades-K",
-        "suit": "spades",
-        "rank": "K"
-      },
-      {
-        "id": "hearts-A",
-        "suit": "hearts",
-        "rank": "A"
-      },
-      {
         "id": "hearts-10",
         "suit": "hearts",
         "rank": "10"
@@ -229,98 +139,134 @@
         "rank": "J"
       },
       {
+        "id": "hearts-Q",
+        "suit": "hearts",
+        "rank": "Q"
+      },
+      {
+        "id": "diamonds-Q",
+        "suit": "diamonds",
+        "rank": "Q"
+      },
+      {
+        "id": "spades-A",
+        "suit": "spades",
+        "rank": "A"
+      },
+      {
+        "id": "diamonds-10",
+        "suit": "diamonds",
+        "rank": "10"
+      },
+      {
+        "id": "clubs-9",
+        "suit": "clubs",
+        "rank": "9"
+      },
+      {
+        "id": "spades-9",
+        "suit": "spades",
+        "rank": "9"
+      },
+      {
+        "id": "diamonds-9",
+        "suit": "diamonds",
+        "rank": "9"
+      },
+      {
+        "id": "clubs-A",
+        "suit": "clubs",
+        "rank": "A"
+      },
+      {
+        "id": "diamonds-A",
+        "suit": "diamonds",
+        "rank": "A"
+      },
+      {
+        "id": "hearts-K",
+        "suit": "hearts",
+        "rank": "K"
+      },
+      {
+        "id": "diamonds-J",
+        "suit": "diamonds",
+        "rank": "J"
+      },
+      {
         "id": "spades-10",
         "suit": "spades",
         "rank": "10"
+      },
+      {
+        "id": "diamonds-K",
+        "suit": "diamonds",
+        "rank": "K"
+      },
+      {
+        "id": "spades-J",
+        "suit": "spades",
+        "rank": "J"
+      },
+      {
+        "id": "hearts-9",
+        "suit": "hearts",
+        "rank": "9"
+      },
+      {
+        "id": "clubs-10",
+        "suit": "clubs",
+        "rank": "10"
+      },
+      {
+        "id": "clubs-Q",
+        "suit": "clubs",
+        "rank": "Q"
+      },
+      {
+        "id": "spades-Q",
+        "suit": "spades",
+        "rank": "Q"
+      },
+      {
+        "id": "hearts-J",
+        "suit": "hearts",
+        "rank": "J"
+      },
+      {
+        "id": "spades-K",
+        "suit": "spades",
+        "rank": "K"
       }
     ],
     "kitty": [
       {
-        "id": "hearts-A",
-        "suit": "hearts",
-        "rank": "A"
-      },
-      {
-        "id": "hearts-10",
-        "suit": "hearts",
-        "rank": "10"
-      },
-      {
-        "id": "clubs-J",
+        "id": "clubs-Q",
         "suit": "clubs",
+        "rank": "Q"
+      },
+      {
+        "id": "spades-Q",
+        "suit": "spades",
+        "rank": "Q"
+      },
+      {
+        "id": "hearts-J",
+        "suit": "hearts",
         "rank": "J"
       },
       {
-        "id": "spades-10",
+        "id": "spades-K",
         "suit": "spades",
-        "rank": "10"
+        "rank": "K"
       }
     ],
     "hands": {
       "0": [
         {
-          "id": "diamonds-K",
-          "suit": "diamonds",
-          "rank": "K"
-        },
-        {
-          "id": "clubs-A",
-          "suit": "clubs",
-          "rank": "A"
-        },
-        {
-          "id": "spades-Q",
-          "suit": "spades",
-          "rank": "Q"
-        },
-        {
-          "id": "hearts-9",
-          "suit": "hearts",
-          "rank": "9"
-        },
-        {
-          "id": "spades-K",
-          "suit": "spades",
-          "rank": "K"
-        }
-      ],
-      "1": [
-        {
-          "id": "hearts-K",
-          "suit": "hearts",
-          "rank": "K"
-        },
-        {
           "id": "diamonds-Q",
           "suit": "diamonds",
           "rank": "Q"
-        },
-        {
-          "id": "clubs-Q",
-          "suit": "clubs",
-          "rank": "Q"
-        },
-        {
-          "id": "clubs-9",
-          "suit": "clubs",
-          "rank": "9"
-        },
-        {
-          "id": "hearts-Q",
-          "suit": "hearts",
-          "rank": "Q"
-        }
-      ],
-      "2": [
-        {
-          "id": "diamonds-9",
-          "suit": "diamonds",
-          "rank": "9"
-        },
-        {
-          "id": "spades-J",
-          "suit": "spades",
-          "rank": "J"
         },
         {
           "id": "spades-9",
@@ -328,31 +274,26 @@
           "rank": "9"
         },
         {
-          "id": "clubs-10",
-          "suit": "clubs",
-          "rank": "10"
+          "id": "hearts-K",
+          "suit": "hearts",
+          "rank": "K"
         },
         {
-          "id": "diamonds-A",
-          "suit": "diamonds",
-          "rank": "A"
+          "id": "spades-J",
+          "suit": "spades",
+          "rank": "J"
         }
       ],
-      "3": [
-        {
-          "id": "hearts-J",
-          "suit": "hearts",
-          "rank": "J"
-        },
-        {
-          "id": "diamonds-10",
-          "suit": "diamonds",
-          "rank": "10"
-        },
+      "1": [
         {
           "id": "spades-A",
           "suit": "spades",
           "rank": "A"
+        },
+        {
+          "id": "diamonds-9",
+          "suit": "diamonds",
+          "rank": "9"
         },
         {
           "id": "diamonds-J",
@@ -360,8 +301,52 @@
           "rank": "J"
         },
         {
-          "id": "clubs-K",
+          "id": "hearts-9",
+          "suit": "hearts",
+          "rank": "9"
+        }
+      ],
+      "2": [
+        {
+          "id": "diamonds-10",
+          "suit": "diamonds",
+          "rank": "10"
+        },
+        {
+          "id": "clubs-A",
           "suit": "clubs",
+          "rank": "A"
+        },
+        {
+          "id": "spades-10",
+          "suit": "spades",
+          "rank": "10"
+        },
+        {
+          "id": "clubs-10",
+          "suit": "clubs",
+          "rank": "10"
+        }
+      ],
+      "3": [
+        {
+          "id": "hearts-A",
+          "suit": "hearts",
+          "rank": "A"
+        },
+        {
+          "id": "hearts-Q",
+          "suit": "hearts",
+          "rank": "Q"
+        },
+        {
+          "id": "diamonds-A",
+          "suit": "diamonds",
+          "rank": "A"
+        },
+        {
+          "id": "diamonds-K",
+          "suit": "diamonds",
           "rank": "K"
         }
       ]
@@ -371,19 +356,64 @@
       "leadPlayer": 1,
       "cards": []
     },
-    "completedTricks": [],
+    "completedTricks": [
+      {
+        "leadPlayer": 3,
+        "cards": [
+          {
+            "player": 3,
+            "card": {
+              "id": "clubs-9",
+              "suit": "clubs",
+              "rank": "9"
+            }
+          },
+          {
+            "player": 0,
+            "card": {
+              "id": "clubs-K",
+              "suit": "clubs",
+              "rank": "K"
+            }
+          },
+          {
+            "player": 1,
+            "card": {
+              "id": "hearts-10",
+              "suit": "hearts",
+              "rank": "10"
+            }
+          },
+          {
+            "player": 2,
+            "card": {
+              "id": "clubs-J",
+              "suit": "clubs",
+              "rank": "J"
+            }
+          }
+        ],
+        "leadSuit": "clubs",
+        "winner": 1,
+        "winningCard": {
+          "id": "hearts-10",
+          "suit": "hearts",
+          "rank": "10"
+        }
+      }
+    ],
     "tricksWon": [
       0,
-      0
+      1
     ],
     "scores": [
       0,
-      0
+      2
     ],
     "matchStats": {
       "teamTricksWon": [
-        0,
-        0
+        3,
+        7
       ],
       "teamEuchres": [
         0,
@@ -416,12 +446,118 @@
       "Game initialized.",
       "--- Hand started. Dealer: RankAlice ---",
       "Turned-up card is A♥.",
-      "LakeshoreLoner passed."
+      "LakeshoreLoner passed.",
+      "AstraDealer passed.",
+      "HarlequinHex passed.",
+      "RankAlice passed.",
+      "A♥ turned down. Round 2 bidding begins.",
+      "LakeshoreLoner passed.",
+      "AstraDealer passed.",
+      "HarlequinHex called DIAMONDS as trump.",
+      "LakeshoreLoner played Q♣.",
+      "AstraDealer played 10♣.",
+      "HarlequinHex played K♣.",
+      "RankAlice played A♣.",
+      "Trick won by RankAlice with A♣.",
+      "RankAlice played K♦.",
+      "LakeshoreLoner played Q♦.",
+      "AstraDealer played A♦.",
+      "HarlequinHex played J♥ (Left Bower).",
+      "Trick won by HarlequinHex with J♥ (Left Bower).",
+      "HarlequinHex played 10♦.",
+      "RankAlice played Q♠.",
+      "LakeshoreLoner played K♥.",
+      "AstraDealer played 9♦.",
+      "Trick won by HarlequinHex with 10♦.",
+      "HarlequinHex played A♠.",
+      "RankAlice played K♠.",
+      "LakeshoreLoner played 9♣.",
+      "AstraDealer played J♠.",
+      "Trick won by HarlequinHex with A♠.",
+      "HarlequinHex played J♦ (Right Bower).",
+      "RankAlice played 9♥.",
+      "LakeshoreLoner played Q♥.",
+      "AstraDealer played 9♠.",
+      "Trick won by HarlequinHex with J♦ (Right Bower).",
+      "Team Red made their bid with 4 tricks for 1 point.",
+      "Current score: Team Blue: 0 | Team Red: 1",
+      "--- Hand started. Dealer: LakeshoreLoner ---",
+      "Turned-up card is J♥.",
+      "AstraDealer passed.",
+      "HarlequinHex passed.",
+      "RankAlice passed.",
+      "LakeshoreLoner passed.",
+      "J♥ turned down. Round 2 bidding begins.",
+      "AstraDealer passed.",
+      "HarlequinHex passed.",
+      "RankAlice passed.",
+      "LakeshoreLoner called CLUBS as trump.",
+      "AstraDealer played 9♦.",
+      "HarlequinHex played J♦.",
+      "RankAlice played K♦.",
+      "LakeshoreLoner played A♦.",
+      "Trick won by LakeshoreLoner with A♦.",
+      "LakeshoreLoner played Q♣.",
+      "AstraDealer played K♣.",
+      "HarlequinHex played Q♥.",
+      "RankAlice played 10♦.",
+      "Trick won by AstraDealer with K♣.",
+      "AstraDealer played 10♣.",
+      "HarlequinHex played 9♠.",
+      "RankAlice played A♠.",
+      "LakeshoreLoner played J♠ (Left Bower).",
+      "Trick won by LakeshoreLoner with J♠ (Left Bower).",
+      "LakeshoreLoner played A♣.",
+      "AstraDealer played Q♦.",
+      "HarlequinHex played 10♠.",
+      "RankAlice played K♠.",
+      "Trick won by LakeshoreLoner with A♣.",
+      "LakeshoreLoner played 10♥.",
+      "AstraDealer played K♥.",
+      "HarlequinHex played Q♠.",
+      "RankAlice played A♥.",
+      "Trick won by RankAlice with A♥.",
+      "Team Red made their bid with 3 tricks for 1 point.",
+      "Current score: Team Blue: 0 | Team Red: 2",
+      "--- Hand started. Dealer: AstraDealer ---",
+      "Turned-up card is Q♣.",
+      "HarlequinHex passed.",
+      "RankAlice passed.",
+      "LakeshoreLoner passed.",
+      "AstraDealer passed.",
+      "Q♣ turned down. Round 2 bidding begins.",
+      "HarlequinHex passed.",
+      "RankAlice passed.",
+      "LakeshoreLoner called HEARTS as trump.",
+      "HarlequinHex played 9♣.",
+      "RankAlice played K♣.",
+      "LakeshoreLoner played 10♥.",
+      "AstraDealer played J♣.",
+      "Trick won by LakeshoreLoner with 10♥."
     ],
     "upCard": {
-      "id": "hearts-A",
-      "suit": "hearts",
-      "rank": "A"
+      "id": "clubs-Q",
+      "suit": "clubs",
+      "rank": "Q"
+    },
+    "trumpSuit": "hearts",
+    "callingPlayer": 1,
+    "callingTeam": 1,
+    "lastHandResult": {
+      "callingTeam": 1,
+      "calledAlone": false,
+      "trumpSuit": "clubs",
+      "tricksWon": [
+        2,
+        3
+      ],
+      "pointsAwarded": [
+        0,
+        1
+      ],
+      "isMarch": false,
+      "isEuchre": false,
+      "message": "Team Red made their bid with 3 tricks for 1 point."
     }
   }
 }

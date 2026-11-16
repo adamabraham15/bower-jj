@@ -1,0 +1,559 @@
+{
+  "roomCode": "4F1B8A",
+  "savedAt": 1794863073767,
+  "room": {
+    "id": "5b56a3ef-b199-4f8a-b7e4-b84f7fbea0f6",
+    "code": "4F1B8A",
+    "hostUserId": "71de2bcd-46c1-4f1b-973b-07a6679f2bc2",
+    "status": "playing",
+    "rules": {
+      "targetScore": 10,
+      "stickTheDealer": true,
+      "allowAloneCalls": true,
+      "canCallTurnedDownSuit": false,
+      "partnerOrderUpGoesAlone": true,
+      "canadianLoner": true
+    },
+    "slots": [
+      {
+        "position": 0,
+        "isAI": true,
+        "userId": "71de2bcd-46c1-4f1b-973b-07a6679f2bc2",
+        "username": "SyncChecker (Bot)",
+        "avatarIcon": "thunder_knight",
+        "equippedCardBack": "wild_west",
+        "rankTier": "9",
+        "connected": false,
+        "isReady": true,
+        "abandoned": true,
+        "aiDifficulty": "easy"
+      },
+      {
+        "position": 1,
+        "isAI": true,
+        "aiDifficulty": "hard",
+        "username": "JackOfDiamonds",
+        "avatarIcon": "arcane_archmage",
+        "equippedCardBack": "dark_royalty",
+        "rankTier": "9",
+        "connected": true,
+        "isReady": true
+      },
+      {
+        "position": 2,
+        "isAI": true,
+        "aiDifficulty": "hard",
+        "username": "RiverboatRory",
+        "avatarIcon": "bower_king",
+        "equippedCardBack": "dark_royalty",
+        "rankTier": "9",
+        "connected": true,
+        "isReady": true
+      },
+      {
+        "position": 3,
+        "isAI": true,
+        "aiDifficulty": "hard",
+        "username": "HoosierHustler",
+        "avatarIcon": "cosmic_emissary",
+        "equippedCardBack": "dark_royalty",
+        "rankTier": "9",
+        "connected": true,
+        "isReady": true
+      }
+    ],
+    "pendingInvites": {},
+    "isMatchmade": false,
+    "queueMode": "custom",
+    "createdAt": 1794862896041,
+    "lastActionAt": 1794862896041,
+    "resultsRecorded": false,
+    "abandonedUserIds": [
+      "71de2bcd-46c1-4f1b-973b-07a6679f2bc2"
+    ]
+  },
+  "state": {
+    "players": [
+      {
+        "id": "71de2bcd-46c1-4f1b-973b-07a6679f2bc2",
+        "name": "SyncChecker",
+        "position": 0,
+        "isAI": false,
+        "avatarId": "thunder_knight",
+        "cardBack": "wild_west",
+        "rankTier": "9"
+      },
+      {
+        "id": "ai_1",
+        "name": "JackOfDiamonds",
+        "position": 1,
+        "isAI": true,
+        "aiDifficulty": "hard",
+        "avatarId": "arcane_archmage",
+        "cardBack": "dark_royalty",
+        "rankTier": "9"
+      },
+      {
+        "id": "ai_2",
+        "name": "RiverboatRory",
+        "position": 2,
+        "isAI": true,
+        "aiDifficulty": "hard",
+        "avatarId": "bower_king",
+        "cardBack": "dark_royalty",
+        "rankTier": "9"
+      },
+      {
+        "id": "ai_3",
+        "name": "HoosierHustler",
+        "position": 3,
+        "isAI": true,
+        "aiDifficulty": "hard",
+        "avatarId": "cosmic_emissary",
+        "cardBack": "dark_royalty",
+        "rankTier": "9"
+      }
+    ],
+    "dealer": 3,
+    "currentTurn": 2,
+    "phase": "playing",
+    "deck": [
+      {
+        "id": "spades-A",
+        "suit": "spades",
+        "rank": "A"
+      },
+      {
+        "id": "diamonds-A",
+        "suit": "diamonds",
+        "rank": "A"
+      },
+      {
+        "id": "diamonds-J",
+        "suit": "diamonds",
+        "rank": "J"
+      },
+      {
+        "id": "hearts-J",
+        "suit": "hearts",
+        "rank": "J"
+      },
+      {
+        "id": "spades-Q",
+        "suit": "spades",
+        "rank": "Q"
+      },
+      {
+        "id": "spades-10",
+        "suit": "spades",
+        "rank": "10"
+      },
+      {
+        "id": "clubs-10",
+        "suit": "clubs",
+        "rank": "10"
+      },
+      {
+        "id": "clubs-J",
+        "suit": "clubs",
+        "rank": "J"
+      },
+      {
+        "id": "spades-9",
+        "suit": "spades",
+        "rank": "9"
+      },
+      {
+        "id": "diamonds-Q",
+        "suit": "diamonds",
+        "rank": "Q"
+      },
+      {
+        "id": "hearts-Q",
+        "suit": "hearts",
+        "rank": "Q"
+      },
+      {
+        "id": "hearts-9",
+        "suit": "hearts",
+        "rank": "9"
+      },
+      {
+        "id": "clubs-A",
+        "suit": "clubs",
+        "rank": "A"
+      },
+      {
+        "id": "hearts-K",
+        "suit": "hearts",
+        "rank": "K"
+      },
+      {
+        "id": "clubs-Q",
+        "suit": "clubs",
+        "rank": "Q"
+      },
+      {
+        "id": "clubs-K",
+        "suit": "clubs",
+        "rank": "K"
+      },
+      {
+        "id": "hearts-10",
+        "suit": "hearts",
+        "rank": "10"
+      },
+      {
+        "id": "diamonds-10",
+        "suit": "diamonds",
+        "rank": "10"
+      },
+      {
+        "id": "diamonds-K",
+        "suit": "diamonds",
+        "rank": "K"
+      },
+      {
+        "id": "spades-J",
+        "suit": "spades",
+        "rank": "J"
+      },
+      {
+        "id": "spades-K",
+        "suit": "spades",
+        "rank": "K"
+      },
+      {
+        "id": "clubs-9",
+        "suit": "clubs",
+        "rank": "9"
+      },
+      {
+        "id": "diamonds-9",
+        "suit": "diamonds",
+        "rank": "9"
+      },
+      {
+        "id": "hearts-A",
+        "suit": "hearts",
+        "rank": "A"
+      }
+    ],
+    "kitty": [
+      {
+        "id": "spades-K",
+        "suit": "spades",
+        "rank": "K"
+      },
+      {
+        "id": "clubs-9",
+        "suit": "clubs",
+        "rank": "9"
+      },
+      {
+        "id": "diamonds-9",
+        "suit": "diamonds",
+        "rank": "9"
+      },
+      {
+        "id": "hearts-A",
+        "suit": "hearts",
+        "rank": "A"
+      }
+    ],
+    "hands": {
+      "0": [
+        {
+          "id": "spades-A",
+          "suit": "spades",
+          "rank": "A"
+        },
+        {
+          "id": "spades-Q",
+          "suit": "spades",
+          "rank": "Q"
+        },
+        {
+          "id": "spades-9",
+          "suit": "spades",
+          "rank": "9"
+        },
+        {
+          "id": "clubs-A",
+          "suit": "clubs",
+          "rank": "A"
+        }
+      ],
+      "1": [
+        {
+          "id": "spades-10",
+          "suit": "spades",
+          "rank": "10"
+        },
+        {
+          "id": "diamonds-Q",
+          "suit": "diamonds",
+          "rank": "Q"
+        },
+        {
+          "id": "diamonds-10",
+          "suit": "diamonds",
+          "rank": "10"
+        }
+      ],
+      "2": [
+        {
+          "id": "diamonds-J",
+          "suit": "diamonds",
+          "rank": "J"
+        },
+        {
+          "id": "clubs-10",
+          "suit": "clubs",
+          "rank": "10"
+        },
+        {
+          "id": "clubs-Q",
+          "suit": "clubs",
+          "rank": "Q"
+        },
+        {
+          "id": "diamonds-K",
+          "suit": "diamonds",
+          "rank": "K"
+        }
+      ],
+      "3": [
+        {
+          "id": "hearts-J",
+          "suit": "hearts",
+          "rank": "J"
+        },
+        {
+          "id": "clubs-J",
+          "suit": "clubs",
+          "rank": "J"
+        },
+        {
+          "id": "spades-J",
+          "suit": "spades",
+          "rank": "J"
+        },
+        {
+          "id": "spades-K",
+          "suit": "spades",
+          "rank": "K"
+        }
+      ]
+    },
+    "isAlone": false,
+    "currentTrick": {
+      "leadPlayer": 1,
+      "cards": [
+        {
+          "player": 1,
+          "card": {
+            "id": "diamonds-A",
+            "suit": "diamonds",
+            "rank": "A"
+          }
+        }
+      ],
+      "leadSuit": "diamonds"
+    },
+    "completedTricks": [
+      {
+        "leadPlayer": 0,
+        "cards": [
+          {
+            "player": 0,
+            "card": {
+              "id": "hearts-10",
+              "suit": "hearts",
+              "rank": "10"
+            }
+          },
+          {
+            "player": 1,
+            "card": {
+              "id": "hearts-K",
+              "suit": "hearts",
+              "rank": "K"
+            }
+          },
+          {
+            "player": 2,
+            "card": {
+              "id": "hearts-Q",
+              "suit": "hearts",
+              "rank": "Q"
+            }
+          },
+          {
+            "player": 3,
+            "card": {
+              "id": "hearts-9",
+              "suit": "hearts",
+              "rank": "9"
+            }
+          }
+        ],
+        "leadSuit": "hearts",
+        "winner": 1,
+        "winningCard": {
+          "id": "hearts-K",
+          "suit": "hearts",
+          "rank": "K"
+        }
+      }
+    ],
+    "tricksWon": [
+      0,
+      1
+    ],
+    "scores": [
+      2,
+      1
+    ],
+    "matchStats": {
+      "teamTricksWon": [
+        7,
+        3
+      ],
+      "teamEuchres": [
+        0,
+        0
+      ],
+      "teamMarches": [
+        1,
+        0
+      ],
+      "teamLoners": [
+        0,
+        0
+      ],
+      "playerLoners": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "rules": {
+      "targetScore": 10,
+      "stickTheDealer": true,
+      "allowAloneCalls": true,
+      "canCallTurnedDownSuit": false,
+      "partnerOrderUpGoesAlone": true,
+      "canadianLoner": true
+    },
+    "history": [
+      "Game initialized.",
+      "--- Hand started. Dealer: JackOfDiamonds ---",
+      "Turned-up card is K♥.",
+      "RiverboatRory passed.",
+      "HoosierHustler passed.",
+      "SyncChecker passed.",
+      "JackOfDiamonds picked up the K♥.",
+      "JackOfDiamonds discarded a card. Trick play begins.",
+      "RiverboatRory played A♦.",
+      "HoosierHustler played Q♦.",
+      "SyncChecker played K♦.",
+      "JackOfDiamonds played 10♦.",
+      "Trick won by RiverboatRory with A♦.",
+      "RiverboatRory played J♠.",
+      "HoosierHustler played Q♠.",
+      "SyncChecker played 10♠.",
+      "JackOfDiamonds played A♠.",
+      "Trick won by JackOfDiamonds with A♠.",
+      "JackOfDiamonds played A♣.",
+      "RiverboatRory played 9♥.",
+      "HoosierHustler played J♣.",
+      "SyncChecker played K♣.",
+      "Trick won by RiverboatRory with 9♥.",
+      "RiverboatRory played K♠.",
+      "HoosierHustler played 10♥.",
+      "SyncChecker played 9♠.",
+      "JackOfDiamonds played 10♣.",
+      "Trick won by HoosierHustler with 10♥.",
+      "HoosierHustler played J♥ (Right Bower).",
+      "SyncChecker played J♦ (Left Bower).",
+      "JackOfDiamonds played K♥.",
+      "RiverboatRory played Q♥.",
+      "Trick won by HoosierHustler with J♥ (Right Bower).",
+      "Team Red made their bid with 3 tricks for 1 point.",
+      "Current score: Team Blue: 0 | Team Red: 1",
+      "--- Hand started. Dealer: RiverboatRory ---",
+      "Turned-up card is J♦.",
+      "HoosierHustler passed.",
+      "SyncChecker passed.",
+      "JackOfDiamonds passed.",
+      "RiverboatRory picked up the J♦.",
+      "RiverboatRory discarded a card. Trick play begins.",
+      "HoosierHustler played 10♥.",
+      "SyncChecker played Q♦.",
+      "JackOfDiamonds played A♥.",
+      "RiverboatRory played 9♥.",
+      "Trick won by SyncChecker with Q♦.",
+      "SyncChecker played 10♣.",
+      "JackOfDiamonds played Q♣.",
+      "RiverboatRory played A♣.",
+      "HoosierHustler played K♣.",
+      "Trick won by RiverboatRory with A♣.",
+      "RiverboatRory played J♦ (Right Bower).",
+      "HoosierHustler played K♠.",
+      "SyncChecker played K♦.",
+      "JackOfDiamonds played 10♦.",
+      "Trick won by RiverboatRory with J♦ (Right Bower).",
+      "RiverboatRory played J♥ (Left Bower).",
+      "HoosierHustler played Q♥.",
+      "SyncChecker played 9♣.",
+      "JackOfDiamonds played A♦.",
+      "Trick won by RiverboatRory with J♥ (Left Bower).",
+      "RiverboatRory played K♥.",
+      "HoosierHustler played Q♠.",
+      "SyncChecker played J♠.",
+      "JackOfDiamonds played A♠.",
+      "Trick won by RiverboatRory with K♥.",
+      "Team Blue won all 5 tricks (March) for 2 points!",
+      "Current score: Team Blue: 2 | Team Red: 1",
+      "--- Hand started. Dealer: HoosierHustler ---",
+      "Turned-up card is K♠.",
+      "SyncChecker passed.",
+      "JackOfDiamonds passed.",
+      "RiverboatRory passed.",
+      "HoosierHustler picked up the K♠.",
+      "HoosierHustler discarded a card. Trick play begins.",
+      "SyncChecker played 10♥.",
+      "JackOfDiamonds played K♥.",
+      "RiverboatRory played Q♥.",
+      "HoosierHustler played 9♥.",
+      "Trick won by JackOfDiamonds with K♥.",
+      "JackOfDiamonds played A♦."
+    ],
+    "upCard": {
+      "id": "spades-K",
+      "suit": "spades",
+      "rank": "K"
+    },
+    "trumpSuit": "spades",
+    "callingPlayer": 3,
+    "callingTeam": 1,
+    "lastHandResult": {
+      "callingTeam": 0,
+      "calledAlone": false,
+      "trumpSuit": "diamonds",
+      "tricksWon": [
+        5,
+        0
+      ],
+      "pointsAwarded": [
+        2,
+        0
+      ],
+      "isMarch": true,
+      "isEuchre": false,
+      "message": "Team Blue won all 5 tricks (March) for 2 points!"
+    }
+  }
+}

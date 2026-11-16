@@ -880,11 +880,22 @@ class Database {
       : colState.unopenedPacks.length > 0
         ? 0
         : -1;
+    let pack: UnopenedPackItem;
     if (idx === -1) {
-      return { success: false, error: 'No unopened card packs available.' };
+      const uLower = (user.username || '').trim().toLowerCase();
+      if (uLower === 'brojo' || uLower === 'turkeysub' || user.isAdmin) {
+        pack = {
+          id: `unlimited_on_the_fly_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          source: 'admin_grant',
+          earnedLevel: 99,
+          earnedAt: Date.now(),
+        };
+      } else {
+        return { success: false, error: 'No unopened card packs available.' };
+      }
+    } else {
+      pack = colState.unopenedPacks.splice(idx, 1)[0];
     }
-
-    const pack = colState.unopenedPacks.splice(idx, 1)[0];
     const openedAt = Date.now();
     const drawnDefs = rollPackCards(PROGRESSION_CONFIG, rng);
     const drawnResults: DrawnCardResult[] = [];

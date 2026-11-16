@@ -1,0 +1,562 @@
+{
+  "roomCode": "0E3B7B",
+  "savedAt": 1794863072957,
+  "room": {
+    "id": "9b27f735-f1b5-4d60-8911-99c2f5d80016",
+    "code": "0E3B7B",
+    "hostUserId": "1a83e81f-0707-49c3-88d7-d85b5aa6958c",
+    "status": "playing",
+    "rules": {
+      "targetScore": 10,
+      "stickTheDealer": true,
+      "allowAloneCalls": true,
+      "canCallTurnedDownSuit": false,
+      "partnerOrderUpGoesAlone": true,
+      "canadianLoner": true
+    },
+    "slots": [
+      {
+        "position": 0,
+        "isAI": true,
+        "userId": "1a83e81f-0707-49c3-88d7-d85b5aa6958c",
+        "username": "SyncChecker (Bot)",
+        "avatarIcon": "thunder_knight",
+        "equippedCardBack": "wild_west",
+        "rankTier": "9",
+        "connected": false,
+        "isReady": true,
+        "abandoned": true,
+        "aiDifficulty": "easy"
+      },
+      {
+        "position": 1,
+        "isAI": true,
+        "aiDifficulty": "hard",
+        "username": "SpadeSovereign",
+        "avatarIcon": "arcane_archmage",
+        "equippedCardBack": "dark_royalty",
+        "rankTier": "9",
+        "connected": true,
+        "isReady": true
+      },
+      {
+        "position": 2,
+        "isAI": true,
+        "aiDifficulty": "hard",
+        "username": "TurnCardTina",
+        "avatarIcon": "bower_king",
+        "equippedCardBack": "dark_royalty",
+        "rankTier": "9",
+        "connected": true,
+        "isReady": true
+      },
+      {
+        "position": 3,
+        "isAI": true,
+        "aiDifficulty": "hard",
+        "username": "DoubleBower",
+        "avatarIcon": "cosmic_emissary",
+        "equippedCardBack": "dark_royalty",
+        "rankTier": "9",
+        "connected": true,
+        "isReady": true
+      }
+    ],
+    "pendingInvites": {},
+    "isMatchmade": false,
+    "queueMode": "custom",
+    "createdAt": 1794862916693,
+    "lastActionAt": 1794862916693,
+    "resultsRecorded": false,
+    "abandonedUserIds": [
+      "1a83e81f-0707-49c3-88d7-d85b5aa6958c"
+    ]
+  },
+  "state": {
+    "players": [
+      {
+        "id": "1a83e81f-0707-49c3-88d7-d85b5aa6958c",
+        "name": "SyncChecker",
+        "position": 0,
+        "isAI": false,
+        "avatarId": "thunder_knight",
+        "cardBack": "wild_west",
+        "rankTier": "9"
+      },
+      {
+        "id": "ai_1",
+        "name": "SpadeSovereign",
+        "position": 1,
+        "isAI": true,
+        "aiDifficulty": "hard",
+        "avatarId": "arcane_archmage",
+        "cardBack": "dark_royalty",
+        "rankTier": "9"
+      },
+      {
+        "id": "ai_2",
+        "name": "TurnCardTina",
+        "position": 2,
+        "isAI": true,
+        "aiDifficulty": "hard",
+        "avatarId": "bower_king",
+        "cardBack": "dark_royalty",
+        "rankTier": "9"
+      },
+      {
+        "id": "ai_3",
+        "name": "DoubleBower",
+        "position": 3,
+        "isAI": true,
+        "aiDifficulty": "hard",
+        "avatarId": "cosmic_emissary",
+        "cardBack": "dark_royalty",
+        "rankTier": "9"
+      }
+    ],
+    "dealer": 2,
+    "currentTurn": 1,
+    "phase": "playing",
+    "deck": [
+      {
+        "id": "clubs-9",
+        "suit": "clubs",
+        "rank": "9"
+      },
+      {
+        "id": "clubs-10",
+        "suit": "clubs",
+        "rank": "10"
+      },
+      {
+        "id": "hearts-9",
+        "suit": "hearts",
+        "rank": "9"
+      },
+      {
+        "id": "hearts-A",
+        "suit": "hearts",
+        "rank": "A"
+      },
+      {
+        "id": "spades-Q",
+        "suit": "spades",
+        "rank": "Q"
+      },
+      {
+        "id": "spades-10",
+        "suit": "spades",
+        "rank": "10"
+      },
+      {
+        "id": "clubs-A",
+        "suit": "clubs",
+        "rank": "A"
+      },
+      {
+        "id": "clubs-J",
+        "suit": "clubs",
+        "rank": "J"
+      },
+      {
+        "id": "diamonds-9",
+        "suit": "diamonds",
+        "rank": "9"
+      },
+      {
+        "id": "hearts-10",
+        "suit": "hearts",
+        "rank": "10"
+      },
+      {
+        "id": "hearts-K",
+        "suit": "hearts",
+        "rank": "K"
+      },
+      {
+        "id": "spades-9",
+        "suit": "spades",
+        "rank": "9"
+      },
+      {
+        "id": "hearts-J",
+        "suit": "hearts",
+        "rank": "J"
+      },
+      {
+        "id": "clubs-K",
+        "suit": "clubs",
+        "rank": "K"
+      },
+      {
+        "id": "diamonds-K",
+        "suit": "diamonds",
+        "rank": "K"
+      },
+      {
+        "id": "spades-J",
+        "suit": "spades",
+        "rank": "J"
+      },
+      {
+        "id": "diamonds-Q",
+        "suit": "diamonds",
+        "rank": "Q"
+      },
+      {
+        "id": "diamonds-J",
+        "suit": "diamonds",
+        "rank": "J"
+      },
+      {
+        "id": "hearts-Q",
+        "suit": "hearts",
+        "rank": "Q"
+      },
+      {
+        "id": "diamonds-A",
+        "suit": "diamonds",
+        "rank": "A"
+      },
+      {
+        "id": "spades-A",
+        "suit": "spades",
+        "rank": "A"
+      },
+      {
+        "id": "diamonds-10",
+        "suit": "diamonds",
+        "rank": "10"
+      },
+      {
+        "id": "clubs-Q",
+        "suit": "clubs",
+        "rank": "Q"
+      },
+      {
+        "id": "spades-K",
+        "suit": "spades",
+        "rank": "K"
+      }
+    ],
+    "kitty": [
+      {
+        "id": "spades-A",
+        "suit": "spades",
+        "rank": "A"
+      },
+      {
+        "id": "diamonds-10",
+        "suit": "diamonds",
+        "rank": "10"
+      },
+      {
+        "id": "clubs-Q",
+        "suit": "clubs",
+        "rank": "Q"
+      },
+      {
+        "id": "spades-K",
+        "suit": "spades",
+        "rank": "K"
+      }
+    ],
+    "hands": {
+      "0": [
+        {
+          "id": "clubs-10",
+          "suit": "clubs",
+          "rank": "10"
+        },
+        {
+          "id": "spades-10",
+          "suit": "spades",
+          "rank": "10"
+        },
+        {
+          "id": "hearts-10",
+          "suit": "hearts",
+          "rank": "10"
+        },
+        {
+          "id": "clubs-K",
+          "suit": "clubs",
+          "rank": "K"
+        },
+        {
+          "id": "diamonds-J",
+          "suit": "diamonds",
+          "rank": "J"
+        }
+      ],
+      "1": [
+        {
+          "id": "hearts-9",
+          "suit": "hearts",
+          "rank": "9"
+        },
+        {
+          "id": "hearts-K",
+          "suit": "hearts",
+          "rank": "K"
+        },
+        {
+          "id": "diamonds-K",
+          "suit": "diamonds",
+          "rank": "K"
+        },
+        {
+          "id": "hearts-Q",
+          "suit": "hearts",
+          "rank": "Q"
+        }
+      ],
+      "2": [
+        {
+          "id": "clubs-J",
+          "suit": "clubs",
+          "rank": "J"
+        },
+        {
+          "id": "diamonds-A",
+          "suit": "diamonds",
+          "rank": "A"
+        },
+        {
+          "id": "spades-A",
+          "suit": "spades",
+          "rank": "A"
+        }
+      ],
+      "3": [
+        {
+          "id": "diamonds-9",
+          "suit": "diamonds",
+          "rank": "9"
+        },
+        {
+          "id": "hearts-J",
+          "suit": "hearts",
+          "rank": "J"
+        },
+        {
+          "id": "diamonds-Q",
+          "suit": "diamonds",
+          "rank": "Q"
+        }
+      ]
+    },
+    "isAlone": true,
+    "currentTrick": {
+      "leadPlayer": 2,
+      "cards": [
+        {
+          "player": 2,
+          "card": {
+            "id": "spades-J",
+            "suit": "spades",
+            "rank": "J"
+          }
+        },
+        {
+          "player": 3,
+          "card": {
+            "id": "spades-Q",
+            "suit": "spades",
+            "rank": "Q"
+          }
+        }
+      ],
+      "leadSuit": "spades"
+    },
+    "completedTricks": [
+      {
+        "leadPlayer": 3,
+        "cards": [
+          {
+            "player": 3,
+            "card": {
+              "id": "clubs-9",
+              "suit": "clubs",
+              "rank": "9"
+            }
+          },
+          {
+            "player": 1,
+            "card": {
+              "id": "clubs-A",
+              "suit": "clubs",
+              "rank": "A"
+            }
+          },
+          {
+            "player": 2,
+            "card": {
+              "id": "spades-9",
+              "suit": "spades",
+              "rank": "9"
+            }
+          }
+        ],
+        "leadSuit": "clubs",
+        "winner": 2,
+        "winningCard": {
+          "id": "spades-9",
+          "suit": "spades",
+          "rank": "9"
+        }
+      }
+    ],
+    "tricksWon": [
+      1,
+      0
+    ],
+    "scores": [
+      0,
+      2
+    ],
+    "matchStats": {
+      "teamTricksWon": [
+        2,
+        8
+      ],
+      "teamEuchres": [
+        0,
+        0
+      ],
+      "teamMarches": [
+        0,
+        0
+      ],
+      "teamLoners": [
+        0,
+        0
+      ],
+      "playerLoners": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "rules": {
+      "targetScore": 10,
+      "stickTheDealer": true,
+      "allowAloneCalls": true,
+      "canCallTurnedDownSuit": false,
+      "partnerOrderUpGoesAlone": true,
+      "canadianLoner": true
+    },
+    "history": [
+      "Game initialized.",
+      "--- Hand started. Dealer: SyncChecker ---",
+      "Turned-up card is Q♠.",
+      "SpadeSovereign passed.",
+      "TurnCardTina passed.",
+      "DoubleBower passed.",
+      "SyncChecker passed.",
+      "Q♠ turned down. Round 2 bidding begins.",
+      "SpadeSovereign called HEARTS as trump.",
+      "SpadeSovereign played J♥ (Right Bower).",
+      "TurnCardTina played 9♥.",
+      "DoubleBower played A♠.",
+      "SyncChecker played 10♥.",
+      "Trick won by SpadeSovereign with J♥ (Right Bower).",
+      "SpadeSovereign played A♦.",
+      "TurnCardTina played 9♦.",
+      "DoubleBower played Q♦.",
+      "SyncChecker played 10♦.",
+      "Trick won by SpadeSovereign with A♦.",
+      "SpadeSovereign played A♣.",
+      "TurnCardTina played J♣.",
+      "DoubleBower played 10♣.",
+      "SyncChecker played 9♣.",
+      "Trick won by SpadeSovereign with A♣.",
+      "SpadeSovereign played Q♣.",
+      "TurnCardTina played J♠.",
+      "DoubleBower played 9♠.",
+      "SyncChecker played A♥.",
+      "Trick won by SyncChecker with A♥.",
+      "SyncChecker played 10♠.",
+      "SpadeSovereign played Q♥.",
+      "TurnCardTina played K♦.",
+      "DoubleBower played K♠.",
+      "Trick won by SpadeSovereign with Q♥.",
+      "Team Red made their bid with 4 tricks for 1 point.",
+      "Current score: Team Blue: 0 | Team Red: 1",
+      "--- Hand started. Dealer: SpadeSovereign ---",
+      "Turned-up card is 9♥.",
+      "TurnCardTina passed.",
+      "DoubleBower passed.",
+      "SyncChecker passed.",
+      "SpadeSovereign picked up the 9♥.",
+      "SpadeSovereign discarded a card. Trick play begins.",
+      "TurnCardTina played K♣.",
+      "DoubleBower played 10♥.",
+      "SyncChecker played A♣.",
+      "SpadeSovereign played J♣.",
+      "Trick won by DoubleBower with 10♥.",
+      "DoubleBower played J♦ (Left Bower).",
+      "SyncChecker played J♠.",
+      "SpadeSovereign played 9♥.",
+      "TurnCardTina played J♥ (Right Bower).",
+      "Trick won by TurnCardTina with J♥ (Right Bower).",
+      "TurnCardTina played 10♣.",
+      "DoubleBower played 9♠.",
+      "SyncChecker played 9♣.",
+      "SpadeSovereign played Q♣.",
+      "Trick won by SpadeSovereign with Q♣.",
+      "SpadeSovereign played K♥.",
+      "TurnCardTina played K♠.",
+      "DoubleBower played 9♦.",
+      "SyncChecker played 10♦.",
+      "Trick won by SpadeSovereign with K♥.",
+      "SpadeSovereign played A♥.",
+      "TurnCardTina played 10♠.",
+      "DoubleBower played Q♠.",
+      "SyncChecker played A♦.",
+      "Trick won by SpadeSovereign with A♥.",
+      "Team Red made their bid with 4 tricks for 1 point.",
+      "Current score: Team Blue: 0 | Team Red: 2",
+      "--- Hand started. Dealer: TurnCardTina ---",
+      "Turned-up card is A♠.",
+      "DoubleBower passed.",
+      "SyncChecker passed.",
+      "SpadeSovereign passed.",
+      "TurnCardTina picked up the A♠ and is GOING ALONE!",
+      "TurnCardTina discarded a card. Trick play begins.",
+      "DoubleBower played 9♣.",
+      "SpadeSovereign played A♣.",
+      "TurnCardTina played 9♠.",
+      "Trick won by TurnCardTina with 9♠.",
+      "TurnCardTina played J♠ (Right Bower).",
+      "DoubleBower played Q♠."
+    ],
+    "upCard": {
+      "id": "spades-A",
+      "suit": "spades",
+      "rank": "A"
+    },
+    "trumpSuit": "spades",
+    "callingPlayer": 2,
+    "callingTeam": 0,
+    "alonePlayer": 2,
+    "benchedPlayer": 0,
+    "lastHandResult": {
+      "callingTeam": 1,
+      "calledAlone": false,
+      "trumpSuit": "hearts",
+      "tricksWon": [
+        1,
+        4
+      ],
+      "pointsAwarded": [
+        0,
+        1
+      ],
+      "isMarch": false,
+      "isEuchre": false,
+      "message": "Team Red made their bid with 4 tricks for 1 point."
+    }
+  }
+}

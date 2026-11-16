@@ -1668,6 +1668,47 @@ export class PostgresDatabaseRepository {
       ),
     ]);
 
+    // Auto-replenish unlimited test accounts (Brojo & Turkeysub) if pack inventory runs low (< 50)
+    if (packsRes.rows.length < 50) {
+      try {
+        const uCheck = await this.queryWithRetry(
+          `SELECT username, is_admin FROM public.profiles WHERE id = $1 LIMIT 1`,
+          [userId]
+        );
+        const uLower = (uCheck.rows[0]?.username || '').trim().toLowerCase();
+        if (uLower === 'brojo' || uLower === 'turkeysub' || Boolean(uCheck.rows[0]?.is_admin)) {
+          await this.queryWithRetry(
+            `
+            INSERT INTO public.player_card_packs (id, user_id, source, source_ref, earned_level, status, earned_at)
+            SELECT
+              gen_random_uuid(),
+              $1,
+              'admin_grant',
+              'unlimited_auto_refill_' || $2 || '_' || gs.i,
+              99,
+              'unopened',
+              NOW() - (gs.i || ' seconds')::interval
+            FROM generate_series(1, 100) AS gs(i)
+            ON CONFLICT (user_id, source_ref) DO NOTHING;
+            `,
+            [userId, Date.now().toString()]
+          );
+          const refetched = await this.queryWithRetry(
+            `
+            SELECT id, source, source_ref, earned_level, earned_at
+            FROM public.player_card_packs
+            WHERE user_id = $1 AND status = 'unopened'
+            ORDER BY earned_at ASC;
+            `,
+            [userId]
+          );
+          packsRes.rows = refetched.rows;
+        }
+      } catch {
+        // Silently continue with existing packs if auto-refill encounters any error
+      }
+    }
+
     const starterAvatars = AVATAR_CATALOG.filter((a) => a.unlockedByDefault).map((a) => a.id);
     const starterCardBacks = CARD_BACK_CATALOG.filter((b) => b.unlockedByDefault).map((b) => b.id);
 
@@ -1771,8 +1812,32 @@ export class PostgresDatabaseRepository {
       const packRes = await client.query(packQuery, packId ? [userId, packId] : [userId]);
 
       if (packRes.rows.length === 0) {
-        await client.query('ROLLBACK');
-        return { success: false, error: 'No unopened card packs available.' };
+        // Check if user is granted unlimited test packs (e.g. Brojo or Turkeysub or admin)
+        const userCheck = await client.query(
+          `SELECT username, is_admin FROM public.profiles WHERE id = $1 LIMIT 1`,
+          [userId]
+        );
+        const uname = (userCheck.rows[0]?.username || '').trim().toLowerCase();
+        const isUnlimitedTester = uname === 'brojo' || uname === 'turkeysub' || Boolean(userCheck.rows[0]?.is_admin);
+
+        if (isUnlimitedTester) {
+          const freshPackId = crypto.randomUUID();
+          const freshSourceRef = `unlimited_on_the_fly_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+          await client.query(
+            `
+            INSERT INTO public.player_card_packs (
+              id, user_id, source, source_ref, earned_level, status, earned_at
+            ) VALUES (
+              $1, $2, 'admin_grant', $3, 99, 'unopened', NOW()
+            );
+            `,
+            [freshPackId, userId, freshSourceRef]
+          );
+          packRes.rows.push({ id: freshPackId, source: 'admin_grant', earned_level: 99 });
+        } else {
+          await client.query('ROLLBACK');
+          return { success: false, error: 'No unopened card packs available.' };
+        }
       }
 
       const targetPackId = packRes.rows[0].id as string;
