@@ -1,6 +1,7 @@
 /**
  * BOWER JJ — Main Menu & Game Mode Arena
- * Clean, organized Chess.com-inspired vertical Play layout with responsive Desktop & Mobile navigation.
+ * Streamlined Chess.com-inspired vertical Play layout.
+ * Unified "Select Game Mode" selector, tactile 3D Start Game CTA, compact action cards, and zero mobile scrolling.
  */
 
 import React, { useState } from 'react';
@@ -14,20 +15,17 @@ import {
   Sparkles,
   Zap,
   Play,
-  Crown,
   Swords,
   ShieldCheck,
   LogOut,
   Package,
-  Layers,
   ChevronDown,
-  ChevronUp,
   GraduationCap,
   Award,
   Check,
   SlidersHorizontal,
+  X,
 } from 'lucide-react';
-import { RankBadge } from './RankBadge';
 import { PlayerProfileData } from './ProfileModal';
 import { AIDifficulty, EuchreHouseRules, DEFAULT_RULES } from '../engine/types';
 import { QueueType } from './MatchmakingModal';
@@ -58,7 +56,7 @@ interface MainMenuProps {
   onLogout?: () => void;
 }
 
-type QuickModeId = 'ranked_solo' | 'ai_bots' | 'unranked' | 'private' | 'rivalry';
+type QuickModeId = 'ranked_solo' | 'unranked' | 'rivalry' | 'private' | 'ai_bots';
 
 export const MainMenu: React.FC<MainMenuProps> = ({
   profile,
@@ -83,18 +81,15 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   const [targetScore, setTargetScore] = useState<number>(10);
   const [stickTheDealer, setStickTheDealer] = useState<boolean>(true);
 
-  // Quick-play selector state (bar directly above "Start Game")
+  // Unified Game Mode selection (drives the big green "Start Game" button)
   const [quickMode, setQuickMode] = useState<QuickModeId>('ranked_solo');
   const [isQuickSelectorOpen, setIsQuickSelectorOpen] = useState<boolean>(false);
 
-  // Expandable sub-panels for stacked action cards
-  const [expandedCard, setExpandedCard] = useState<'ranked' | 'friend' | 'bots' | 'learn' | null>(null);
-  const [isMoreOpen, setIsMoreOpen] = useState<boolean>(false);
+  // Inline expanded drawer for Play Bots customization
+  const [isBotsDrawerOpen, setIsBotsDrawerOpen] = useState<boolean>(false);
 
-  const toggleCard = (card: 'ranked' | 'friend' | 'bots' | 'learn') => {
-    sounds.playUiClick();
-    setExpandedCard((prev) => (prev === card ? null : card));
-  };
+  // Quick Learn Dialog (Tutorial vs Rules)
+  const [isLearnDialogOpen, setIsLearnDialogOpen] = useState<boolean>(false);
 
   const handleStartSelectedGame = () => {
     sounds.playUiClick();
@@ -124,23 +119,11 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           title: 'Ranked Solo Queue',
           sub: '10 pts',
         };
-      case 'ai_bots':
-        return {
-          icon: <Bot className="w-4 h-4 text-emerald-400 flex-shrink-0" />,
-          title: `Play Bots (${selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)})`,
-          sub: `${targetScore} pts`,
-        };
       case 'unranked':
         return {
           icon: <Shield className="w-4 h-4 text-cyan-400 flex-shrink-0" />,
           title: 'Casual Unranked',
           sub: '10 pts',
-        };
-      case 'private':
-        return {
-          icon: <Users className="w-4 h-4 text-amber-300 flex-shrink-0" />,
-          title: 'Private Room Lobby',
-          sub: 'Custom',
         };
       case 'rivalry':
         return {
@@ -148,15 +131,27 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           title: 'Friendly Rivalry',
           sub: 'Head-to-Head',
         };
+      case 'private':
+        return {
+          icon: <Users className="w-4 h-4 text-amber-300 flex-shrink-0" />,
+          title: 'Private Lobby',
+          sub: 'Room Code',
+        };
+      case 'ai_bots':
+        return {
+          icon: <Bot className="w-4 h-4 text-emerald-400 flex-shrink-0" />,
+          title: `Play Bots (${selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)})`,
+          sub: `${targetScore} pts`,
+        };
     }
   };
 
   const activeModeMeta = getQuickModeSummary();
 
   return (
-    <div className="relative min-h-[100dvh] w-full bg-[#0b0f19] text-white flex flex-col lg:flex-row overflow-x-hidden select-none">
+    <div className="relative h-[100dvh] w-full bg-[#0b0f19] text-white flex flex-col lg:flex-row overflow-hidden select-none">
       {/* Subtle Background Ambient Lighting */}
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_18%,_rgba(16,185,129,0.12)_0%,_rgba(245,158,11,0.06)_35%,_transparent_70%)] pointer-events-none" />
+      <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_15%,_rgba(16,185,129,0.12)_0%,_rgba(245,158,11,0.06)_32%,_transparent_65%)] pointer-events-none" />
 
       {/* =====================================================================
           DESKTOP LEFT NAVIGATION RAIL (Visible on lg+ screens)
@@ -182,8 +177,8 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             <button
               onClick={() => {
                 sounds.playUiClick();
-                setExpandedCard(null);
-                setIsMoreOpen(false);
+                setIsBotsDrawerOpen(false);
+                setIsQuickSelectorOpen(false);
               }}
               className="w-full px-4 py-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-black text-sm flex items-center gap-3.5 shadow-sm cursor-pointer transition-all"
             >
@@ -210,44 +205,18 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             </button>
 
             <button
-              onClick={() => toggleCard('learn')}
-              className={`w-full px-4 py-3 rounded-2xl hover:bg-slate-800/70 font-bold text-sm flex items-center justify-between transition-all cursor-pointer ${
-                expandedCard === 'learn' ? 'bg-slate-800/80 text-white' : 'text-slate-300 hover:text-white'
-              }`}
+              onClick={() => {
+                sounds.playUiClick();
+                setIsLearnDialogOpen(true);
+              }}
+              className="w-full px-4 py-3 rounded-2xl hover:bg-slate-800/70 text-slate-300 hover:text-white font-bold text-sm flex items-center justify-between transition-all cursor-pointer"
             >
               <div className="flex items-center gap-3.5">
                 <GraduationCap className="w-5 h-5 text-cyan-400" />
                 <span>Learn Euchre</span>
               </div>
-              <ChevronDown
-                className={`w-4 h-4 text-slate-400 transition-transform ${expandedCard === 'learn' ? 'rotate-180' : ''}`}
-              />
+              <ChevronDown className="w-4 h-4 text-slate-400" />
             </button>
-
-            {expandedCard === 'learn' && (
-              <div className="pl-9 pr-2 py-1 space-y-1">
-                <button
-                  onClick={() => {
-                    sounds.playUiClick();
-                    onOpenTutorial();
-                  }}
-                  className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-xs font-bold text-amber-300 flex items-center gap-2 cursor-pointer"
-                >
-                  <HelpCircle className="w-3.5 h-3.5" />
-                  <span>Interactive Tutorial</span>
-                </button>
-                <button
-                  onClick={() => {
-                    sounds.playUiClick();
-                    onOpenRules();
-                  }}
-                  className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-xs font-bold text-cyan-300 flex items-center gap-2 cursor-pointer"
-                >
-                  <BookOpen className="w-3.5 h-3.5" />
-                  <span>Rules Compendium</span>
-                </button>
-              </div>
-            )}
 
             <button
               onClick={() => {
@@ -348,246 +317,260 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       </aside>
 
       {/* =====================================================================
-          CENTRAL PLAY ARENA (Chess.com-style vertical column)
+          CENTRAL PLAY ARENA (Single-Screen Mobile App Format — No Scrolling)
       ===================================================================== */}
       <main
-        className="relative z-10 flex-1 flex justify-center items-start lg:py-6 px-3 sm:px-6 overflow-y-auto"
+        className="relative z-10 flex-1 flex flex-col justify-between items-center h-full px-3.5 sm:px-6 py-2 sm:py-4 overflow-y-auto lg:overflow-hidden"
         style={{
-          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)',
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.75rem)',
+          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.35rem)',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 4.75rem)',
         }}
       >
-        <div className="w-full max-w-[440px] lg:max-w-[480px] lg:bg-[#111726]/95 lg:border lg:border-slate-800/90 lg:rounded-3xl lg:shadow-[0_24px_80px_rgba(0,0,0,0.75)] lg:p-6 flex flex-col">
-          {/* Top Header Bar: Brand Emblem | "Play" | Audio & Cloud Pill */}
-          <header className="flex items-center justify-between py-2">
-            {/* Left: Bower JJ Hex Crest */}
-            <button
-              onClick={() => {
-                sounds.playUiClick();
-                onOpenProfile();
-              }}
-              className="relative group flex items-center gap-2 cursor-pointer"
-              title="BOWER JJ — Competitive Euchre"
-            >
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 p-[2px] shadow-lg shadow-amber-500/20 flex items-center justify-center">
-                <div className="w-full h-full rounded-[14px] bg-[#0f1624] flex flex-col items-center justify-center px-1">
-                  <span className="text-[8px] font-black tracking-tighter text-amber-200 leading-none">BOWER</span>
-                  <span className="text-sm font-black text-amber-400 leading-none mt-0.5">JJ</span>
-                </div>
-              </div>
-            </button>
-
-            {/* Center: Bold "Play" Title */}
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">Play</h1>
-
-            {/* Right: Audio & Account Cloud Pill */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#161f30] border border-slate-700/80 shadow-inner">
-              <AudioControlsPopover />
-              {isAuthenticated ? (
-                <button
-                  onClick={() => {
-                    sounds.playUiClick();
-                    onOpenProfile();
-                  }}
-                  className="p-1.5 rounded-full text-emerald-400 hover:bg-slate-800 transition-colors cursor-pointer"
-                  title="Cloud Saved — View Profile"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    sounds.playUiClick();
-                    onOpenAuth?.('login', 'Sign in to access your saved BOWER JJ profile, rank, and card packs.');
-                  }}
-                  className="p-1.5 rounded-full text-amber-400 hover:bg-slate-800 transition-colors cursor-pointer"
-                  title="Sign In / Backup to Cloud"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </header>
-
-          {/* Sub-Header Player Identity Pill */}
-          <div className="flex flex-col items-center mt-1 mb-3 gap-1.5">
-            <button
-              onClick={() => {
-                sounds.playUiClick();
-                onOpenProfile();
-              }}
-              className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#161f30]/95 hover:bg-[#1d283d] border border-slate-700/80 shadow-md transition-all active:scale-95 cursor-pointer"
-            >
-              <AvatarPortrait avatarId={profile.avatarIcon} size="xs" />
-              <span className="text-xs font-black text-white max-w-[130px] truncate">{profile.username}</span>
-              <span className="text-slate-500 text-xs">•</span>
-              <span className="text-xs font-bold text-slate-300">LVL {profile.level}</span>
-              <span className="text-slate-500 text-xs">•</span>
-              <span className="text-xs font-bold text-slate-300">
-                Rank <strong className="text-amber-400">{profile.rankTier}</strong>
-              </span>
-            </button>
-
-            {!isAuthenticated && (
+        <div className="w-full max-w-[430px] lg:max-w-[470px] lg:bg-[#111726]/95 lg:border lg:border-slate-800/90 lg:rounded-3xl lg:shadow-[0_24px_80px_rgba(0,0,0,0.75)] lg:p-5 flex flex-col justify-between flex-1 my-auto">
+          {/* Top Header Bar: Brand Logo | "Play" | Audio & Cloud Controls */}
+          <div>
+            <header className="flex items-center justify-between py-1">
+              {/* Left: Bower JJ Logo */}
               <button
                 onClick={() => {
                   sounds.playUiClick();
-                  onOpenAuth?.(
-                    'register',
-                    'Create a free account or sign in to save your MMR, competitive rank, card packs, and collections across devices.'
-                  );
+                  onOpenProfile();
                 }}
-                className="text-[11px] font-bold text-amber-300/90 hover:text-amber-200 underline decoration-amber-400/50 underline-offset-2 cursor-pointer"
+                className="relative group flex items-center gap-2 cursor-pointer"
+                title="BOWER JJ — Competitive Euchre"
               >
-                Playing as Guest — Sign In to Save Progress
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 p-[2px] shadow-md shadow-amber-500/20 flex items-center justify-center">
+                  <div className="w-full h-full rounded-[10px] bg-[#0f1624] flex flex-col items-center justify-center px-0.5">
+                    <span className="text-[7px] font-black tracking-tighter text-amber-200 leading-none">BOWER</span>
+                    <span className="text-xs font-black text-amber-400 leading-none mt-0.5">JJ</span>
+                  </div>
+                </div>
               </button>
-            )}
-          </div>
 
-          {/* =================================================================
-              HERO TWIN-BOWER EMBLEM + RANK LP PILL
-          ================================================================= */}
-          <div className="relative flex flex-col items-center justify-center py-1.5">
-            {/* Ambient Emerald/Gold Spotlight Behind Cards */}
-            <div className="pointer-events-none absolute w-52 h-28 rounded-full bg-gradient-to-r from-emerald-500/25 via-amber-400/20 to-emerald-500/25 blur-2xl" />
+              {/* Center: "Play" Title */}
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">Play</h1>
 
-            {/* Twin Jack Bowers Crest */}
-            <div
-              onClick={() => {
-                sounds.playUiClick();
-                onOpenLeaderboard();
-              }}
-              className="relative flex items-center justify-center cursor-pointer group"
-              title="Season 1: Bower Sovereign — View World Rankings"
-            >
-              {/* Left Wreath Wing */}
-              <span className="text-amber-400/80 text-xl sm:text-2xl -mr-2 select-none transform -scale-x-100 rotate-12">
-                🌿
-              </span>
-
-              {/* Fan of 3 Jack Bower Cards */}
-              <div className="relative flex items-center justify-center h-24 sm:h-28 w-32 sm:w-36">
-                {/* Left Card: Jack of Spades */}
-                <div className="absolute -left-1 w-14 sm:w-16 h-20 sm:h-24 rounded-xl bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 p-[2px] shadow-xl transform -rotate-16 -translate-x-2.5 group-hover:-rotate-20 transition-transform">
-                  <div className="w-full h-full rounded-[10px] bg-gradient-to-b from-slate-900 to-slate-950 flex flex-col justify-between p-1.5 border border-amber-300/40">
-                    <div className="text-left leading-none">
-                      <div className="text-[11px] sm:text-xs font-black text-amber-300">J</div>
-                      <div className="text-[10px] text-amber-400">♠</div>
-                    </div>
-                    <div className="text-center text-lg sm:text-xl text-amber-300/90 drop-shadow">♠</div>
-                  </div>
-                </div>
-
-                {/* Middle Card: Golden Bower */}
-                <div className="absolute w-14 sm:w-16 h-20 sm:h-24 rounded-xl bg-gradient-to-b from-yellow-200 via-amber-400 to-amber-600 p-[2px] shadow-xl transform -rotate-3 -translate-y-1 z-10 group-hover:-translate-y-2 transition-transform">
-                  <div className="w-full h-full rounded-[10px] bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 flex flex-col justify-between p-1.5 text-slate-950">
-                    <div className="text-left leading-none">
-                      <div className="text-[11px] sm:text-xs font-black">J</div>
-                      <div className="text-[10px] font-black">♣</div>
-                    </div>
-                    <div className="text-center text-lg sm:text-xl font-black">♣</div>
-                  </div>
-                </div>
-
-                {/* Right Front Card: Emerald Sovereign Jack of Clubs */}
-                <div className="absolute right-0 w-15 sm:w-[66px] h-20 sm:h-24 rounded-xl bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 p-[2px] shadow-[0_10px_28px_rgba(16,185,129,0.4)] transform rotate-12 translate-x-2.5 z-20 group-hover:rotate-16 transition-transform">
-                  <div className="w-full h-full rounded-[9px] bg-gradient-to-br from-emerald-800 via-emerald-900 to-slate-950 flex flex-col justify-between p-1.5 border border-emerald-400/40">
-                    <div className="text-left leading-none">
-                      <div className="text-[11px] sm:text-xs font-black text-amber-300">J</div>
-                      <div className="text-[10px] text-amber-300">♣</div>
-                    </div>
-                    <div className="text-center text-xl sm:text-2xl text-amber-300 drop-shadow-[0_2px_8px_rgba(251,191,36,0.5)]">
-                      ♣
-                    </div>
-                    <div className="h-0.5 w-full rounded-full bg-amber-400/40" />
-                  </div>
-                </div>
+              {/* Right: Audio Popover & Cloud Status */}
+              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#161f30] border border-slate-700/80 shadow-inner">
+                <AudioControlsPopover />
+                {isAuthenticated ? (
+                  <button
+                    onClick={() => {
+                      sounds.playUiClick();
+                      onOpenProfile();
+                    }}
+                    className="p-1 rounded-full text-emerald-400 hover:bg-slate-800 transition-colors cursor-pointer"
+                    title="Cloud Saved"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      sounds.playUiClick();
+                      onOpenAuth?.('login', 'Sign in to access your saved BOWER JJ profile, rank, and card packs.');
+                    }}
+                    className="p-1 rounded-full text-amber-400 hover:bg-slate-800 transition-colors cursor-pointer"
+                    title="Sign In / Backup"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
+            </header>
 
-              {/* Right Wreath Wing */}
-              <span className="text-amber-400/80 text-xl sm:text-2xl -ml-2 select-none -rotate-12">🌿</span>
+            {/* Profile Identity Pill */}
+            <div className="flex flex-col items-center mt-1 mb-1.5">
+              <button
+                onClick={() => {
+                  sounds.playUiClick();
+                  onOpenProfile();
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#161f30]/95 hover:bg-[#1d283d] border border-slate-700/80 shadow-sm transition-all active:scale-95 cursor-pointer"
+              >
+                <AvatarPortrait avatarId={profile.avatarIcon} size="xs" />
+                <span className="text-xs font-black text-white max-w-[120px] truncate">{profile.username}</span>
+                <span className="text-slate-500 text-xs">•</span>
+                <span className="text-xs font-bold text-slate-300">LVL {profile.level}</span>
+                <span className="text-slate-500 text-xs">•</span>
+                <span className="text-xs font-bold text-slate-300">
+                  Rank <strong className="text-amber-400">{profile.rankTier}</strong>
+                </span>
+              </button>
+
+              {!isAuthenticated && (
+                <button
+                  onClick={() => {
+                    sounds.playUiClick();
+                    onOpenAuth?.(
+                      'register',
+                      'Create a free account or sign in to save your MMR, competitive rank, card packs, and collections across devices.'
+                    );
+                  }}
+                  className="text-[10px] font-bold text-amber-300/80 hover:text-amber-200 underline decoration-amber-400/40 mt-0.5 cursor-pointer"
+                >
+                  Playing as Guest — Sign In to Save
+                </button>
+              )}
             </div>
 
-            {/* Overlapping Single-Line Rank & LP Pill */}
-            <button
-              onClick={() => {
-                sounds.playUiClick();
-                onOpenLeaderboard();
-              }}
-              className="relative z-30 -mt-2.5 inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#151d2e] hover:bg-[#1c263b] border border-amber-400/50 shadow-[0_6px_20px_rgba(0,0,0,0.65)] transition-all active:scale-95 cursor-pointer"
-            >
-              <span className="w-5 h-5 rounded-md bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 font-black text-[11px] flex items-center justify-center shadow">
-                {profile.rankTier}
-              </span>
-              <span className="text-xs font-black text-white">
-                Rank <span className="text-amber-400">{profile.rankTier}</span>
-              </span>
-              <span className="text-slate-500 text-xs">•</span>
-              <span className="text-xs font-bold text-slate-300">{profile.rankPoints}/100 LP</span>
-            </button>
+            {/* =================================================================
+                HERO TWIN-BOWER EMBLEM + RANK LP PILL
+            ================================================================= */}
+            <div className="relative flex flex-col items-center justify-center py-1">
+              <div className="pointer-events-none absolute w-48 h-24 rounded-full bg-gradient-to-r from-emerald-500/20 via-amber-400/15 to-emerald-500/20 blur-xl" />
+
+              <div
+                onClick={() => {
+                  sounds.playUiClick();
+                  onOpenLeaderboard();
+                }}
+                className="relative flex items-center justify-center cursor-pointer group"
+                title="Season 1: Bower Sovereign — View World Rankings"
+              >
+                <span className="text-amber-400/80 text-lg -mr-2 select-none transform -scale-x-100 rotate-12">
+                  🌿
+                </span>
+
+                {/* Compact Fan of 3 Jack Bower Cards */}
+                <div className="relative flex items-center justify-center h-20 w-28">
+                  {/* Left Card: Jack of Spades */}
+                  <div className="absolute -left-1 w-12 h-17 rounded-lg bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 p-[1.5px] shadow-lg transform -rotate-16 -translate-x-2 group-hover:-rotate-20 transition-transform">
+                    <div className="w-full h-full rounded-[6.5px] bg-gradient-to-b from-slate-900 to-slate-950 flex flex-col justify-between p-1 border border-amber-300/40">
+                      <div className="text-left leading-none">
+                        <div className="text-[10px] font-black text-amber-300">J</div>
+                        <div className="text-[9px] text-amber-400">♠</div>
+                      </div>
+                      <div className="text-center text-base text-amber-300/90">♠</div>
+                    </div>
+                  </div>
+
+                  {/* Middle Card: Golden Bower */}
+                  <div className="absolute w-12 h-17 rounded-lg bg-gradient-to-b from-yellow-200 via-amber-400 to-amber-600 p-[1.5px] shadow-lg transform -rotate-3 -translate-y-0.5 z-10 group-hover:-translate-y-1.5 transition-transform">
+                    <div className="w-full h-full rounded-[6.5px] bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 flex flex-col justify-between p-1 text-slate-950">
+                      <div className="text-left leading-none">
+                        <div className="text-[10px] font-black">J</div>
+                        <div className="text-[9px] font-black">♣</div>
+                      </div>
+                      <div className="text-center text-base font-black">♣</div>
+                    </div>
+                  </div>
+
+                  {/* Right Card: Emerald Sovereign Jack of Clubs */}
+                  <div className="absolute right-0 w-13 h-17 rounded-lg bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 p-[1.5px] shadow-[0_6px_20px_rgba(16,185,129,0.35)] transform rotate-12 translate-x-2 z-20 group-hover:rotate-16 transition-transform">
+                    <div className="w-full h-full rounded-[6.5px] bg-gradient-to-br from-emerald-800 via-emerald-900 to-slate-950 flex flex-col justify-between p-1 border border-emerald-400/40">
+                      <div className="text-left leading-none">
+                        <div className="text-[10px] font-black text-amber-300">J</div>
+                        <div className="text-[9px] text-amber-300">♣</div>
+                      </div>
+                      <div className="text-center text-lg text-amber-300 drop-shadow">♣</div>
+                    </div>
+                  </div>
+                </div>
+
+                <span className="text-amber-400/80 text-lg -ml-2 select-none -rotate-12">🌿</span>
+              </div>
+
+              {/* Single-Line Compact Rank & LP Pill */}
+              <button
+                onClick={() => {
+                  sounds.playUiClick();
+                  onOpenLeaderboard();
+                }}
+                className="relative z-30 -mt-2 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#151d2e] hover:bg-[#1c263b] border border-amber-400/50 shadow-md transition-all active:scale-95 cursor-pointer"
+              >
+                <span className="w-4 h-4 rounded bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 font-black text-[10px] flex items-center justify-center shadow">
+                  {profile.rankTier}
+                </span>
+                <span className="text-xs font-black text-white">
+                  Rank <span className="text-amber-400">{profile.rankTier}</span>
+                </span>
+                <span className="text-slate-500 text-xs">•</span>
+                <span className="text-[11px] font-bold text-slate-300">{profile.rankPoints}/100 LP</span>
+              </button>
+            </div>
           </div>
 
           {/* =================================================================
-              QUICK-PLAY MODE SELECTOR BAR + GIANT 3D "START GAME" BUTTON
+              UNIFIED GAME MODE SELECTOR + GIANT 3D "START GAME" CTA
           ================================================================= */}
-          <div className="mt-3 space-y-3">
-            {/* Selector Dropdown Pill (Matches Chess.com "10 min v" bar) */}
+          <div className="my-2 space-y-2">
+            {/* The Slide-Down "Select Game Mode" Pill */}
             <div className="relative">
               <button
                 onClick={() => {
                   sounds.playUiClick();
                   setIsQuickSelectorOpen((prev) => !prev);
+                  setIsBotsDrawerOpen(false);
                 }}
-                className="w-full py-3 px-4 rounded-2xl bg-[#161f30] hover:bg-[#1c273d] border border-slate-700/80 flex items-center justify-center gap-2.5 shadow-md transition-all cursor-pointer"
+                className="w-full py-2.5 px-3.5 rounded-2xl bg-[#161f30] hover:bg-[#1c273d] border border-slate-700/80 flex items-center justify-between shadow-sm transition-all cursor-pointer"
               >
-                {activeModeMeta.icon}
-                <span className="text-sm sm:text-base font-black text-white">{activeModeMeta.title}</span>
-                <span className="text-slate-400 text-sm font-bold">• {activeModeMeta.sub}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  {activeModeMeta.icon}
+                  <span className="text-xs font-black uppercase tracking-wider text-amber-300 flex-shrink-0">
+                    Select Game Mode:
+                  </span>
+                  <span className="text-xs sm:text-sm font-black text-white truncate">
+                    {activeModeMeta.title}
+                  </span>
+                  <span className="text-slate-400 text-xs font-bold hidden sm:inline flex-shrink-0">
+                    • {activeModeMeta.sub}
+                  </span>
+                </div>
                 <ChevronDown
-                  className={`w-4 h-4 text-slate-400 ml-1 transition-transform duration-200 ${
+                  className={`w-4 h-4 text-slate-400 ml-1.5 flex-shrink-0 transition-transform duration-200 ${
                     isQuickSelectorOpen ? 'rotate-180 text-amber-400' : ''
                   }`}
                 />
               </button>
 
-              {/* Inline Mode & Rule Selector Drawer */}
+              {/* The Slide-Down Modal/Drawer (Holds ALL game modes in one clean menu) */}
               {isQuickSelectorOpen && (
-                <div className="mt-2 p-3.5 rounded-2xl bg-[#131b2b] border border-slate-700 shadow-2xl space-y-3 animate-in fade-in duration-150">
-                  <div className="text-[11px] font-black uppercase tracking-wider text-slate-400 px-1">
-                    Select Quick-Start Mode
+                <div className="absolute top-full left-0 right-0 z-40 mt-1.5 p-3 rounded-2xl bg-[#131b2b] border border-slate-700 shadow-2xl space-y-2 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                      Choose Your Game Mode
+                    </span>
+                    <button
+                      onClick={() => setIsQuickSelectorOpen(false)}
+                      className="p-1 rounded-md text-slate-400 hover:text-white cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <div className="grid grid-cols-1 gap-1.5">
+
+                  <div className="grid grid-cols-1 gap-1">
                     {(
                       [
                         {
                           id: 'ranked_solo',
                           label: 'Ranked Solo Queue',
-                          desc: 'Competitive MMR • 10 pts',
+                          desc: 'Competitive MMR • 10 pts • Earn Rank LP',
                           icon: <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />,
-                        },
-                        {
-                          id: 'ai_bots',
-                          label: 'Play Bots (Instant AI)',
-                          desc: `${selectedDifficulty.toUpperCase()} • ${targetScore} pts`,
-                          icon: <Bot className="w-4 h-4 text-emerald-400" />,
                         },
                         {
                           id: 'unranked',
                           label: 'Casual Play (Unranked)',
-                          desc: 'Zero rank loss • Earn XP',
+                          desc: 'Zero rank loss • Practice & Earn XP',
                           icon: <Shield className="w-4 h-4 text-cyan-400" />,
-                        },
-                        {
-                          id: 'private',
-                          label: 'Private Lobby Room',
-                          desc: 'Create or Join with Room Code',
-                          icon: <Users className="w-4 h-4 text-amber-300" />,
                         },
                         {
                           id: 'rivalry',
                           label: 'Friendly Rivalry',
                           desc: 'Challenge a friend head-to-head',
                           icon: <Swords className="w-4 h-4 text-cyan-300" />,
+                        },
+                        {
+                          id: 'private',
+                          label: 'Private Room Lobby',
+                          desc: 'Play with friends using room code',
+                          icon: <Users className="w-4 h-4 text-amber-300" />,
+                        },
+                        {
+                          id: 'ai_bots',
+                          label: 'Play Bots (Instant AI)',
+                          desc: `${selectedDifficulty.toUpperCase()} • ${targetScore} pts • Offline & Ready`,
+                          icon: <Bot className="w-4 h-4 text-emerald-400" />,
                         },
                       ] as const
                     ).map((opt) => (
@@ -600,30 +583,30 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                             setIsQuickSelectorOpen(false);
                           }
                         }}
-                        className={`w-full px-3.5 py-2.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                        className={`w-full px-3 py-2 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
                           quickMode === opt.id
                             ? 'bg-emerald-500/15 border-emerald-400/70 text-white'
                             : 'bg-[#182235] border-slate-800 text-slate-300 hover:bg-[#1e2a40]'
                         }`}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2.5">
                           {opt.icon}
                           <div>
-                            <div className="text-xs sm:text-sm font-black">{opt.label}</div>
+                            <div className="text-xs font-black">{opt.label}</div>
                             <div className="text-[10px] text-slate-400">{opt.desc}</div>
                           </div>
                         </div>
-                        {quickMode === opt.id && <Check className="w-4 h-4 text-emerald-400" />}
+                        {quickMode === opt.id && <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />}
                       </button>
                     ))}
                   </div>
 
                   {/* Inline Bot Rules when AI Bots is chosen */}
                   {quickMode === 'ai_bots' && (
-                    <div className="pt-2 border-t border-slate-800 space-y-2.5">
+                    <div className="pt-2 border-t border-slate-800 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase">AI Difficulty:</span>
-                        <div className="flex gap-1.5">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">AI Difficulty:</span>
+                        <div className="flex gap-1">
                           {(['easy', 'medium', 'hard'] as AIDifficulty[]).map((d) => (
                             <button
                               key={d}
@@ -631,7 +614,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                                 sounds.playUiClick();
                                 setSelectedDifficulty(d);
                               }}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-black capitalize cursor-pointer ${
+                              className={`px-2 py-0.5 rounded text-[11px] font-black capitalize cursor-pointer ${
                                 selectedDifficulty === d
                                   ? 'bg-emerald-500 text-slate-950'
                                   : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -644,8 +627,8 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase">Target Score:</span>
-                        <div className="flex gap-1.5">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">Target Score:</span>
+                        <div className="flex gap-1">
                           {[5, 7, 10].map((pts) => (
                             <button
                               key={pts}
@@ -653,7 +636,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                                 sounds.playUiClick();
                                 setTargetScore(pts);
                               }}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer ${
+                              className={`px-2 py-0.5 rounded text-[11px] font-black cursor-pointer ${
                                 targetScore === pts
                                   ? 'bg-amber-400 text-slate-950'
                                   : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -664,6 +647,13 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                           ))}
                         </div>
                       </div>
+
+                      <button
+                        onClick={() => setIsQuickSelectorOpen(false)}
+                        className="w-full py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold text-xs cursor-pointer"
+                      >
+                        Confirm &amp; Close Selector
+                      </button>
                     </div>
                   )}
                 </div>
@@ -673,175 +663,120 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             {/* Tactile 3D Green "Start Game" Primary CTA Button */}
             <button
               onClick={handleStartSelectedGame}
-              className="w-full py-4 rounded-2xl bg-gradient-to-b from-[#34d378] via-[#27ae60] to-[#1e8e4c] hover:brightness-105 active:translate-y-0.5 text-white font-black text-xl sm:text-2xl tracking-tight shadow-[0_5px_0_#146435,0_12px_30px_rgba(39,174,96,0.38)] border-t border-emerald-300/40 transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-3.5 sm:py-4 rounded-2xl bg-gradient-to-b from-[#34d378] via-[#27ae60] to-[#1e8e4c] hover:brightness-105 active:translate-y-0.5 text-white font-black text-lg sm:text-xl tracking-tight shadow-[0_4px_0_#146435,0_10px_25px_rgba(39,174,96,0.35)] border-t border-emerald-300/40 transition-all cursor-pointer flex items-center justify-center gap-2"
             >
+              <Play className="w-5 h-5 fill-white" />
               <span>Start Game</span>
             </button>
           </div>
 
           {/* =================================================================
-              4 STACKED PRIMARY MODE CARDS (Chess.com-style vertical rows)
+              COMPACT ACTION BUTTONS (Clean, no scroll, zero redundancy)
           ================================================================= */}
-          <div className="mt-4 space-y-2.5">
-            {/* ROW 1: RANKED & RIVALRY */}
-            <div className="rounded-2xl bg-[#161f30] border border-slate-700/75 overflow-hidden shadow-md transition-all">
-              <button
-                onClick={() => toggleCard('ranked')}
-                className="w-full px-4 py-3.5 hover:bg-[#1c273d] flex items-center justify-between transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-2xl shadow-inner flex-shrink-0">
-                    🏆
-                  </div>
-                  <span className="text-base sm:text-lg font-black text-white">Ranked &amp; Rivalry</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold text-amber-400 hidden sm:inline">
-                    {100 - profile.rankPoints} LP to Promo
-                  </span>
-                  <ChevronDown
-                    className={`w-4 h-4 text-slate-400 transition-transform ${
-                      expandedCard === 'ranked' ? 'rotate-180 text-amber-400' : ''
-                    }`}
-                  />
-                </div>
-              </button>
-
-              {expandedCard === 'ranked' && (
-                <div className="px-4 pb-4 pt-1 border-t border-slate-800/80 bg-[#121a29] space-y-2.5 animate-in fade-in duration-150">
-                  <p className="text-xs text-slate-300">
-                    Season 1: Bower Sovereign — {100 - profile.rankPoints} points until promotion! Opponents balanced via hidden MMR.
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <button
-                      onClick={() => {
-                        sounds.playUiClick();
-                        onOpenMatchmaking('ranked_solo');
-                      }}
-                      className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:brightness-110 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow cursor-pointer"
-                    >
-                      <Zap className="w-4 h-4 fill-slate-950" />
-                      <span>Ranked Solo Queue</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        sounds.playUiClick();
-                        onOpenRivalryInvite();
-                      }}
-                      className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-cyan-500/40 text-cyan-300 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Swords className="w-4 h-4 text-cyan-400" />
-                      <span>Friendly Rivalry</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* ROW 2: PLAY A FRIEND (PRIVATE LOBBY & RIVALRY) */}
-            <div className="rounded-2xl bg-[#161f30] border border-slate-700/75 overflow-hidden shadow-md transition-all">
+          <div className="space-y-2 mt-1">
+            {/* ROW 1: PLAY A FRIEND (Private Lobby) */}
+            <div className="rounded-2xl bg-[#161f30] border border-slate-700/75 overflow-hidden shadow-sm transition-all">
               <button
                 onClick={() => {
                   sounds.playUiClick();
                   onOpenMatchmaking('private');
                 }}
-                className="w-full px-4 py-3.5 hover:bg-[#1c273d] flex items-center justify-between transition-colors cursor-pointer"
+                className="w-full px-3.5 py-3 hover:bg-[#1c273d] flex items-center justify-between transition-colors cursor-pointer"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-2xl shadow-inner flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-xl shadow-inner flex-shrink-0">
                     🤝
                   </div>
                   <div className="text-left">
-                    <div className="text-base sm:text-lg font-black text-white">Play a Friend</div>
+                    <div className="text-sm font-black text-white">Play a Friend</div>
                   </div>
                 </div>
                 <span className="text-xs font-bold text-slate-400">Private Lobby ›</span>
               </button>
             </div>
 
-            {/* ROW 3: PLAY BOTS (AI MATCH + INLINE SETTINGS) */}
-            <div className="rounded-2xl bg-[#161f30] border border-slate-700/75 overflow-hidden shadow-md transition-all">
+            {/* ROW 2: PLAY BOTS (Instant AI Practice + Settings) */}
+            <div className="rounded-2xl bg-[#161f30] border border-slate-700/75 overflow-hidden shadow-sm transition-all">
               <button
-                onClick={() => toggleCard('bots')}
-                className="w-full px-4 py-3.5 hover:bg-[#1c273d] flex items-center justify-between transition-colors cursor-pointer"
+                onClick={() => {
+                  sounds.playUiClick();
+                  setIsBotsDrawerOpen((prev) => !prev);
+                }}
+                className="w-full px-3.5 py-3 hover:bg-[#1c273d] flex items-center justify-between transition-colors cursor-pointer"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-2xl shadow-inner flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-xl shadow-inner flex-shrink-0">
                     🤖
                   </div>
                   <div className="text-left">
-                    <span className="text-base sm:text-lg font-black text-white block leading-tight">Play Bots</span>
+                    <span className="text-sm font-black text-white block leading-tight">Play Bots</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[11px] font-bold text-emerald-300 capitalize">
+                  <span className="px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-bold text-emerald-300 capitalize">
                     {selectedDifficulty} • {targetScore} pts
                   </span>
-                  <SlidersHorizontal className="w-4 h-4 text-slate-400" />
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
                 </div>
               </button>
 
-              {expandedCard === 'bots' && (
-                <div className="px-4 pb-4 pt-2 border-t border-slate-800/80 bg-[#121a29] space-y-3 animate-in fade-in duration-150">
-                  <div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">
-                      AI Difficulty
-                    </span>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { id: 'easy', label: 'Easy', desc: 'Beginner' },
-                        { id: 'medium', label: 'Medium', desc: 'Tactical' },
-                        { id: 'hard', label: 'Hard', desc: 'Master Mind' },
-                      ].map((diff) => (
+              {/* Inline Bot Controls */}
+              {isBotsDrawerOpen && (
+                <div className="px-3.5 pb-3 pt-1 border-t border-slate-800/80 bg-[#121a29] space-y-2.5 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">AI Difficulty:</span>
+                    <div className="flex gap-1">
+                      {(['easy', 'medium', 'hard'] as AIDifficulty[]).map((d) => (
                         <button
-                          key={diff.id}
+                          key={d}
                           onClick={() => {
                             sounds.playUiClick();
-                            setSelectedDifficulty(diff.id as AIDifficulty);
+                            setSelectedDifficulty(d);
                           }}
-                          className={`p-2 rounded-xl border text-center transition-all cursor-pointer ${
-                            selectedDifficulty === diff.id
-                              ? 'bg-emerald-500/20 border-emerald-400 text-white ring-1 ring-emerald-400'
-                              : 'bg-slate-800/90 border-slate-700 text-slate-400 hover:text-white'
+                          className={`px-2 py-0.5 rounded text-[11px] font-black capitalize cursor-pointer ${
+                            selectedDifficulty === d
+                              ? 'bg-emerald-500 text-slate-950'
+                              : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                           }`}
                         >
-                          <div className="text-xs font-black">{diff.label}</div>
-                          <div className="text-[9px] opacity-75">{diff.desc}</div>
+                          {d}
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-slate-400">Points:</span>
-                      {[5, 7, 10].map((pts) => (
-                        <button
-                          key={pts}
-                          onClick={() => {
-                            sounds.playUiClick();
-                            setTargetScore(pts);
-                          }}
-                          className={`px-2.5 py-1 rounded-lg font-black text-xs cursor-pointer ${
-                            targetScore === pts
-                              ? 'bg-amber-500 text-slate-950'
-                              : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                          }`}
-                        >
-                          {pts}
-                        </button>
-                      ))}
-                    </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Target Points:</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1">
+                        {[5, 7, 10].map((pts) => (
+                          <button
+                            key={pts}
+                            onClick={() => {
+                              sounds.playUiClick();
+                              setTargetScore(pts);
+                            }}
+                            className={`px-2 py-0.5 rounded text-[11px] font-black cursor-pointer ${
+                              targetScore === pts
+                                ? 'bg-amber-500 text-slate-950'
+                                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                            }`}
+                          >
+                            {pts}
+                          </button>
+                        ))}
+                      </div>
 
-                    <label className="flex items-center gap-2 text-xs text-slate-300 font-bold cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={stickTheDealer}
-                        onChange={(e) => setStickTheDealer(e.target.checked)}
-                        className="rounded text-amber-500 focus:ring-0"
-                      />
-                      <span>Stick The Dealer</span>
-                    </label>
+                      <label className="flex items-center gap-1.5 text-[11px] text-slate-300 font-bold cursor-pointer ml-1">
+                        <input
+                          type="checkbox"
+                          checked={stickTheDealer}
+                          onChange={(e) => setStickTheDealer(e.target.checked)}
+                          className="rounded text-amber-500 focus:ring-0"
+                        />
+                        <span>Stick</span>
+                      </label>
+                    </div>
                   </div>
 
                   <button
@@ -853,17 +788,17 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                         stickTheDealer,
                       });
                     }}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 text-slate-950 font-black text-xs sm:text-sm shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <Play className="w-4 h-4 fill-slate-950" />
-                    <span>Start AI Game Now</span>
+                    <Play className="w-3.5 h-3.5 fill-slate-950" />
+                    <span>Launch AI Match Now</span>
                   </button>
                 </div>
               )}
             </div>
 
-            {/* ROW 4: CARD VAULT & PACKS */}
-            <div className="rounded-2xl bg-[#161f30] border border-slate-700/75 overflow-hidden shadow-md transition-all">
+            {/* ROW 3: CARD VAULT & PACKS */}
+            <div className="rounded-2xl bg-[#161f30] border border-slate-700/75 overflow-hidden shadow-sm transition-all">
               <div
                 onClick={() => {
                   sounds.playUiClick();
@@ -873,10 +808,10 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                     onOpenCollection('collections');
                   }
                 }}
-                className="w-full px-4 py-3.5 hover:bg-[#1c273d] flex items-center justify-between transition-colors cursor-pointer"
+                className="w-full px-3.5 py-3 hover:bg-[#1c273d] flex items-center justify-between transition-colors cursor-pointer"
               >
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="relative w-10 h-12 rounded-lg overflow-hidden border border-amber-400/70 shadow-md flex-shrink-0 bg-slate-950">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="relative w-8 h-10 rounded-md overflow-hidden border border-amber-400/70 shadow-sm flex-shrink-0 bg-slate-950">
                     <img
                       src={PACK_ARTWORK_URL}
                       alt="Bower JJ Pack"
@@ -884,12 +819,12 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                     />
                   </div>
                   <div className="text-left min-w-0">
-                    <span className="text-base sm:text-lg font-black text-white block truncate">
+                    <span className="text-sm font-black text-white block truncate">
                       Card Vault &amp; Packs
                     </span>
                     {unopenedPacksCount > 0 && (
-                      <span className="text-[11px] font-bold text-amber-300 block">
-                        Tap to tear open booster packs!
+                      <span className="text-[10px] font-bold text-amber-300 block">
+                        Tap to unseal booster packs!
                       </span>
                     )}
                   </div>
@@ -897,115 +832,16 @@ export const MainMenu: React.FC<MainMenuProps> = ({
 
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {unopenedPacksCount > 0 ? (
-                    <span className="px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/30 to-yellow-500/20 border border-amber-400/70 text-amber-200 font-black text-xs flex items-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.3)]">
-                      <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                    <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500/30 to-yellow-500/20 border border-amber-400/70 text-amber-200 font-black text-xs flex items-center gap-1.5 shadow-[0_0_12px_rgba(245,158,11,0.25)]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
                       <span>{unopenedPacksCount}</span>
                     </span>
                   ) : (
-                    <span className="text-xs font-bold text-slate-400">Open ›</span>
+                    <span className="text-xs font-bold text-slate-400">Vault ›</span>
                   )}
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* =================================================================
-              "MORE ⌄" TOGGLE BUTTON & SECONDARY DRAWER
-          ================================================================= */}
-          <div className="mt-4 flex flex-col items-center">
-            <button
-              onClick={() => {
-                sounds.playUiClick();
-                setIsMoreOpen((prev) => !prev);
-              }}
-              className="px-6 py-2 rounded-full bg-[#161f30] hover:bg-[#1c273d] border border-slate-700/80 text-slate-200 font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow transition-all cursor-pointer"
-            >
-              <span>More</span>
-              {isMoreOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
-
-            {isMoreOpen && (
-              <div className="w-full mt-3 space-y-2.5 animate-in fade-in duration-150">
-                {/* Casual Play (Unranked) */}
-                <button
-                  onClick={() => {
-                    sounds.playUiClick();
-                    onOpenMatchmaking('unranked');
-                  }}
-                  className="w-full px-4 py-3 rounded-2xl bg-[#161f30] hover:bg-[#1c273d] border border-slate-700/75 flex items-center justify-between transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-cyan-300">
-                      <Shield className="w-5 h-5" />
-                    </div>
-                    <div className="text-left">
-                      <div className="text-sm font-black text-white">Casual Play (Unranked)</div>
-                      <div className="text-[11px] text-slate-400">Practice experimental calls with zero rank loss</div>
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold text-cyan-300">Play ›</span>
-                </button>
-
-                {/* Open Collection Armory */}
-                <button
-                  onClick={() => {
-                    sounds.playUiClick();
-                    onOpenCollection('collections');
-                  }}
-                  className="w-full px-4 py-3 rounded-2xl bg-[#161f30] hover:bg-[#1c273d] border border-slate-700/75 flex items-center justify-between transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-300">
-                      <Layers className="w-5 h-5" />
-                    </div>
-                    <div className="text-left">
-                      <div className="text-sm font-black text-white">Browse All 10 Card Collections</div>
-                      <div className="text-[11px] text-slate-400">Equip custom Card Backs &amp; Illustrated Avatars</div>
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold text-amber-300">Vault ›</span>
-                </button>
-
-                {/* Tutorial, Rules & Trophies Grid */}
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    onClick={() => {
-                      sounds.playUiClick();
-                      onOpenTutorial();
-                    }}
-                    className="p-3 rounded-2xl bg-[#161f30] hover:bg-[#1c273d] border border-slate-700/75 text-left transition-all cursor-pointer"
-                  >
-                    <HelpCircle className="w-4 h-4 text-amber-400 mb-1" />
-                    <div className="text-xs font-black text-white">Tutorial</div>
-                    <div className="text-[10px] text-slate-400">Step-by-step</div>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      sounds.playUiClick();
-                      onOpenRules();
-                    }}
-                    className="p-3 rounded-2xl bg-[#161f30] hover:bg-[#1c273d] border border-slate-700/75 text-left transition-all cursor-pointer"
-                  >
-                    <BookOpen className="w-4 h-4 text-cyan-400 mb-1" />
-                    <div className="text-xs font-black text-white">Rules</div>
-                    <div className="text-[10px] text-slate-400">Compendium</div>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      sounds.playUiClick();
-                      onOpenAchievements();
-                    }}
-                    className="p-3 rounded-2xl bg-[#161f30] hover:bg-[#1c273d] border border-slate-700/75 text-left transition-all cursor-pointer"
-                  >
-                    <Trophy className="w-4 h-4 text-yellow-400 mb-1" />
-                    <div className="text-xs font-black text-white">Trophies</div>
-                    <div className="text-[10px] text-slate-400">Achievements</div>
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </main>
@@ -1113,7 +949,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       </aside>
 
       {/* =====================================================================
-          MOBILE BOTTOM NAVIGATION BAR (5 Tabs — Matches Chess.com Reference)
+          MOBILE BOTTOM NAVIGATION BAR (5 Tabs — Matches Native App Format)
       ===================================================================== */}
       <nav
         className="fixed bottom-0 inset-x-0 z-30 lg:hidden bg-[#0e1320]/95 backdrop-blur-xl border-t border-slate-800/90"
@@ -1124,9 +960,8 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           <button
             onClick={() => {
               sounds.playUiClick();
-              setExpandedCard(null);
-              setIsMoreOpen(false);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              setIsQuickSelectorOpen(false);
+              setIsBotsDrawerOpen(false);
             }}
             className="relative py-2.5 flex flex-col items-center justify-center text-emerald-400 cursor-pointer"
           >
@@ -1154,11 +989,11 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             <span className="text-[10px] font-bold mt-1">Vault</span>
           </button>
 
-          {/* Tab 3: Learn */}
+          {/* Tab 3: Learn (Tutorial & Rules) */}
           <button
             onClick={() => {
               sounds.playUiClick();
-              onOpenTutorial();
+              setIsLearnDialogOpen(true);
             }}
             className="py-2.5 flex flex-col items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
           >
@@ -1166,7 +1001,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             <span className="text-[10px] font-bold mt-1">Learn</span>
           </button>
 
-          {/* Tab 4: Rankings */}
+          {/* Tab 4: Rankings (Leaderboard & Achievements) */}
           <button
             onClick={() => {
               sounds.playUiClick();
@@ -1198,6 +1033,68 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           </button>
         </div>
       </nav>
+
+      {/* Learn Dialog (Tutorial vs Rules) */}
+      {isLearnDialogOpen && (
+        <div
+          onClick={() => setIsLearnDialogOpen(false)}
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-3xl bg-[#131b2b] border border-slate-700 p-5 shadow-2xl space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-cyan-300 font-black text-sm">
+                <GraduationCap className="w-5 h-5" />
+                <span>Learn Euchre</span>
+              </div>
+              <button
+                onClick={() => setIsLearnDialogOpen(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2.5">
+              <button
+                onClick={() => {
+                  sounds.playUiClick();
+                  setIsLearnDialogOpen(false);
+                  onOpenTutorial();
+                }}
+                className="w-full p-3.5 rounded-2xl bg-[#182235] hover:bg-[#1e2a40] border border-slate-700/80 text-left flex items-center gap-3.5 cursor-pointer transition-all"
+              >
+                <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-300 flex-shrink-0">
+                  <HelpCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-black text-white">Interactive Tutorial</div>
+                  <div className="text-[11px] text-slate-400">Step-by-step Euchre walkthrough for beginners</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  sounds.playUiClick();
+                  setIsLearnDialogOpen(false);
+                  onOpenRules();
+                }}
+                className="w-full p-3.5 rounded-2xl bg-[#182235] hover:bg-[#1e2a40] border border-slate-700/80 text-left flex items-center gap-3.5 cursor-pointer transition-all"
+              >
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-cyan-300 flex-shrink-0">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-black text-white">Rules Compendium</div>
+                  <div className="text-[11px] text-slate-400">Bower hierarchy, ordering up, scoring &amp; reneging</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
