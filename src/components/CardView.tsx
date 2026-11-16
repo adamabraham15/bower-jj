@@ -63,7 +63,7 @@ const SIZE_CONFIG = {
   },
 };
 
-// Crisp Vector SVG Suit Icons
+// Crisp Vector SVG Suit Icons (Authentic Casino Shapes, Deep Black Spades/Clubs, Crimson Red Hearts/Diamonds)
 export const SuitIcon: React.FC<{ suit: Suit; className?: string }> = ({ suit, className = 'w-4 h-4' }) => {
   switch (suit) {
     case 'hearts':
@@ -74,20 +74,20 @@ export const SuitIcon: React.FC<{ suit: Suit; className?: string }> = ({ suit, c
       );
     case 'diamonds':
       return (
-        <svg viewBox="0 0 24 24" className={`${className} fill-amber-600 drop-shadow-sm flex-shrink-0`}>
-          <path d="M12 2L3.5 12l8.5 10 8.5-10L12 2z" />
+        <svg viewBox="0 0 24 24" className={`${className} fill-red-600 drop-shadow-sm flex-shrink-0`}>
+          <path d="M12 2L4 12l8 10 8-10L12 2z" />
         </svg>
       );
     case 'spades':
       return (
-        <svg viewBox="0 0 24 24" className={`${className} fill-slate-900 drop-shadow-sm flex-shrink-0`}>
-          <path d="M12 2C8.2 6.2 4 10.5 4 14.2a5 5 0 0 0 9 3v2.8h-2.5v2h7v-2H15v-2.8a5 5 0 0 0 9-3c0-3.7-4.2-8-8-12.2z" />
+        <svg viewBox="0 0 24 24" className={`${className} fill-black drop-shadow-sm flex-shrink-0`}>
+          <path d="M12 2C8.5 6.5 4 11 4 14.5a4.5 4.5 0 0 0 7.5 3.3L10.5 21h3l-1-3.2A4.5 4.5 0 0 0 20 14.5C20 11 15.5 6.5 12 2z" />
         </svg>
       );
     case 'clubs':
       return (
-        <svg viewBox="0 0 24 24" className={`${className} fill-emerald-800 drop-shadow-sm flex-shrink-0`}>
-          <path d="M12 2.5a4 4 0 0 0-3.8 2.7A4 4 0 0 0 4 8.5a4 4 0 0 0 4 4c.4 0 .8-.1 1.2-.2A4 4 0 0 0 11 16.2v2.8H8.5v2h7v-2H13v-2.8a4 4 0 0 0 1.8-3.9c.4.1.8.2 1.2.2a4 4 0 0 0 4-4 4 4 0 0 0-4.2-3.3A4 4 0 0 0 12 2.5z" />
+        <svg viewBox="0 0 24 24" className={`${className} fill-black drop-shadow-sm flex-shrink-0`}>
+          <path d="M12 2a4 4 0 0 0-3.5 6A4 4 0 0 0 4.5 12a4 4 0 0 0 4 4c.6 0 1.2-.1 1.7-.4L9.5 21h5l-.7-5.4c.5.3 1.1.4 1.7.4a4 4 0 0 0 4-4 4 4 0 0 0-4-4 4 4 0 0 0-3.5-2z" />
         </svg>
       );
   }
@@ -188,11 +188,11 @@ export const CardView: React.FC<CardViewProps> = ({
       <div
         onClick={isPlayable ? onClick : undefined}
         className={`relative rounded-xl transition-all duration-200 ease-out flex-shrink-0
-          ${isPlayable ? 'cursor-pointer hover:-translate-y-2 active:scale-95' : 'opacity-65 cursor-not-allowed'}
+          ${isPlayable ? 'cursor-pointer hover:-translate-y-2 active:scale-95' : 'opacity-60 cursor-not-allowed'}
           ${isSelected ? '-translate-y-3 ring-4 ring-amber-400 shadow-amber-500/60 scale-105' : ''}
-          ${isPlayable && !isSelected ? 'hover:shadow-cyan-500/50 hover:ring-2 hover:ring-cyan-400' : ''}
-          border-2 ${isRight ? 'border-amber-400 ring-2 ring-amber-400/60' : isLeft ? 'border-cyan-400 ring-2 ring-cyan-400/60' : 'border-slate-300'}
-          bg-gradient-to-b from-white via-slate-50 to-slate-200 shadow-xl overflow-hidden`}
+          ${isPlayable && !isSelected ? 'hover:shadow-amber-500/30 hover:ring-2 hover:ring-amber-400/70' : ''}
+          border-2 ${isRight ? 'border-amber-400 ring-2 ring-amber-400/70' : isLeft ? 'border-amber-300 ring-2 ring-amber-300/60' : 'border-slate-300'}
+          bg-gradient-to-b from-white via-stone-50 to-stone-100 shadow-xl overflow-hidden`}
         style={{
           width: `${cfg.w}px`,
           height: `${cfg.h}px`,
@@ -206,18 +206,18 @@ export const CardView: React.FC<CardViewProps> = ({
           boxShadow: isRight
             ? '0 0 20px rgba(245, 158, 11, 0.7), 0 8px 16px rgba(0,0,0,0.5)'
             : isLeft
-            ? '0 0 16px rgba(56, 189, 248, 0.7), 0 8px 16px rgba(0,0,0,0.5)'
+            ? '0 0 16px rgba(245, 158, 11, 0.45), 0 8px 16px rgba(0,0,0,0.5)'
             : '0 4px 12px rgba(0,0,0,0.3)',
         }}
       >
         {/* Bower Ribbons */}
         {isRight && (
-          <div className={`absolute top-0 right-0 left-0 bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black ${cfg.ribbonClass} text-center tracking-wider uppercase z-10 shadow-sm leading-none`}>
+          <div className={`absolute top-0 right-0 left-0 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 font-black ${cfg.ribbonClass} text-center tracking-wider uppercase z-10 shadow-sm leading-none`}>
             RIGHT BOWER
           </div>
         )}
         {isLeft && (
-          <div className={`absolute top-0 right-0 left-0 bg-gradient-to-r from-cyan-500 to-blue-400 text-slate-950 font-black ${cfg.ribbonClass} text-center tracking-wider uppercase z-10 shadow-sm leading-none`}>
+          <div className={`absolute top-0 right-0 left-0 bg-gradient-to-r from-amber-200 via-yellow-200 to-amber-400 text-slate-950 font-black ${cfg.ribbonClass} text-center tracking-wider uppercase z-10 shadow-sm leading-none`}>
             LEFT BOWER
           </div>
         )}
@@ -229,7 +229,7 @@ export const CardView: React.FC<CardViewProps> = ({
 
         {/* Top Left Corner */}
         <div className={`absolute top-1 left-1.5 flex flex-col items-center leading-none ${isRight || isLeft || badge ? 'mt-3 sm:mt-3.5' : ''}`}>
-          <span className={`${cfg.rankClass} ${isRed ? 'text-red-600' : 'text-slate-950'}`}>
+          <span className={`${cfg.rankClass} ${isRed ? 'text-red-600' : 'text-black'}`}>
             {card.rank}
           </span>
           <SuitIcon suit={card.suit} className={cfg.cornerIconClass} />
@@ -240,13 +240,13 @@ export const CardView: React.FC<CardViewProps> = ({
           <SuitIcon suit={card.suit} className={cfg.centerIconClass} />
 
           {/* Explicit Suit Label under Pip for 100% Clarity */}
-          <span className={`${cfg.suitLabelClass} font-black uppercase tracking-tighter mt-0.5 ${isRed ? 'text-red-700' : 'text-slate-800'}`}>
+          <span className={`${cfg.suitLabelClass} font-black uppercase tracking-tighter mt-0.5 ${isRed ? 'text-red-600' : 'text-black'}`}>
             {suitLabel}
           </span>
 
           {/* Left Bower Effective Suit Tag */}
           {isLeft && trumpSuit && (
-            <span className="text-[7px] sm:text-[8px] font-black text-cyan-900 bg-cyan-200/95 px-1 rounded-sm mt-0.5 uppercase tracking-tight leading-tight">
+            <span className="text-[7px] sm:text-[8px] font-black text-slate-950 bg-amber-200/95 px-1 rounded-sm mt-0.5 uppercase tracking-tight leading-tight shadow-sm">
               IS {trumpSuit.toUpperCase()}
             </span>
           )}
@@ -254,15 +254,15 @@ export const CardView: React.FC<CardViewProps> = ({
 
         {/* Bottom Right Corner (Inverted) */}
         <div className="absolute bottom-1 right-1.5 flex flex-col items-center leading-none rotate-180">
-          <span className={`${cfg.rankClass} ${isRed ? 'text-red-600' : 'text-slate-950'}`}>
+          <span className={`${cfg.rankClass} ${isRed ? 'text-red-600' : 'text-black'}`}>
             {card.rank}
           </span>
           <SuitIcon suit={card.suit} className={cfg.cornerIconClass} />
         </div>
 
-        {/* Playable Border Pulse */}
+        {/* Playable Border Subtle Golden Sheen */}
         {isPlayable && (
-          <div className="absolute inset-0 border-2 border-emerald-500/50 rounded-xl pointer-events-none" />
+          <div className="absolute inset-0 border border-amber-400/30 rounded-xl pointer-events-none" />
         )}
       </div>
     </div>

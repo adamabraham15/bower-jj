@@ -418,9 +418,9 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
         yourTeam={getPlayerTeam(yourPos)}
       />
 
-      {/* Main Felt Arena */}
-      <main className="relative flex-1 min-h-0 bg-gradient-to-b from-[#071920] via-[#052225] to-[#031317] flex items-center justify-center p-2 sm:p-6 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(16,185,129,0.09)_0%,_transparent_70%)] pointer-events-none" />
+      {/* Main Felt Arena (Unified Royal Midnight Casino Table) */}
+      <main className="relative flex-1 min-h-0 bg-gradient-to-b from-[#0b111e] via-[#0e1626] to-[#080d17] flex items-center justify-center p-2 sm:p-6 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(245,158,11,0.04)_0%,_transparent_70%)] pointer-events-none" />
 
         {/* 4 Seated Player Pods */}
         {[0, 1, 2, 3].map(pos => (
@@ -430,7 +430,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
         ))}
 
         {/* Center Trick Arena */}
-        <div className="relative w-72 h-72 sm:w-84 sm:h-84 rounded-full border border-emerald-500/25 bg-emerald-950/25 backdrop-blur-xs flex items-center justify-center shadow-2xl">
+        <div className="relative w-72 h-72 sm:w-84 sm:h-84 rounded-full border border-amber-400/25 bg-slate-950/45 backdrop-blur-xs flex items-center justify-center shadow-2xl">
           {/* Turned-up Card (Round 1) / Turned-down Card (Round 2) */}
           <CenterKittyDisplay
             phase={serverState.phase}

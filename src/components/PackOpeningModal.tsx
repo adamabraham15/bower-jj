@@ -11,6 +11,8 @@ import {
   Crown,
   Zap,
   ZoomIn,
+  Scissors,
+  ChevronRight,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
@@ -93,7 +95,10 @@ export const PackOpeningModal: React.FC<PackOpeningModalProps> = ({
     shineY: 35,
   });
   const [equippedInSummary, setEquippedInSummary] = useState<Record<string, boolean>>({});
+  const [tearProgress, setTearProgress] = useState<number>(0);
+  const [isTearDragging, setIsTearDragging] = useState<boolean>(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const tearStripRef = useRef<HTMLDivElement | null>(null);
   const particlesRef = useRef<BurstParticle[]>([]);
   const shockwavesRef = useRef<ShockwaveRing[]>([]);
   const chargeStartRef = useRef<number>(0);
@@ -108,6 +113,8 @@ export const PackOpeningModal: React.FC<PackOpeningModalProps> = ({
       setPhase('sealed');
       setRevealedIndices([false, false, false, false, false]);
     }
+    setTearProgress(0);
+    setIsTearDragging(false);
     setJustRevealedIndex(null);
     setSpotlightRarity(null);
     setInspectedCard(null);
@@ -299,12 +306,64 @@ export const PackOpeningModal: React.FC<PackOpeningModalProps> = ({
 
   const handleStartOpen = () => {
     if (phase !== 'sealed' || isOpening || unopenedCount <= 0) return;
+    setTearProgress(1);
     chargeStartRef.current = Date.now();
     setPhase('charging');
     sounds.playPackCharge();
     spawnParticles(42, '#fbbf24', 0.95);
     spawnShockwave('#f59e0b', 220, 2.5);
     onRequestOpenPack();
+  };
+
+  const processTearPointer = (clientX: number) => {
+    if (!tearStripRef.current || phase !== 'sealed' || isOpening || unopenedCount <= 0) return;
+    const rect = tearStripRef.current.getBoundingClientRect();
+    const rawRatio = (clientX - rect.left) / rect.width;
+    const ratio = Math.max(0, Math.min(1, rawRatio));
+    setTearProgress(ratio);
+
+    if (Math.random() < 0.4) {
+      spawnParticles(2, '#fbbf24', 0.8, 0.65);
+    }
+
+    if (ratio >= 0.72) {
+      completeTearGesture();
+    }
+  };
+
+  const handleTearPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (phase !== 'sealed' || isOpening || unopenedCount <= 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsTearDragging(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    processTearPointer(e.clientX);
+  };
+
+  const handleTearPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isTearDragging || phase !== 'sealed') return;
+    processTearPointer(e.clientX);
+  };
+
+  const handleTearPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isTearDragging) return;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // Ignore
+    }
+    setIsTearDragging(false);
+    if (tearProgress >= 0.4) {
+      completeTearGesture();
+    } else {
+      setTearProgress(0);
+    }
+  };
+
+  const completeTearGesture = () => {
+    setIsTearDragging(false);
+    setTearProgress(1);
+    handleStartOpen();
   };
 
   const handleRevealCard = (index: number) => {
@@ -485,6 +544,18 @@ export const PackOpeningModal: React.FC<PackOpeningModalProps> = ({
                   }}
                 />
 
+                {/* Visual Finger Swipe / Click to Tear Prompt */}
+                {phase === 'sealed' && (
+                  <div
+                    onClick={completeTearGesture}
+                    className="mb-3 px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-400/60 shadow-[0_0_20px_rgba(245,158,11,0.3)] flex items-center gap-2 text-amber-300 text-xs font-black cursor-pointer hover:bg-amber-500/30 transition-all select-none animate-pulse"
+                    title="Click or drag to rip open"
+                  >
+                    <Scissors className="w-4 h-4 text-amber-300 rotate-90" />
+                    <span>Swipe finger across or click seam to tear open!</span>
+                  </div>
+                )}
+
                 {/* 3D Interactive Foil Booster Pack */}
                 <div
                   onMouseEnter={() => {
@@ -528,7 +599,7 @@ export const PackOpeningModal: React.FC<PackOpeningModalProps> = ({
                         : 'drop-shadow(0 26px 42px rgba(0,0,0,0.85))',
                   }}
                 >
-                  {/* Top Metallic Crimp Foil Strip (Peels off during 'tearing' phase) */}
+                  {/* Top Metallic Crimp Foil Strip (Peels off dynamically during swipe/drag or tear phase) */}
                   <div
                     className={`pointer-events-none absolute inset-x-0 top-0 h-8 z-30 rounded-t-2xl overflow-hidden border-t-2 border-x-2 border-amber-300/80 transition-all duration-300 ${
                       phase === 'tearing' || phase === 'burst'
@@ -538,6 +609,12 @@ export const PackOpeningModal: React.FC<PackOpeningModalProps> = ({
                     style={{
                       background:
                         'repeating-linear-gradient(90deg, rgba(251,191,36,0.35) 0px, rgba(251,191,36,0.35) 3px, rgba(15,23,42,0.85) 3px, rgba(15,23,42,0.85) 6px)',
+                      transform:
+                        phase === 'tearing' || phase === 'burst'
+                          ? undefined
+                          : tearProgress > 0
+                          ? `translateY(-${tearProgress * 14}px) rotate(${tearProgress * 7}deg) translateX(${tearProgress * 10}px)`
+                          : undefined,
                     }}
                   >
                     <div className="w-full h-full bg-gradient-to-b from-amber-300/35 via-amber-500/15 to-slate-950/80 flex items-center justify-center">
@@ -547,22 +624,58 @@ export const PackOpeningModal: React.FC<PackOpeningModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Interactive Tear Seam Line */}
-                  <div
-                    className={`pointer-events-none absolute inset-x-2 top-8 z-30 flex items-center justify-center transition-all duration-300 ${
-                      phase === 'charging' || phase === 'tearing' ? 'opacity-100 scale-x-105' : 'opacity-80 group-hover:opacity-100'
-                    }`}
-                  >
+                  {/* Interactive Tear Seam Strip (Touch & Drag across, or Click to Tear) */}
+                  {phase === 'sealed' && (
                     <div
-                      className={`w-full h-0.5 transition-all duration-300 ${
-                        phase === 'tearing'
-                          ? 'h-1.5 bg-white shadow-[0_0_24px_#ffffff,0_0_40px_#fbbf24]'
-                          : phase === 'charging'
-                          ? 'h-1 bg-amber-300 shadow-[0_0_16px_#fbbf24]'
-                          : 'border-t border-dashed border-amber-300/70'
-                      }`}
-                    />
-                  </div>
+                      ref={tearStripRef}
+                      onPointerDown={handleTearPointerDown}
+                      onPointerMove={handleTearPointerMove}
+                      onPointerUp={handleTearPointerUp}
+                      onPointerCancel={handleTearPointerUp}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        completeTearGesture();
+                      }}
+                      className="absolute inset-x-0 top-5 h-10 z-40 cursor-ew-resize select-none flex items-center px-2 group/tear"
+                      title="Drag finger or click across to tear open!"
+                    >
+                      {/* Dotted Perforation Seam Line */}
+                      <div className="w-full h-0.5 border-t-2 border-dashed border-amber-300/90 relative">
+                        {/* Light Eruption Laser Beam following tear finger */}
+                        <div
+                          className="absolute left-0 -top-[1.5px] h-1.5 bg-white shadow-[0_0_20px_#ffffff,0_0_35px_#fbbf24] transition-all duration-75 rounded-full"
+                          style={{ width: `${Math.max(0, tearProgress * 100)}%` }}
+                        />
+                      </div>
+
+                      {/* Tactile Pull Tab with Scissors Icon */}
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 font-black text-[9px] shadow-[0_0_16px_rgba(251,191,36,0.95)] border border-amber-200 transition-transform active:scale-110 pointer-events-none"
+                        style={{
+                          left: `${Math.max(4, Math.min(88, tearProgress * 100))}%`,
+                        }}
+                      >
+                        <Scissors className="w-3 h-3 rotate-90" />
+                        <span className="tracking-wider uppercase">TEAR</span>
+                        <ChevronRight className="w-3 h-3 -ml-0.5 animate-pulse" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Static Seam line when not in sealed phase */}
+                  {phase !== 'sealed' && (
+                    <div className="pointer-events-none absolute inset-x-2 top-8 z-30 flex items-center justify-center transition-all duration-300">
+                      <div
+                        className={`w-full h-0.5 transition-all duration-300 ${
+                          phase === 'tearing'
+                            ? 'h-1.5 bg-white shadow-[0_0_24px_#ffffff,0_0_40px_#fbbf24]'
+                            : phase === 'charging'
+                            ? 'h-1 bg-amber-300 shadow-[0_0_16px_#fbbf24]'
+                            : 'border-t border-dashed border-amber-300/70'
+                        }`}
+                      />
+                    </div>
+                  )}
 
                   {/* Main Booster Pack Foil Body */}
                   <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-amber-400/80 bg-slate-950 shadow-2xl">
