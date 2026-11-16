@@ -917,6 +917,7 @@ const FlippableDrawnCard: React.FC<{
           className={`absolute inset-0 rounded-2xl overflow-hidden border-2 ${rarity.borderClass} bg-slate-950 shadow-xl transition-transform group-hover:-translate-y-1.5`}
           style={{
             backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden',
             boxShadow:
               card.rarity === 'legendary' || card.rarity === 'epic' || card.rarity === 'rare'
                 ? rarity.glowStyle
@@ -956,6 +957,7 @@ const FlippableDrawnCard: React.FC<{
           className={`absolute inset-0 rounded-2xl overflow-hidden border-2 ${rarity.borderClass} bg-slate-950 shadow-2xl flex flex-col`}
           style={{
             backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
             boxShadow: rarity.glowStyle,
           }}

@@ -328,7 +328,7 @@ export function getAvatarDefinition(raw?: string | null): AvatarDefinition {
   return AVATAR_BY_ID.get(id) || AVATAR_CATALOG[0];
 }
 
-export const PACK_ARTWORK_URL = '/assets/packs/standard_pack.webp';
+export const PACK_ARTWORK_URL = '/assets/packs/standard_pack.jpg';
 
 export interface CardBackDefinition {
   id: string;
