@@ -456,14 +456,15 @@ class AuthService {
       mode?: string;
       opponentNames?: string[];
     }
-  ): Promise<void> {
-    if (!supabase) return;
+  ): Promise<boolean> {
+    if (!supabase) return false;
     try {
       const [statsRes, xpRes] = await Promise.all([
         supabase.from('player_statistics').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('player_xp').select('xp, level, next_level_xp').eq('user_id', userId).maybeSingle(),
       ]);
 
+      let updatedAny = false;
       if (statsRes.data) {
         const wins = won ? (statsRes.data.wins || 0) + 1 : (statsRes.data.wins || 0);
         const losses = won ? (statsRes.data.losses || 0) : (statsRes.data.losses || 0) + 1;
@@ -475,7 +476,7 @@ class AuthService {
         const current_streak = won ? (statsRes.data.current_streak || 0) + 1 : 0;
         const best_streak = Math.max(statsRes.data.best_streak || 0, current_streak);
 
-        await supabase.from('player_statistics').update({
+        const { error: statsUpdateErr } = await supabase.from('player_statistics').update({
           wins,
           losses,
           total_games,
@@ -487,6 +488,9 @@ class AuthService {
           best_streak,
           updated_at: new Date().toISOString(),
         }).eq('user_id', userId);
+        if (!statsUpdateErr) {
+          updatedAny = true;
+        }
       }
 
       if (xpRes.data) {
@@ -499,8 +503,11 @@ class AuthService {
         const level = baseLevel + levelsGained;
         const xp = totalXp % 1000;
         const next_level_xp = 1000;
-        await supabase.from('player_xp').update({ xp, level, next_level_xp, updated_at: new Date().toISOString() }).eq('user_id', userId);
-        if (levelsGained > 0 && typeof crypto !== 'undefined' && crypto.randomUUID) {
+        const { error: xpUpdateErr } = await supabase
+          .from('player_xp')
+          .update({ xp, level, next_level_xp, updated_at: new Date().toISOString() })
+          .eq('user_id', userId);
+        if (!xpUpdateErr && levelsGained > 0 && typeof crypto !== 'undefined' && crypto.randomUUID) {
           for (let lvl = baseLevel + 1; lvl <= level; lvl++) {
             await supabase
               .from('player_card_packs')
@@ -572,8 +579,10 @@ class AuthService {
       } catch (histErr) {
         console.warn('Could not insert match history record:', histErr);
       }
+      return updatedAny;
     } catch (err) {
       console.warn('Could not record match to Supabase:', err);
+      return false;
     }
   }
 

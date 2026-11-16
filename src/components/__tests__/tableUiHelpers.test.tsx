@@ -5,7 +5,9 @@ import {
   isActiveDecisionPhase,
   CenterKittyDisplay,
   TurnedDownNoticeChip,
+  DealerAvatarBadge,
   DealerDeckStack,
+  LeadSuitBadge,
   TurnActiveDot,
 } from '../BiddingModalHelpers';
 import { evaluateTutorialPracticeCard } from '../TutorialModal';
@@ -70,11 +72,33 @@ describe('Table UI & Tutorial Helpers', () => {
     expect(html).toContain('Blocked');
   });
 
-  it('renders DealerDeckStack for every seat around the table and pulsing turn dot', () => {
+  it('renders DealerDeckStack, DealerAvatarBadge, LeadSuitBadge, and pulsing turn dot cleanly', () => {
     for (const pos of ['top', 'left', 'right', 'bottom'] as const) {
       const html = renderToStaticMarkup(<DealerDeckStack relativePos={pos} cardBackSkin="classic_blue" />);
       expect(html).toContain('DECK');
     }
+
+    const topInlineHtml = renderToStaticMarkup(
+      <DealerDeckStack relativePos="top" cardBackSkin="classic_blue" inline />
+    );
+    expect(topInlineHtml).toContain('relative flex-shrink-0');
+    expect(topInlineHtml).toContain('DECK');
+
+    const leftDeckHtml = renderToStaticMarkup(
+      <DealerDeckStack relativePos="left" cardBackSkin="classic_blue" />
+    );
+    expect(leftDeckHtml).toContain('top-full');
+
+    const dealerBadgeHtml = renderToStaticMarkup(<DealerAvatarBadge />);
+    expect(dealerBadgeHtml).toContain('left-1/2');
+    expect(dealerBadgeHtml).toContain('DEALER');
+
+    const leadHtml = renderToStaticMarkup(<LeadSuitBadge leadSuit="hearts" showFollowHint />);
+    expect(leadHtml).toContain('Lead:');
+    expect(leadHtml).toContain('hearts');
+    expect(leadHtml).toContain('z-30');
+    expect(leadHtml).toContain('Follow');
+
     const dotHtml = renderToStaticMarkup(<TurnActiveDot />);
     expect(dotHtml).toContain('animate-ping');
   });

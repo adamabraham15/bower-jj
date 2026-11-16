@@ -768,6 +768,48 @@ export class MultiplayerClient {
   public isConnected(): boolean {
     return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
   }
+
+  public async recordAiMatchResult(payload: {
+    matchId: string;
+    won: boolean;
+    userScore: number;
+    oppScore: number;
+    tricksWon: number;
+    euchres: number;
+    marches: number;
+    successfulLoners: number;
+    opponentNames?: string[];
+  }): Promise<{ ok: boolean; user?: UserAccount; packsAwarded?: number } | null> {
+    try {
+      const token = this.accessToken || (await authService.getFreshAccessToken());
+      if (!token) return null;
+
+      const wsUrl = await this.resolveServerUrl();
+      if (!wsUrl) return null;
+      const httpUrl = wsUrl
+        .replace(/^wss:/i, 'https:')
+        .replace(/^ws:/i, 'http:')
+        .replace(/\/ws$/i, '/api/ai-match');
+
+      const res = await fetch(httpUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data?.user && this.onUserSyncCallback) {
+        this.onUserSyncCallback(data.user);
+      }
+      return data;
+    } catch {
+      return null;
+    }
+  }
 }
 
 export const multiplayerClient = new MultiplayerClient();

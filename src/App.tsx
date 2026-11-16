@@ -963,15 +963,47 @@ export const App: React.FC = () => {
     });
 
     if (authUser?.id) {
-      authService.recordOfflineMatch(authUser.id, won, {
-        tricksWon: stats?.tricksWon,
-        euchres: stats?.euchres,
-        marches: stats?.marches,
-        successfulLoners: stats?.successfulLoners,
-        score: `${userScore} - ${oppScore}`,
-      }).then(() => {
-        syncAuthoritativeProfile(authUser.id);
-      });
+      const matchId =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `ai_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+      multiplayerClient
+        .recordAiMatchResult({
+          matchId,
+          won,
+          userScore,
+          oppScore,
+          tricksWon: stats?.tricksWon || 0,
+          euchres: stats?.euchres || 0,
+          marches: stats?.marches || 0,
+          successfulLoners: stats?.successfulLoners || 0,
+          opponentNames: ['BowerAI West', 'BowerAI East'],
+        })
+        .then(async (serverRes) => {
+          if (serverRes?.ok && serverRes.user) {
+            if ((serverRes.packsAwarded || 0) > 0) {
+              sounds.playVictoryFanfare();
+              showToast(
+                `Level ${serverRes.user.level} reached! +${serverRes.packsAwarded} Collectible Card Pack${serverRes.packsAwarded === 1 ? '' : 's'} added to your vault!`,
+                'Level Up Reward!'
+              );
+              multiplayerClient.fetchCollectionState();
+            }
+            return;
+          }
+
+          const updated = await authService.recordOfflineMatch(authUser.id, won, {
+            tricksWon: stats?.tricksWon,
+            euchres: stats?.euchres,
+            marches: stats?.marches,
+            successfulLoners: stats?.successfulLoners,
+            score: `${userScore} - ${oppScore}`,
+          });
+          if (updated) {
+            syncAuthoritativeProfile(authUser.id);
+          }
+        });
     }
 
     showToast(

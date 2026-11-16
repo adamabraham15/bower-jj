@@ -1430,10 +1430,10 @@ export class RoomManager {
           rankTier: s.rankTier || userAcc?.rankTier || '9',
           rankPoints: userAcc?.rankPoints || 0,
           mmr: userAcc?.mmr || 1200,
-          tricksWon: state.tricksWon[pTeam] || 0,
-          euchres: state.scores[pTeam] >= 2 ? 1 : 0,
-          marches: state.scores[pTeam] >= 2 ? 1 : 0,
-          successfulLoners: state.scores[pTeam] >= 4 ? 1 : 0,
+          tricksWon: state.matchStats?.teamTricksWon?.[pTeam] ?? state.tricksWon[pTeam] ?? 0,
+          euchres: state.matchStats?.teamEuchres?.[pTeam] ?? 0,
+          marches: state.matchStats?.teamMarches?.[pTeam] ?? 0,
+          successfulLoners: state.matchStats?.playerLoners?.[s.position] ?? 0,
           opponentNames: oppNames,
           teammateAbandoned,
         };
@@ -1511,7 +1511,10 @@ export class RoomManager {
 
         const playerTeam = getPlayerTeam(slot.position);
         const isWin = playerTeam === winningTeam;
-        const tricks = state.tricksWon[playerTeam];
+        const tricks = state.matchStats?.teamTricksWon?.[playerTeam] ?? state.tricksWon[playerTeam];
+        const euchresCount = state.matchStats?.teamEuchres?.[playerTeam] ?? 0;
+        const marchesCount = state.matchStats?.teamMarches?.[playerTeam] ?? 0;
+        const lonersCount = state.matchStats?.playerLoners?.[slot.position] ?? 0;
         const myTeamMmr = playerTeam === 0 ? team0Mmr : team1Mmr;
         const oppTeamMmr = playerTeam === 0 ? team1Mmr : team0Mmr;
         const oppNames = playerTeam === 0 ? team1Names : team0Names;
@@ -1525,9 +1528,9 @@ export class RoomManager {
           slot.userId,
           isWin,
           tricks,
-          state.scores[playerTeam] >= 2 ? 1 : 0,
-          state.scores[playerTeam] >= 2 ? 1 : 0,
-          state.scores[playerTeam] >= 4 ? 1 : 0
+          marchesCount,
+          euchresCount,
+          lonersCount
         );
 
         if (updatedUser) {
@@ -1694,6 +1697,7 @@ export class RoomManager {
       completedTricksCount: state.completedTricks ? state.completedTricks.length : 0,
       tricksWon: state.tricksWon,
       scores: state.scores,
+      matchStats: state.matchStats,
       lastHandResult: state.lastHandResult,
       history: state.history,
       slots: slots.map((s, idx) => {

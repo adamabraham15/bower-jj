@@ -20,6 +20,7 @@ import {
   Player,
   EuchreGameState,
   EuchreHouseRules,
+  MatchStats,
   DEFAULT_RULES,
   HandScoreResult,
   Trick,
@@ -28,6 +29,16 @@ import {
   getNextPlayer,
   BidDecision,
 } from './types';
+
+export function createEmptyMatchStats(): MatchStats {
+  return {
+    teamTricksWon: [0, 0],
+    teamEuchres: [0, 0],
+    teamMarches: [0, 0],
+    teamLoners: [0, 0],
+    playerLoners: [0, 0, 0, 0],
+  };
+}
 import {
   createEuchreDeck,
   shuffleDeck,
@@ -109,6 +120,7 @@ export function initializeGame(
     completedTricks: [],
     tricksWon: [0, 0],
     scores: [0, 0],
+    matchStats: createEmptyMatchStats(),
     rules,
     history: ['Game initialized.'],
   };
@@ -581,10 +593,48 @@ export function scoreHand(state: EuchreGameState): EuchreGameState {
   const isGameOver = newScores[0] >= state.rules.targetScore || newScores[1] >= state.rules.targetScore;
   const nextPhase = isGameOver ? 'game_over' : 'hand_scored';
 
+  const prevStats = state.matchStats ?? createEmptyMatchStats();
+  const teamTricksWon: [number, number] = [
+    prevStats.teamTricksWon[0] + state.tricksWon[0],
+    prevStats.teamTricksWon[1] + state.tricksWon[1],
+  ];
+  const teamEuchres: [number, number] = [...prevStats.teamEuchres] as [number, number];
+  const teamMarches: [number, number] = [...prevStats.teamMarches] as [number, number];
+  const teamLoners: [number, number] = [...prevStats.teamLoners] as [number, number];
+  const playerLoners: [number, number, number, number] = [...prevStats.playerLoners] as [
+    number,
+    number,
+    number,
+    number,
+  ];
+
+  if (isEuchre) {
+    teamEuchres[defendingTeam] += 1;
+  } else if (isMarch) {
+    if (state.isAlone) {
+      teamLoners[callingTeam] += 1;
+      const soloPlayer = state.alonePlayer ?? state.callingPlayer;
+      if (soloPlayer !== undefined) {
+        playerLoners[soloPlayer] = (playerLoners[soloPlayer] || 0) + 1;
+      }
+    } else {
+      teamMarches[callingTeam] += 1;
+    }
+  }
+
+  const nextMatchStats: MatchStats = {
+    teamTricksWon,
+    teamEuchres,
+    teamMarches,
+    teamLoners,
+    playerLoners,
+  };
+
   return {
     ...state,
     phase: nextPhase,
     scores: newScores,
+    matchStats: nextMatchStats,
     lastHandResult: handResult,
     history: [
       ...state.history,

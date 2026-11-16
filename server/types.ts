@@ -10,6 +10,7 @@ import {
   AIDifficulty,
   EuchreHouseRules,
   HandScoreResult,
+  MatchStats,
   Trick,
   GamePhase,
 } from '../src/engine/types';
@@ -237,6 +238,7 @@ export interface SanitizedGameState {
   completedTricksCount: number;
   tricksWon: [number, number];
   scores: [number, number];
+  matchStats?: MatchStats;
   lastHandResult?: HandScoreResult;
   history: string[];
   slots: PlayerSlot[];

@@ -212,6 +212,13 @@ describe('Euchre Game State Machine', () => {
     expect(scoredState.scores[0]).toBe(4); // 4 points for loner march!
     expect(scoredState.scores[1]).toBe(0);
     expect(scoredState.lastHandResult?.isMarch).toBe(true);
+    expect(scoredState.matchStats).toEqual({
+      teamTricksWon: [5, 0],
+      teamEuchres: [0, 0],
+      teamMarches: [0, 0],
+      teamLoners: [1, 0],
+      playerLoners: [1, 0, 0, 0],
+    });
   });
 
   it('correctly scores 2 points for a Euchre when defenders take 3+ tricks', () => {
@@ -289,6 +296,13 @@ describe('Euchre Game State Machine', () => {
     expect(finalState.scores[0]).toBe(10);
     expect(finalState.phase).toBe('game_over'); // Match is won!
     expect(getWinningTeam(finalState.scores, finalState.rules.targetScore)).toBe(0);
+    expect(finalState.matchStats).toEqual({
+      teamTricksWon: [3, 2],
+      teamEuchres: [0, 0],
+      teamMarches: [0, 0],
+      teamLoners: [0, 0],
+      playerLoners: [0, 0, 0, 0],
+    });
   });
 
   it('identifies winning team accurately when custom targetScore is below 10 (e.g. targetScore=5)', () => {
@@ -355,5 +369,61 @@ describe('Euchre Game State Machine', () => {
     }
     expect(seenDealers.size).toBeGreaterThan(1);
     expect([0, 1, 2, 3]).toContain(pickRandomDealer());
+  });
+
+  it('tracks non-loner marches and tricks across hands without inflating solo sweeps when score reaches 4+', () => {
+    const players = createMockPlayers();
+    let game = initializeGame(players, DEFAULT_RULES, 0);
+
+    const playNonLonerSweep = (state: ReturnType<typeof initializeGame>) =>
+      completeTrick({
+        ...state,
+        phase: 'playing',
+        trumpSuit: 'hearts',
+        callingPlayer: 0,
+        callingTeam: 0,
+        isAlone: false,
+        alonePlayer: undefined,
+        tricksWon: [4, 0],
+        completedTricks: [
+          { leadPlayer: 0, cards: [] },
+          { leadPlayer: 0, cards: [] },
+          { leadPlayer: 0, cards: [] },
+          { leadPlayer: 0, cards: [] },
+        ],
+        currentTrick: {
+          leadPlayer: 0,
+          leadSuit: 'hearts',
+          cards: [
+            { player: 0, card: { id: 'hearts-J', suit: 'hearts', rank: 'J' } },
+            { player: 1, card: { id: 'hearts-9', suit: 'hearts', rank: '9' } },
+            { player: 2, card: { id: 'hearts-10', suit: 'hearts', rank: '10' } },
+            { player: 3, card: { id: 'hearts-Q', suit: 'hearts', rank: 'Q' } },
+          ],
+        },
+      });
+
+    // Hand 1: 2-point non-loner march
+    game = playNonLonerSweep(game);
+    expect(game.scores).toEqual([2, 0]);
+    expect(game.matchStats).toEqual({
+      teamTricksWon: [5, 0],
+      teamEuchres: [0, 0],
+      teamMarches: [1, 0],
+      teamLoners: [0, 0],
+      playerLoners: [0, 0, 0, 0],
+    });
+
+    // Hand 2: another 2-point non-loner march pushes Team 0 score to 4 (>= 4!)
+    game = startNextHand(game);
+    game = playNonLonerSweep(game);
+    expect(game.scores).toEqual([4, 0]);
+    expect(game.matchStats).toEqual({
+      teamTricksWon: [10, 0],
+      teamEuchres: [0, 0],
+      teamMarches: [2, 0],
+      teamLoners: [0, 0],
+      playerLoners: [0, 0, 0, 0],
+    });
   });
 });

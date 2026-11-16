@@ -78,6 +78,7 @@ export interface MatchResultRecordInput {
     teammateAbandoned?: boolean;
   }[];
   idempotencyKey?: string;
+  xpEarnedOverride?: number;
 }
 
 export class PostgresDatabaseRepository {
@@ -1203,7 +1204,7 @@ export class PostgresDatabaseRepository {
         );
 
         // Update XP and Level (1,000 XP per level; wraps xp modulo 1000 on level up)
-        const xpEarned = won ? 350 : 120;
+        const xpEarned = typeof input.xpEarnedOverride === 'number' ? Math.max(0, input.xpEarnedOverride) : (won ? 350 : 120);
         const xpPerLvl = PROGRESSION_CONFIG.xpPerLevel;
         const curXpRes = await client.query(
           `SELECT xp, level FROM public.player_xp WHERE user_id = $1 LIMIT 1`,

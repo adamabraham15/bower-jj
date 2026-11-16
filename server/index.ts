@@ -5,6 +5,7 @@
  */
 
 import http from 'http';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -235,6 +236,107 @@ export async function createMultiplayerServer(
       } catch (err: any) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Failed to retrieve matchmaking stats', details: err.message }));
+      }
+      return;
+    }
+
+    if (req.url === '/api/ai-match' && req.method === 'POST') {
+      try {
+        const authHeader = req.headers['authorization'];
+        const bearerToken =
+          authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+        const identity = bearerToken ? await tokenVerifier.verifyToken(bearerToken) : null;
+        if (!identity || identity.isGuest) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Valid authenticated bearer token required.' }));
+          return;
+        }
+
+        const chunks: Buffer[] = [];
+        let totalLen = 0;
+        for await (const chunk of req) {
+          totalLen += chunk.length;
+          if (totalLen > 16384) {
+            res.writeHead(413, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Payload too large' }));
+            return;
+          }
+          chunks.push(Buffer.from(chunk));
+        }
+
+        const payload = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+        const won = Boolean(payload.won);
+        const userScore = Math.max(0, Math.min(30, Math.floor(Number(payload.userScore) || 0)));
+        const oppScore = Math.max(0, Math.min(30, Math.floor(Number(payload.oppScore) || 0)));
+        const tricksWon = Math.max(0, Math.min(100, Math.floor(Number(payload.tricksWon) || 0)));
+        const euchres = Math.max(0, Math.min(20, Math.floor(Number(payload.euchres) || 0)));
+        const marches = Math.max(0, Math.min(20, Math.floor(Number(payload.marches) || 0)));
+        const successfulLoners = Math.max(0, Math.min(10, Math.floor(Number(payload.successfulLoners) || 0)));
+        const rawMatchId = typeof payload.matchId === 'string' && payload.matchId.trim()
+          ? payload.matchId.trim().slice(0, 64)
+          : crypto.randomUUID();
+        const opponentNames = Array.isArray(payload.opponentNames) && payload.opponentNames.length > 0
+          ? payload.opponentNames.slice(0, 3).map((n: unknown) => String(n).slice(0, 40))
+          : ['BowerAI West', 'BowerAI East'];
+
+        const { user } = await activeDb.getOrCreateUser(identity.username, identity.avatarIcon, undefined, identity.userId);
+        let packsAwarded = 0;
+
+        if (activePgRepo) {
+          const result = await activePgRepo.recordMatchResult({
+            matchId: rawMatchId,
+            roomCode: 'SOLO_AI',
+            mode: 'unranked',
+            composition: '1H3B',
+            winningTeam: won ? 0 : 1,
+            finalScore: `${userScore} - ${oppScore}`,
+            durationSeconds: 0,
+            xpEarnedOverride: won ? 150 : 50,
+            idempotencyKey: `ai_${user.id}_${rawMatchId}`,
+            humanPlayers: [
+              {
+                userId: user.id,
+                position: 0,
+                team: 0,
+                username: user.username,
+                rankTier: user.rankTier,
+                rankPoints: user.rankPoints,
+                mmr: user.mmr,
+                tricksWon,
+                euchres,
+                marches,
+                successfulLoners,
+                opponentNames,
+              },
+            ],
+          });
+          packsAwarded = result.playerResults?.[0]?.packsAwarded ?? 0;
+        } else {
+          const preLevel = user.level;
+          const updated = activeDb.recordMatchCompletion(
+            user.id,
+            won,
+            tricksWon,
+            marches,
+            euchres,
+            successfulLoners
+          );
+          if (updated) {
+            packsAwarded = Math.max(0, updated.level - preLevel);
+          }
+        }
+
+        const freshUser = await activeDb.getUserById(user.id);
+        if (freshUser) {
+          activeRm.setCachedUser(freshUser);
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, user: freshUser || user, packsAwarded }));
+      } catch (err: any) {
+        logger.error('[API /api/ai-match] Error recording AI match', err);
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message || 'Invalid AI match payload' }));
       }
       return;
     }

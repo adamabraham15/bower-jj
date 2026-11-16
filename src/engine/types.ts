@@ -110,6 +110,14 @@ export const DEFAULT_RULES: EuchreHouseRules = {
   canadianLoner: true,
 };
 
+export interface MatchStats {
+  teamTricksWon: [number, number];
+  teamEuchres: [number, number];
+  teamMarches: [number, number];
+  teamLoners: [number, number];
+  playerLoners: [number, number, number, number];
+}
+
 export interface EuchreGameState {
   players: Player[];
   dealer: PlayerPosition;
@@ -118,8 +126,8 @@ export interface EuchreGameState {
   deck: Card[];
   kitty: Card[];
   upCard?: Card;
-  hands: Record<PlayerPosition, Card[]>;
   trumpSuit?: Suit;
+  hands: Record<PlayerPosition, Card[]>;
   callingPlayer?: PlayerPosition;
   callingTeam?: Team;
   isAlone: boolean;
@@ -129,6 +137,7 @@ export interface EuchreGameState {
   completedTricks: Trick[];
   tricksWon: [number, number]; // [Team 0, Team 1]
   scores: [number, number];    // [Team 0, Team 1]
+  matchStats?: MatchStats;
   lastHandResult?: HandScoreResult;
   rules: EuchreHouseRules;
   history: string[];

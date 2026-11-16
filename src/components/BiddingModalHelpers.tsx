@@ -18,12 +18,12 @@ export function isActiveDecisionPhase(phase: GamePhase): boolean {
 }
 
 /**
- * Prominent pill badge placed on the current dealer's table avatar so it stands out immediately.
+ * Prominent pill badge placed cleanly above the current dealer's table avatar.
  */
 export const DealerAvatarBadge: React.FC = () => (
   <div
     title="Current Dealer"
-    className="absolute -top-2 -right-3 px-1.5 py-0.5 rounded-full bg-amber-400 border-2 border-slate-900 text-slate-950 font-black text-[8px] sm:text-[9px] leading-none tracking-wider shadow-lg shadow-amber-500/30 uppercase"
+    className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-20 px-1.5 py-0.5 rounded-full bg-amber-400 border-2 border-slate-900 text-slate-950 font-black text-[8px] sm:text-[9px] leading-none tracking-wider shadow-lg shadow-amber-500/30 uppercase whitespace-nowrap"
   >
     DEALER
   </div>
@@ -224,26 +224,30 @@ export const TurnedDownNoticeChip: React.FC<TurnedDownNoticeChipProps> = ({
 interface DealerDeckStackProps {
   relativePos: 'top' | 'left' | 'right' | 'bottom';
   cardBackSkin?: string;
+  inline?: boolean;
 }
 
 const DEALER_DECK_POSITION_CLASSES: Record<'top' | 'left' | 'right' | 'bottom', string> = {
-  top: 'left-full ml-4 sm:ml-5 -top-0.5',
-  bottom: 'left-full ml-4 sm:ml-5 -top-0.5',
-  left: '-top-[68px] left-1/2 -translate-x-1/2 md:top-0 md:translate-x-0 md:left-full md:ml-5',
-  right: '-top-[68px] left-1/2 -translate-x-1/2 md:top-0 md:left-auto md:translate-x-0 md:right-full md:mr-5',
+  top: 'left-full ml-4 sm:ml-5 top-1/2 -translate-y-1/2',
+  bottom: 'left-full ml-4 sm:ml-5 top-1/2 -translate-y-1/2',
+  left: 'top-full mt-1.5 sm:mt-2 left-1/2 -translate-x-1/2',
+  right: 'top-full mt-1.5 sm:mt-2 left-1/2 -translate-x-1/2',
 };
 
 /**
  * Renders the remaining facedown kitty deck next to the current dealer seat so the deck
- * physically moves around the table with the deal.
+ * physically moves around the table with the deal without overlapping badges or side hands.
  */
 export const DealerDeckStack: React.FC<DealerDeckStackProps> = ({
   relativePos,
   cardBackSkin = 'classic_blue',
+  inline = false,
 }) => (
   <div
     title="Dealer's Kitty Deck"
-    className={`pointer-events-none absolute ${DEALER_DECK_POSITION_CLASSES[relativePos]} flex flex-col items-center z-10 animate-in fade-in zoom-in-95 duration-200`}
+    className={`pointer-events-none ${
+      inline ? 'relative flex-shrink-0' : `absolute ${DEALER_DECK_POSITION_CLASSES[relativePos]}`
+    } flex flex-col items-center z-10 animate-in fade-in zoom-in-95 duration-200 scale-90 sm:scale-100`}
   >
     <div className="relative w-[40px] h-[56px] flex items-end justify-start">
       <div className="absolute top-0 left-1 opacity-75">
@@ -259,5 +263,33 @@ export const DealerDeckStack: React.FC<DealerDeckStackProps> = ({
     <span className="mt-0.5 px-1.5 py-0.5 rounded-full bg-slate-900/95 border border-amber-400/60 text-[8px] font-black text-amber-300 tracking-wider uppercase shadow-md whitespace-nowrap">
       DECK
     </span>
+  </div>
+);
+
+interface LeadSuitBadgeProps {
+  leadSuit: Card['suit'];
+  showFollowHint?: boolean;
+}
+
+/**
+ * High-contrast Lead Suit indicator displayed cleanly above the active trick cards.
+ */
+export const LeadSuitBadge: React.FC<LeadSuitBadgeProps> = ({
+  leadSuit,
+  showFollowHint = false,
+}) => (
+  <div className="absolute top-1.5 left-1/2 -translate-x-1/2 z-30 flex items-center space-x-1.5 bg-slate-900/95 border border-slate-600/80 px-3 py-1 rounded-full shadow-lg whitespace-nowrap">
+    <span className="text-[10px] text-gray-400 font-bold uppercase">Lead:</span>
+    <SuitIcon suit={leadSuit} className="w-3.5 h-3.5" />
+    <span
+      className={`text-[11px] font-black uppercase ${
+        leadSuit === 'hearts' || leadSuit === 'diamonds' ? 'text-red-400' : 'text-white'
+      }`}
+    >
+      {leadSuit}
+    </span>
+    {showFollowHint && (
+      <span className="text-[9px] text-gray-400 hidden sm:inline">(Follow suit!)</span>
+    )}
   </div>
 );

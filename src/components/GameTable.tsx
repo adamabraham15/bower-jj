@@ -44,6 +44,7 @@ import { TrumpBanner, MakerBadge } from './TrumpBanner';
 import {
   DealerAvatarBadge,
   DealerDeckStack,
+  LeadSuitBadge,
   ModalDealerBanner,
   GoAloneControl,
   TurnActiveDot,
@@ -149,10 +150,10 @@ export const GameTable: React.FC<GameTableProps> = ({
         sounds.playVictoryFanfare();
       }
       onMatchComplete?.(userTeamWon, state.scores[0], state.scores[1], {
-        tricksWon: state.tricksWon[0] || 0,
-        euchres: state.scores[0] >= 2 ? 1 : 0,
-        marches: state.scores[0] >= 2 ? 1 : 0,
-        successfulLoners: state.scores[0] >= 4 ? 1 : 0,
+        tricksWon: state.matchStats?.teamTricksWon?.[0] ?? (state.tricksWon[0] || 0),
+        euchres: state.matchStats?.teamEuchres?.[0] ?? 0,
+        marches: state.matchStats?.teamMarches?.[0] ?? 0,
+        successfulLoners: state.matchStats?.playerLoners?.[0] ?? 0,
       });
     }
   }, [state.phase, state.scores, state.rules.targetScore, matchReported, onMatchComplete]);
@@ -311,73 +312,85 @@ export const GameTable: React.FC<GameTableProps> = ({
               ? (profile?.equippedCosmetics?.cardBack || player.cardBack)
               : (player.cardBack || BOT_CARD_BACK_BY_DIFFICULTY[player.aiDifficulty || 'medium'])
           );
-          return (
-            <>
-              <div className="relative">
-                <div
-                  onClick={() => {
-                    sounds.playUiClick();
-                    const tier = (player.rankTier as RankTier) || (pos === 0 ? '9' : player.aiDifficulty === 'hard' ? 'K' : player.aiDifficulty === 'medium' ? '10' : '9');
-                    setInspectedPlayer({
-                      id: player.id || `bot_${player.name}`,
-                      username: player.name,
-                      avatarIcon: resolvedAvatar,
-                      level: pos === 0 ? (profile?.level ?? 1) : 8,
-                      rankTier: tier,
-                      rankPoints: pos === 0 ? (profile?.rankPoints ?? 0) : 50,
-                      totalGames: pos === 0 ? 12 : 95,
-                      wins: pos === 0 ? 9 : 52,
-                      losses: pos === 0 ? 3 : 43,
-                      bestStreak: 4,
-                      isFriend: pos === 2,
-                      isOnline: true,
-                      equippedCosmetics: {
-                        hat: resolvedAvatar,
-                        cardBack: resolvedCardBack,
-                        banner: 'default_navy',
-                        title: player.isAI ? `Tactical AI (${player.aiDifficulty})` : 'Competitor',
-                      },
-                    });
-                  }}
-                  title={`Inspect ${player.name}`}
-                  className="relative cursor-pointer hover:scale-105 active:scale-95 transition-transform"
-                >
-                  {/* Avatar Container */}
-                  <div
-                    className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 transition-all duration-300 flex items-center justify-center
-                      ${isTeamBlue ? 'bg-gradient-to-tr from-blue-600 to-cyan-400' : 'bg-gradient-to-tr from-red-600 to-amber-500'}
-                      ${isCurrentTurn ? 'ring-4 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : isDealer ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/30' : 'opacity-90'}
-                      ${isBenched ? 'grayscale opacity-50' : ''}`}
-                  >
-                    <div className="w-full h-full bg-slate-900 rounded-[14px] flex flex-col items-center justify-center overflow-hidden">
-                      <AvatarPortrait
-                        avatarId={resolvedAvatar}
-                        size="md"
-                        showRarityRing={false}
-                        className="!w-full !h-full !rounded-[14px]"
-                      />
-                    </div>
+          const isHorizontalSeat = relPos === 'top' || relPos === 'bottom';
+          const fannedHand = pos !== 0 && !isBenched && hand.length > 0 ? (
+            <div
+              className={`flex items-center justify-center -space-x-6 scale-75 ${
+                relPos === 'top' ? 'sm:scale-90 origin-right' : 'sm:scale-95 origin-top'
+              } pointer-events-none`}
+            >
+              {Array.from({ length: Math.min(hand.length, 5) }).map((_, idx, arr) => {
+                const mid = (arr.length - 1) / 2;
+                const rot = (idx - mid) * 7;
+                return (
+                  <div key={idx} style={{ transform: `rotate(${rot}deg)` }} className="drop-shadow-md">
+                    <CardView isFacedown size="xs" cardBackSkin={resolvedCardBack} />
                   </div>
+                );
+              })}
+            </div>
+          ) : null;
 
-                  {/* Dealer Chip */}
-                  {isDealer && <DealerAvatarBadge />}
-
-                  {/* Trump Maker Chip */}
-                  {isTrumpCaller && state.trumpSuit && (
-                    <MakerBadge trumpSuit={state.trumpSuit} isBlueTeam={isTeamBlue} />
-                  )}
-
-                  {/* Card Count Badge */}
-                  {pos !== 0 && (
-                    <div className="absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-mono font-bold text-gray-200 shadow-sm z-10">
-                      {isBenched ? 'BENCHED' : `${hand.length} 🂠`}
-                    </div>
-                  )}
+          const avatarAndName = (
+            <div className="flex flex-col items-center">
+              <div
+                onClick={() => {
+                  sounds.playUiClick();
+                  const tier = (player.rankTier as RankTier) || (pos === 0 ? '9' : player.aiDifficulty === 'hard' ? 'K' : player.aiDifficulty === 'medium' ? '10' : '9');
+                  setInspectedPlayer({
+                    id: player.id || `bot_${player.name}`,
+                    username: player.name,
+                    avatarIcon: resolvedAvatar,
+                    level: pos === 0 ? (profile?.level ?? 1) : 8,
+                    rankTier: tier,
+                    rankPoints: pos === 0 ? (profile?.rankPoints ?? 0) : 50,
+                    totalGames: pos === 0 ? 12 : 95,
+                    wins: pos === 0 ? 9 : 52,
+                    losses: pos === 0 ? 3 : 43,
+                    bestStreak: 4,
+                    isFriend: pos === 2,
+                    isOnline: true,
+                    equippedCosmetics: {
+                      hat: resolvedAvatar,
+                      cardBack: resolvedCardBack,
+                      banner: 'default_navy',
+                      title: player.isAI ? `Tactical AI (${player.aiDifficulty})` : 'Competitor',
+                    },
+                  });
+                }}
+                title={`Inspect ${player.name}`}
+                className="relative cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+              >
+                {/* Avatar Container */}
+                <div
+                  className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 transition-all duration-300 flex items-center justify-center
+                    ${isTeamBlue ? 'bg-gradient-to-tr from-blue-600 to-cyan-400' : 'bg-gradient-to-tr from-red-600 to-amber-500'}
+                    ${isCurrentTurn ? 'ring-4 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : isDealer ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/30' : 'opacity-90'}
+                    ${isBenched ? 'grayscale opacity-50' : ''}`}
+                >
+                  <div className="w-full h-full bg-slate-900 rounded-[14px] flex flex-col items-center justify-center overflow-hidden">
+                    <AvatarPortrait
+                      avatarId={resolvedAvatar}
+                      size="md"
+                      showRarityRing={false}
+                      className="!w-full !h-full !rounded-[14px]"
+                    />
+                  </div>
                 </div>
 
-                {/* Deck of Cards / Kitty Stack follows the current dealer */}
-                {isDealer && (
-                  <DealerDeckStack relativePos={relPos} cardBackSkin={resolvedCardBack} />
+                {/* Dealer Chip */}
+                {isDealer && <DealerAvatarBadge />}
+
+                {/* Trump Maker Chip */}
+                {isTrumpCaller && state.trumpSuit && (
+                  <MakerBadge trumpSuit={state.trumpSuit} isBlueTeam={isTeamBlue} />
+                )}
+
+                {/* Card Count Badge */}
+                {pos !== 0 && (
+                  <div className="absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-mono font-bold text-gray-200 shadow-sm z-10">
+                    {isBenched ? 'BENCHED' : `${hand.length} 🂠`}
+                  </div>
                 )}
               </div>
 
@@ -398,23 +411,36 @@ export const GameTable: React.FC<GameTableProps> = ({
                         AI ({player.aiDifficulty})
                       </span>
                     )}
-                    {pos !== 0 && hand.length > 0 && (
-                      <div className="mt-0.5 sm:mt-1 flex items-center justify-center -space-x-6 scale-75 sm:scale-95 origin-top pointer-events-none">
-                        {Array.from({ length: Math.min(hand.length, 5) }).map((_, idx, arr) => {
-                          const mid = (arr.length - 1) / 2;
-                          const rot = (idx - mid) * 7;
-                          return (
-                            <div key={idx} style={{ transform: `rotate(${rot}deg)` }} className="drop-shadow-md">
-                              <CardView isFacedown size="xs" cardBackSkin={resolvedCardBack} />
-                            </div>
-                          );
-                        })}
+                    {!isHorizontalSeat && fannedHand && (
+                      <div className="mt-0.5 sm:mt-1 h-[40px] sm:h-[52px] flex items-start justify-center pointer-events-none">
+                        {fannedHand}
                       </div>
                     )}
                   </>
                 )}
               </div>
-            </>
+            </div>
+          );
+
+          if (isHorizontalSeat) {
+            return (
+              <div className="flex items-center justify-center gap-2.5 sm:gap-4">
+                {relPos === 'top' && fannedHand}
+                {avatarAndName}
+                {isDealer && (
+                  <DealerDeckStack relativePos={relPos} cardBackSkin={resolvedCardBack} inline />
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <div className="relative flex flex-col items-center">
+              {avatarAndName}
+              {isDealer && (
+                <DealerDeckStack relativePos={relPos} cardBackSkin={resolvedCardBack} />
+              )}
+            </div>
           );
         })()}
       </div>
@@ -530,10 +556,10 @@ export const GameTable: React.FC<GameTableProps> = ({
         </div>
 
         {/* Player Pods */}
-        {renderPlayerPod(2, 'top-2 sm:top-4')} {/* Partner (North) */}
+        {renderPlayerPod(2, 'top-1.5 sm:top-3')} {/* Partner (North) */}
         {renderPlayerPod(1, 'left-2 sm:left-6 top-1/2 -translate-y-1/2')} {/* Opponent 1 (West) */}
         {renderPlayerPod(3, 'right-2 sm:right-6 top-1/2 -translate-y-1/2')} {/* Opponent 2 (East) */}
-        {renderPlayerPod(0, 'bottom-28 sm:bottom-36')} {/* You (South) */}
+        {renderPlayerPod(0, 'bottom-2 sm:bottom-4')} {/* You (South) */}
 
         {/* Center Trick Arena & Table Hub */}
         <div className="relative w-72 h-72 sm:w-84 sm:h-84 rounded-full border border-emerald-500/25 bg-emerald-950/25 backdrop-blur-xs flex items-center justify-center shadow-2xl">
@@ -546,14 +572,7 @@ export const GameTable: React.FC<GameTableProps> = ({
 
           {/* Active Lead Suit Indicator in center */}
           {(state.phase === 'playing' || isTrickResolving) && leadSuit && (
-            <div className="absolute top-2 z-10 flex items-center space-x-1.5 bg-slate-900/90 border border-slate-700 px-3 py-1 rounded-full shadow-lg">
-              <span className="text-[10px] text-gray-400 font-bold uppercase">Lead:</span>
-              <SuitIcon suit={leadSuit} className="w-3.5 h-3.5" />
-              <span className={`text-[11px] font-black uppercase ${leadSuit === 'hearts' || leadSuit === 'diamonds' ? 'text-red-400' : 'text-white'}`}>
-                {leadSuit}
-              </span>
-              <span className="text-[9px] text-gray-400 hidden sm:inline">(Follow suit!)</span>
-            </div>
+            <LeadSuitBadge leadSuit={leadSuit} showFollowHint />
           )}
 
           {/* Played Cards in Trick Arena (Clearly Positioned and Visible!) */}
@@ -566,9 +585,9 @@ export const GameTable: React.FC<GameTableProps> = ({
                 // Position each card towards the player who threw it
                 const positionStyle =
                   pc.player === 0
-                    ? 'bottom-4 left-1/2 -translate-x-1/2'
+                    ? 'bottom-3 left-1/2 -translate-x-1/2'
                     : pc.player === 2
-                    ? 'top-8 left-1/2 -translate-x-1/2'
+                    ? 'top-9 left-1/2 -translate-x-1/2'
                     : pc.player === 1
                     ? 'left-4 top-1/2 -translate-y-1/2'
                     : 'right-4 top-1/2 -translate-y-1/2';
@@ -797,10 +816,10 @@ export const GameTable: React.FC<GameTableProps> = ({
             isOpen={true}
             isVictory={state.scores[0] >= state.rules.targetScore}
             finalScore={state.scores}
-            tricksWon={state.tricksWon[0]}
-            marches={state.scores[0] >= 2 ? 1 : 0}
-            euchres={state.scores[0] >= 2 ? 1 : 0}
-            loners={state.scores[0] >= 4 ? 1 : 0}
+            tricksWon={state.matchStats?.teamTricksWon?.[0] ?? state.tricksWon[0]}
+            marches={state.matchStats?.teamMarches?.[0] ?? 0}
+            euchres={state.matchStats?.teamEuchres?.[0] ?? 0}
+            loners={state.matchStats?.playerLoners?.[0] ?? 0}
             lpDelta={0}
             oldTier={profile?.rankTier || (state.players[0].rankTier as RankTier) || '9'}
             newTier={profile?.rankTier || (state.players[0].rankTier as RankTier) || '9'}
@@ -820,6 +839,7 @@ export const GameTable: React.FC<GameTableProps> = ({
             yourPosition={0}
             onPlayAgain={() => {
               const newGame = initializeGame(state.players, state.rules, pickRandomDealer());
+              setMatchReported(false);
               setState(newGame);
             }}
             onExit={onExitGame}
