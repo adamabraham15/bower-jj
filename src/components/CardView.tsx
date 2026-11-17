@@ -66,15 +66,15 @@ const SIZE_CONFIG = {
     ribbonClass: 'text-[9px] sm:text-[10px] py-1',
   },
   hand: {
-    // Fits all 5 cards comfortably on mobile screens (>= 320px) without scrolling, scales up to full size on desktop
-    wClass: 'w-[58px] xs:w-[64px] sm:w-[80px]',
-    hClass: 'h-[84px] xs:h-[94px] sm:h-[116px]',
+    // Fits all 5 cards comfortably on mobile screens without scrolling, scales up to full size on desktop
+    wClass: 'w-[64px] xs:w-[70px] min-[400px]:w-[74px] min-[430px]:w-[80px] sm:w-[96px] md:w-[110px] lg:w-[124px]',
+    hClass: 'h-[92px] xs:h-[101px] min-[400px]:h-[107px] min-[430px]:h-[115px] sm:h-[138px] md:h-[158px] lg:h-[178px]',
     wStyle: undefined,
     hStyle: undefined,
-    rankClass: 'text-xs xs:text-sm sm:text-base font-black',
-    cornerIconClass: 'w-2.5 h-2.5 xs:w-3 xs:h-3 sm:w-3.5 sm:h-3.5',
-    centerIconClass: 'w-5 h-5 xs:w-6 xs:h-6 sm:w-8 sm:h-8',
-    ribbonClass: 'text-[6px] xs:text-[7px] sm:text-[8px] py-0.5',
+    rankClass: 'text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl font-black',
+    cornerIconClass: 'w-2.5 h-2.5 xs:w-3 xs:h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 lg:w-4.5 lg:h-4.5',
+    centerIconClass: 'w-6 h-6 xs:w-7 xs:h-7 sm:w-9 sm:h-9 md:w-11 md:h-11 lg:w-13 lg:h-13',
+    ribbonClass: 'text-[6px] xs:text-[7px] sm:text-[8px] md:text-[9px] lg:text-[10px] py-0.5 sm:py-1',
   },
 };
 

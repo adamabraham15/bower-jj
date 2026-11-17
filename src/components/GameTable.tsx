@@ -897,7 +897,7 @@ export const GameTable: React.FC<GameTableProps> = ({
       {/* Bottom Player Hand Tray with Safe Area Inset for Home Indicator (Hidden when match is completed to avoid screen clutter) */}
       {state.phase !== 'game_over' && (
         <footer
-          className={`relative bg-slate-900/95 border-t border-slate-800 px-2 py-2 flex flex-col items-center z-50 flex-shrink-0 min-h-[145px] shadow-2xl transition-opacity duration-300 ${
+          className={`relative bg-slate-900/95 border-t border-slate-800 px-2 py-2 flex flex-col items-center z-50 flex-shrink-0 min-h-[145px] xs:min-h-[155px] sm:min-h-[195px] md:min-h-[220px] lg:min-h-[240px] shadow-2xl transition-opacity duration-300 ${
             state.phase === 'hand_scored' ? 'opacity-30 pointer-events-none' : 'opacity-100'
           }`}
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
@@ -949,7 +949,7 @@ export const GameTable: React.FC<GameTableProps> = ({
           </div>
 
           {/* Hand Cards (Mobile-first responsive sizing: all 5 cards fit on any mobile screen) */}
-          <div className="flex justify-center items-center space-x-1 sm:space-x-2.5 max-w-full overflow-hidden px-1 sm:px-4 py-1 sm:py-2 min-h-[90px] sm:min-h-[125px]">
+          <div className="flex justify-center items-center gap-1 xs:gap-1.5 min-[400px]:gap-2 sm:gap-3 md:gap-4 max-w-full overflow-hidden px-1 sm:px-4 py-1 sm:py-2 min-h-[96px] xs:min-h-[105px] sm:min-h-[142px] md:min-h-[162px] lg:min-h-[182px]">
             {displayHand.map((card, idx) => {
               const isLegal = state.phase === 'playing'
                 ? isCardPlayLegal(card, humanHand, state.currentTrick, state.trumpSuit)
@@ -959,7 +959,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                 <div
                   key={card.id}
                   className="transition-transform duration-150 hover:-translate-y-3 flex-shrink-0"
-                  style={{ zIndex: idx }}
+                  style={{ zIndex: idx, maxWidth: 'calc((100vw - 16px) / 5)' }}
                 >
                   <CardView
                     card={card}
