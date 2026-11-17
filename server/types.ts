@@ -292,7 +292,7 @@ export interface PublicPlayerData {
 // Client -> Server Messages
 export type ClientMessage =
   | { type: 'AUTH'; sessionToken?: string; username?: string; avatarIcon?: string; accessToken?: string }
-  | { type: 'ROOM_CREATE'; rules?: Partial<EuchreHouseRules>; queueMode?: 'rivals' | 'solo' | 'casual' | 'custom' | 'duo' }
+  | { type: 'ROOM_CREATE'; rules?: Partial<EuchreHouseRules>; queueMode?: 'rivals' | 'solo' | 'casual' | 'custom' | 'duo'; autoFillAI?: boolean; difficulty?: AIDifficulty }
   | { type: 'ROOM_JOIN'; roomCode: string }
   | { type: 'ROOM_FILL_AI'; difficulty?: AIDifficulty }
   | { type: 'ROOM_START' }

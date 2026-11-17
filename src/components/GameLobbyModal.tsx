@@ -106,15 +106,14 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
       if (activeRoom.pendingInvites) {
         setLocalPendingInvites({ ...activeRoom.pendingInvites });
       }
-      if (autoFillBots && !autoFilledRef.current && activeRoom.slots.filter(s => s !== null).length < 4) {
-        autoFilledRef.current = true;
+      if (autoFillBots && activeRoom.slots.filter(s => s !== null).length < 4) {
         multiplayerClient.fillWithAI(aiFillDifficulty);
       }
     } else {
       setCurrentRoom(null);
       if (!multiplayerClient.isPendingJoin()) {
-        // Create fresh room with the chosen initial mode
-        multiplayerClient.createRoom(undefined, initialMode);
+        // Create fresh room with the chosen initial mode and autoFillBots
+        multiplayerClient.createRoom(undefined, initialMode, autoFillBots, aiFillDifficulty);
       }
     }
 
@@ -122,8 +121,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
       onRoom: (room) => {
         setCurrentRoom(room);
         // Auto-fill empty seats with bots when opened in bot mode
-        if (autoFillBots && !autoFilledRef.current && room.slots.filter(s => s !== null).length < 4) {
-          autoFilledRef.current = true;
+        if (autoFillBots && room.slots.filter(s => s !== null).length < 4) {
           multiplayerClient.fillWithAI(aiFillDifficulty);
         }
 

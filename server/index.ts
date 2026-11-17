@@ -564,6 +564,11 @@ export async function createMultiplayerServer(
             const room = msg.queueMode === 'rivals'
               ? activeRm.createRivalsRoom(uid, msg.rules)
               : activeRm.createRoom(uid, msg.rules, msg.queueMode);
+            if (msg.autoFillAI) {
+              try {
+                activeRm.fillWithAI(uid, msg.difficulty);
+              } catch {}
+            }
             const response: ServerMessage = {
               type: 'ROOM_UPDATE',
               room,

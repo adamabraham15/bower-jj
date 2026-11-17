@@ -557,12 +557,17 @@ export class MultiplayerClient {
   }
 
   // --- API Methods ---
-  public createRoom(rules?: Partial<EuchreHouseRules>, queueMode?: 'rivals' | 'solo' | 'casual' | 'custom' | 'duo') {
+  public createRoom(
+    rules?: Partial<EuchreHouseRules>,
+    queueMode?: 'rivals' | 'solo' | 'casual' | 'custom' | 'duo',
+    autoFillAI?: boolean,
+    difficulty?: AIDifficulty
+  ) {
     if (this.currentRoom && this.currentRoom.status !== 'lobby') {
       this.currentRoom = null;
       this.myPosition = null;
     }
-    this.send({ type: 'ROOM_CREATE', rules, queueMode });
+    this.send({ type: 'ROOM_CREATE', rules, queueMode, autoFillAI, difficulty });
   }
 
   public joinRoom(roomCode: string) {
