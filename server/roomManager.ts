@@ -36,6 +36,7 @@ import {
   pickRandomBotNames,
   resolveAvatarId,
   resolveCardBackId,
+  resolveTableFeltId,
 } from '../src/config/collectiblesCatalog';
 import {
   initializeGame,
@@ -71,6 +72,7 @@ export interface ClientConnection {
   username: string;
   avatarIcon: string;
   equippedCardBack?: string;
+  equippedTableFelt?: string;
   roomCode?: string;
   inQueue?: 'solo' | 'rivals' | 'duo' | 'casual';
   queueEnterTime?: number;
@@ -844,6 +846,27 @@ export class RoomManager {
               this.broadcastGameSync(room.code);
             }
           }
+        }
+      }
+    }
+  }
+
+  public updateUserTableFelt(userId: string, feltId: string): void {
+    const resolved = resolveTableFeltId(feltId);
+    const conn = this.connections.get(userId);
+    if (conn) {
+      conn.equippedTableFelt = resolved;
+      const user = this.userCache.get(userId);
+      if (user) {
+        if (!user.equippedCosmetics) {
+          user.equippedCosmetics = { hat: 'the_outlaw', cardBack: 'classic_blue' };
+        }
+        user.equippedCosmetics.tableFelt = resolved;
+      }
+      if (conn.roomCode) {
+        const room = this.rooms.get(conn.roomCode);
+        if (room && room.status === 'playing') {
+          this.broadcastGameSync(room.code);
         }
       }
     }

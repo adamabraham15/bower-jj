@@ -1007,6 +1007,9 @@ export class PostgresDatabaseRepository {
             'admin_update'
           );
         }
+        const resolvedFelt = updates.equippedCosmetics.tableFelt
+          ? resolveTableFeltId(updates.equippedCosmetics.tableFelt)
+          : undefined;
         await client.query(
           `
           UPDATE public.player_cosmetics SET
@@ -1014,6 +1017,7 @@ export class PostgresDatabaseRepository {
             equipped_card_back = COALESCE($3, equipped_card_back),
             equipped_banner = COALESCE($4, equipped_banner),
             equipped_title = COALESCE($5, equipped_title),
+            equipped_felt = COALESCE($6, equipped_felt),
             updated_at = NOW()
           WHERE user_id = $1
           `,
@@ -1023,6 +1027,7 @@ export class PostgresDatabaseRepository {
             resolvedCb,
             updates.equippedCosmetics.banner,
             updates.equippedCosmetics.title,
+            resolvedFelt,
           ]
         );
       }
@@ -2134,7 +2139,11 @@ export class PostgresDatabaseRepository {
         }
       }
       const res = await this.queryWithRetry(
-        `UPDATE public.player_cosmetics SET equipped_felt = $1, updated_at = NOW() WHERE user_id = $2`,
+        `INSERT INTO public.player_cosmetics (user_id, equipped_felt, updated_at)
+         VALUES ($2, $1, NOW())
+         ON CONFLICT (user_id) DO UPDATE SET
+           equipped_felt = EXCLUDED.equipped_felt,
+           updated_at = NOW()`,
         [canonical, userId]
       );
       return (res.rowCount || 0) > 0;

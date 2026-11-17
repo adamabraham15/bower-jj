@@ -72,6 +72,15 @@ export const VaultCollections: React.FC<VaultCollectionsProps> = ({
   // Local state to track forged cards immediately without requiring a page refresh
   const [locallyForgedCards, setLocallyForgedCards] = useState<Set<string>>(new Set());
 
+  // Local state to track equipped felt immediately without delay
+  const [activeFeltId, setActiveFeltId] = useState<string>(equippedTableFeltId || 'midnight_navy');
+
+  React.useEffect(() => {
+    if (equippedTableFeltId) {
+      setActiveFeltId(equippedTableFeltId);
+    }
+  }, [equippedTableFeltId]);
+
   // Owned cards map from collection state + locally forged cards
   const ownedCardsMap = React.useMemo(() => {
     const map = new Map<string, number>();
@@ -464,17 +473,18 @@ export const VaultCollections: React.FC<VaultCollectionsProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {TABLE_FELTS.map((felt) => {
-              const isEquipped = equippedTableFeltId === felt.id;
+              const isEquipped = activeFeltId === felt.id;
               const isUnlocked =
                 felt.unlockedByDefault ||
-                (felt.collectionId && setCompletionStatus.get(felt.collectionId)?.isComplete);
+                (felt.collectionId && setCompletionStatus.get(felt.collectionId)?.isComplete) ||
+                (felt.collectionId && collectionState?.unlockedCardBacks?.includes(felt.collectionId));
 
               return (
                 <div
                   key={felt.id}
                   className={`rounded-2xl border p-4 flex flex-col justify-between transition-all ${
                     isEquipped
-                      ? 'bg-[#182338] border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.25)]'
+                      ? 'bg-[#182338] border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.35)] ring-1 ring-emerald-400/50'
                       : 'bg-[#121826] border-slate-700/80 hover:border-slate-600'
                   }`}
                 >
@@ -492,8 +502,9 @@ export const VaultCollections: React.FC<VaultCollectionsProps> = ({
                         style={{ borderColor: felt.feltBorder }}
                       />
                       {isEquipped && (
-                        <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-black text-[9px] shadow">
-                          Equipped
+                        <div className="absolute top-2 right-2 px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 font-black text-[10px] tracking-wider uppercase shadow-md flex items-center gap-1">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                          <span>In Use</span>
                         </div>
                       )}
                     </div>
@@ -509,16 +520,27 @@ export const VaultCollections: React.FC<VaultCollectionsProps> = ({
                     {isUnlocked ? (
                       <button
                         onClick={() => {
-                          sounds.playUiClick();
-                          onEquipTableFelt(felt.id);
+                          if (!isEquipped) {
+                            sounds.playUiClick();
+                            setActiveFeltId(felt.id);
+                            onEquipTableFelt(felt.id);
+                          }
                         }}
-                        className={`w-full py-2 rounded-xl text-xs font-black cursor-pointer transition-all ${
+                        disabled={isEquipped}
+                        className={`w-full py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
                           isEquipped
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40'
-                            : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md'
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/50 cursor-default'
+                            : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md cursor-pointer active:scale-98'
                         }`}
                       >
-                        {isEquipped ? 'Currently Active' : 'Equip Felt'}
+                        {isEquipped ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            <span>Equipped • In Use</span>
+                          </>
+                        ) : (
+                          'Equip Felt'
+                        )}
                       </button>
                     ) : (
                       <div className="text-[11px] text-amber-400 font-bold flex items-center gap-1.5 justify-center py-1">

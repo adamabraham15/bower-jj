@@ -319,7 +319,7 @@ describe('Table UI & Tutorial Helpers', () => {
     );
 
     expect(html6).toContain('Swipe cards to view all 6 in full');
-    expect(html6).toContain('Tap a card to discard • Swipe to view all 6');
+    expect(html6).toContain('Tap to discard • Swipe for all 6');
     expect(html6).toContain('cursor-grab active:cursor-grabbing');
     expect(html6).toContain('px-3 sm:px-6');
     // Clamp is omitted during dealer discard so cards display at full width
@@ -396,7 +396,7 @@ describe('Table UI & Tutorial Helpers', () => {
     );
 
     expect(htmlMulti6).toContain('Swipe cards to view all 6 in full');
-    expect(htmlMulti6).toContain('Tap a card to discard • Swipe to view all 6');
+    expect(htmlMulti6).toContain('Tap to discard • Swipe for all 6');
     expect(htmlMulti6).toContain('cursor-grab active:cursor-grabbing');
     expect(htmlMulti6).toContain('px-3 sm:px-6');
     expect(htmlMulti6).not.toContain('calc((100vw - 48px) / 5)');

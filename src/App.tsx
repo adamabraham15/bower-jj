@@ -208,13 +208,20 @@ export const App: React.FC = () => {
       const norm = normalizeXpProgress(parsed.xp, parsed.level);
       const normAvatar = resolveAvatarId(parsed.avatarIcon);
       const normCardBack = resolveCardBackId(parsed.equippedCosmetics?.cardBack);
+      const normTableFelt = resolveTableFeltId(
+        parsed.equippedCosmetics?.tableFelt ||
+        (parsed as any).tableFelt ||
+        localStorage.getItem('bower_jj_tableFelt')
+      );
       return {
         ...parsed,
         avatarIcon: normAvatar,
+        tableFelt: normTableFelt,
         equippedCosmetics: {
           ...(parsed.equippedCosmetics || {}),
           hat: normAvatar,
           cardBack: normCardBack,
+          tableFelt: normTableFelt,
         },
         xp: norm.xp,
         level: norm.level,
@@ -416,12 +423,19 @@ export const App: React.FC = () => {
           const resolvedCardBack = resolveCardBackId(
             sync.cosmetics?.equipped_card_back || prev.equippedCosmetics?.cardBack
           );
+          const resolvedTableFelt = resolveTableFeltId(
+            sync.cosmetics?.equipped_felt ||
+            prev.equippedCosmetics?.tableFelt ||
+            prev.tableFelt ||
+            localStorage.getItem('bower_jj_tableFelt')
+          );
 
           return {
             ...prev,
             username: sync.profile?.username || prev.username,
             playerId: sync.profile?.id || userId,
             avatarIcon: resolvedAvatar,
+            tableFelt: resolvedTableFelt,
             level: normXp.level,
             xp: normXp.xp,
             nextLevelXp: normXp.nextLevelXp,
@@ -442,6 +456,7 @@ export const App: React.FC = () => {
               cardBack: resolvedCardBack,
               banner: sync.cosmetics?.equipped_banner || prev.equippedCosmetics?.banner || 'default_navy',
               title: sync.cosmetics?.equipped_title || prev.equippedCosmetics?.title || 'Recruit',
+              tableFelt: resolvedTableFelt,
             },
           };
         });
@@ -537,11 +552,20 @@ export const App: React.FC = () => {
       const resolvedCardBack = keepPrevRank
         ? resolveCardBackId(prev.equippedCosmetics?.cardBack)
         : resolveCardBackId(user.equippedCosmetics?.cardBack || prev.equippedCosmetics?.cardBack);
+      const resolvedTableFelt = resolveTableFeltId(
+        user.equippedCosmetics?.tableFelt ||
+        (user as any).tableFelt ||
+        (user as any).equipped_felt ||
+        prev.equippedCosmetics?.tableFelt ||
+        prev.tableFelt ||
+        localStorage.getItem('bower_jj_tableFelt')
+      );
 
       return {
         ...prev,
         username: keepPrevRank ? prev.username : (user.username || prev.username),
         avatarIcon: resolvedAvatar,
+        tableFelt: resolvedTableFelt,
         playerId: resolvedPlayerId,
         level: normXp.level,
         xp: normXp.xp,
@@ -563,8 +587,12 @@ export const App: React.FC = () => {
               cardBack: resolvedCardBack,
               banner: user.equippedCosmetics.banner || prev.equippedCosmetics?.banner || 'default_navy',
               title: user.equippedCosmetics.title || prev.equippedCosmetics?.title || 'Recruit',
+              tableFelt: resolvedTableFelt,
             }
-          : prev.equippedCosmetics,
+          : {
+              ...(prev.equippedCosmetics || {}),
+              tableFelt: resolvedTableFelt,
+            },
         recentMatches: mergedMatches,
       };
     });
@@ -1201,6 +1229,7 @@ export const App: React.FC = () => {
         : id;
     setProfile(prev => ({
       ...prev,
+      tableFelt: category === 'tableFelt' ? finalId : prev.tableFelt,
       equippedCosmetics: {
         ...(prev.equippedCosmetics || {}),
         [category]: finalId,
@@ -1208,6 +1237,8 @@ export const App: React.FC = () => {
     }));
     if (category === 'cardBack') {
       multiplayerClient.equipCardBack(finalId);
+    } else if (category === 'tableFelt') {
+      multiplayerClient.equipTableFelt(finalId);
     } else {
       multiplayerClient.equipCosmetic(category as any, finalId);
     }
@@ -1216,6 +1247,9 @@ export const App: React.FC = () => {
     }
     try {
       localStorage.setItem(`bower_jj_${category}`, finalId);
+      if (category === 'tableFelt') {
+        localStorage.setItem('bower_jj_tableFelt', finalId);
+      }
     } catch {}
   };
 
@@ -1625,7 +1659,7 @@ export const App: React.FC = () => {
         collectionState={collectionState}
         equippedAvatarId={resolveAvatarId(profile.avatarIcon)}
         equippedCardBackId={resolveCardBackId(profile.equippedCosmetics?.cardBack)}
-        equippedTableFeltId={profile.equippedCosmetics?.tableFelt || 'midnight_navy'}
+        equippedTableFeltId={resolveTableFeltId(profile.equippedCosmetics?.tableFelt || profile.tableFelt)}
         waxSealsBalance={profile.waxSeals ?? 150}
         playerLevel={profile.level}
         playerWins={profile.wins}

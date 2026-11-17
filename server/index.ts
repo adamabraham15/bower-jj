@@ -521,6 +521,7 @@ export async function createMultiplayerServer(
             username: user.username,
             avatarIcon: user.avatarIcon,
             equippedCardBack: user.equippedCosmetics?.cardBack,
+            equippedTableFelt: user.equippedCosmetics?.tableFelt,
           };
 
           activeRm.setCachedUser(user);
@@ -850,6 +851,8 @@ export async function createMultiplayerServer(
                 activeRm.updateUserAvatar(uid, u.avatarIcon);
               } else if (msg.category === 'cardBack' && msg.itemId) {
                 activeRm.updateUserCardBack(uid, u.equippedCosmetics?.cardBack || msg.itemId);
+              } else if (msg.category === 'tableFelt' && msg.itemId) {
+                activeRm.updateUserTableFelt(uid, u.equippedCosmetics?.tableFelt || msg.itemId);
               }
               ws.send(JSON.stringify({ type: 'USER_SYNC', user: u }));
               if (u.collectionState) {

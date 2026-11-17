@@ -28,6 +28,8 @@ import {
   getEligibleMilestoneAvatars,
   resolveAvatarId,
   resolveCardBackId,
+  resolveTableFeltId,
+  getTableFeltDefinition,
 } from '../src/config/collectiblesCatalog';
 import { PROGRESSION_CONFIG, rollPackCards } from './config/progressionConfig';
 import { supabaseAdmin } from './auth';
@@ -299,6 +301,7 @@ class Database {
         cardBack: DEFAULT_CARD_BACK_ID,
         banner: 'default_navy',
         title: 'Recruit',
+        tableFelt: 'midnight_navy',
       },
       matchHistory: [],
 
@@ -1035,6 +1038,22 @@ class Database {
     }
     if (category === 'cardBack' && itemId) {
       return this.equipCardBack(userId, itemId).success;
+    }
+    if (category === 'tableFelt' && itemId) {
+      const canonical = resolveTableFeltId(itemId);
+      const def = getTableFeltDefinition(canonical);
+      if (!def.unlockedByDefault && def.collectionId) {
+        const hasCardBack = (user.unlockedCosmetics?.cardBacks || []).includes(def.collectionId);
+        if (!hasCardBack) {
+          return false;
+        }
+      }
+      if (!user.equippedCosmetics) {
+        user.equippedCosmetics = { hat: 'the_outlaw', cardBack: 'classic_blue' };
+      }
+      user.equippedCosmetics.tableFelt = canonical;
+      this.save();
+      return true;
     }
 
     if (!user.equippedCosmetics) {

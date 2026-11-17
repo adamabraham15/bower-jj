@@ -5,7 +5,7 @@
 
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js';
 import { captureInitialAuthRedirect, formatAuthError } from './authCallback';
-import { resolveAvatarId, resolveCardBackId } from '../config/collectiblesCatalog';
+import { resolveAvatarId, resolveCardBackId, resolveTableFeltId } from '../config/collectiblesCatalog';
 
 // Capture auth redirect parameters before Supabase client initializes and scrubs URL fragments
 captureInitialAuthRedirect();
@@ -486,8 +486,14 @@ class AuthService {
           ? resolveAvatarId(itemId)
           : category === 'cardBack'
             ? resolveCardBackId(itemId)
-            : itemId;
-      await supabase.from('player_cosmetics').update({ [col]: normalizedItem, updated_at: now }).eq('user_id', userId);
+            : category === 'tableFelt'
+              ? resolveTableFeltId(itemId)
+              : itemId;
+      const { error: updateErr } = await supabase.from('player_cosmetics').update({ [col]: normalizedItem, updated_at: now }).eq('user_id', userId);
+      if (updateErr) {
+        // If row didn't exist yet, perform upsert
+        await supabase.from('player_cosmetics').upsert({ user_id: userId, [col]: normalizedItem, updated_at: now }, { onConflict: 'user_id' });
+      }
       if (category === 'hat') {
         await supabase.from('profiles').update({ avatar_icon: normalizedItem, updated_at: now }).eq('id', userId);
       }
