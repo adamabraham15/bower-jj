@@ -286,9 +286,9 @@ describe('Table UI & Tutorial Helpers', () => {
       })
     );
 
-    expect(html5).toContain('calc((100vw - 36px) / 5)');
+    expect(html5).toContain('calc((100vw - 48px) / 5)');
     expect(html5).not.toContain('Swipe cards to view all 6 in full');
-    expect(html5).toContain('px-1 sm:px-4');
+    expect(html5).toContain('px-0.5 sm:px-4');
 
     // Case 2: 6-card dealer discard (clamp removed, tray scrollable back and forth, mobile helper rendered)
     const state6 = initializeGame(players, DEFAULT_RULES, 0);
@@ -367,7 +367,7 @@ describe('Table UI & Tutorial Helpers', () => {
       })
     );
 
-    expect(htmlMulti5).toContain('calc((100vw - 36px) / 5)');
+    expect(htmlMulti5).toContain('calc((100vw - 48px) / 5)');
     expect(htmlMulti5).not.toContain('Swipe cards to view all 6 in full');
 
     const sanitized6: SanitizedGameState = {
@@ -397,6 +397,6 @@ describe('Table UI & Tutorial Helpers', () => {
     expect(htmlMulti6).toContain('Tap a card to discard • Swipe to view all 6');
     expect(htmlMulti6).toContain('cursor-grab active:cursor-grabbing');
     expect(htmlMulti6).toContain('px-3 sm:px-6');
-    expect(htmlMulti6).not.toContain('calc((100vw - 36px) / 5)');
+    expect(htmlMulti6).not.toContain('calc((100vw - 48px) / 5)');
   });
 });

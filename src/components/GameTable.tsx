@@ -1044,7 +1044,7 @@ export const GameTable: React.FC<GameTableProps> = ({
             onTouchEnd={handleTrayTouchEnd}
           >
             <div className={`flex items-center justify-center min-w-full w-max gap-1 xs:gap-1.5 min-[400px]:gap-2 sm:gap-3 md:gap-4 ${
-              isDealerDiscardPhase || displayHand.length > 5 ? 'px-3 sm:px-6' : 'px-1 sm:px-4'
+              isDealerDiscardPhase || displayHand.length > 5 ? 'px-3 sm:px-6' : 'px-0.5 sm:px-4'
             } pt-5 sm:pt-7 pb-1.5 sm:pb-2.5 min-h-[96px] xs:min-h-[105px] sm:min-h-[142px] md:min-h-[162px] lg:min-h-[182px]`}>
               {displayHand.map((card, idx) => {
                 const isLegal = state.phase === 'playing'
@@ -1060,7 +1060,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                       maxWidth:
                         isDealerDiscardPhase || displayHand.length > 5
                           ? undefined
-                          : 'calc((100vw - 36px) / 5)',
+                          : 'calc((100vw - 48px) / 5)',
                     }}
                   >
                     <CardView
