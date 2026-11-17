@@ -491,7 +491,7 @@ describe('Table UI & Tutorial Helpers', () => {
       currentTurn: 0,
       trumpSuit: 'spades',
       callingTeam: 1,
-      maker: 1,
+      callingPlayer: 1,
       scores: [9, 8],
       tricksWon: [2, 1],
       currentTrick: { leadPlayer: 1, cards: [] },
