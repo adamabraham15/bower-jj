@@ -129,15 +129,18 @@ export class TokenVerifier {
     const allowGuest = process.env.ALLOW_GUEST_AUTH !== 'false';
     if (allowGuest || !isServerSupabaseConfigured) {
       const cleanName = (fallbackUsername || 'Guest').trim();
+      const uniqueSuffix = Math.floor(1000 + Math.random() * 9000);
+      const isNamedGuest = cleanName.toLowerCase().startsWith('guest');
+      const finalUsername = isNamedGuest ? cleanName : `Guest ${uniqueSuffix}`;
       const guestId = token?.startsWith('usr_') || token?.startsWith('tok_')
         ? token.replace('tok_', 'usr_')
-        : `dev_${cleanName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+        : `guest_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
 
       return {
         userId: guestId,
-        username: cleanName,
+        username: finalUsername,
         avatarIcon: resolveAvatarId(fallbackAvatar),
-        isAdmin: cleanName.toLowerCase().includes('admin'),
+        isAdmin: false,
         isGuest: true,
       };
     }

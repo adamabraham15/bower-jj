@@ -1,12 +1,24 @@
 /**
  * BOWER JJ — Production Authentication Modal
- * Supabase Auth: Login, Registration, Password Reset, and Guest Play fallback.
- * Tactical Dark-Gold Aesthetics with live username availability validation.
+ * Supabase Auth: Simple Username & Password (No Email required).
+ * Supports new user registration and existing user account login.
  */
 
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Lock, User, Eye, EyeOff, Sparkles, CheckCircle2, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import {
+  X,
+  Lock,
+  User,
+  Eye,
+  EyeOff,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
+  ArrowRight,
+  ShieldCheck,
+} from 'lucide-react';
 import { authService, isSupabaseConfigured } from '../services/supabaseClient';
+import { AvatarPortrait } from './AvatarPortrait';
 import { sounds } from '../audio/sound';
 
 interface AuthModalProps {
@@ -20,6 +32,15 @@ interface AuthModalProps {
   reason?: string;
 }
 
+const STARTER_AVATARS = [
+  { id: 'the_outlaw', name: 'The Outlaw' },
+  { id: 'elven_trickster', name: 'Elven Trickster' },
+  { id: 'cyber_bot', name: 'Cyber Bot' },
+  { id: 'clever_fox', name: 'Clever Fox' },
+  { id: 'velvet_gentleman', name: 'Velvet Gentleman' },
+  { id: 'iron_tactician', name: 'Iron Tactician' },
+];
+
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
@@ -30,12 +51,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   initialEmail,
   reason,
 }) => {
-  const [tab, setTab] = useState<'login' | 'register' | 'forgot' | 'confirm_email'>(initialTab);
-  const [email, setEmail] = useState(initialEmail || '');
+  const [tab, setTab] = useState<'login' | 'register'>(initialTab === 'login' ? 'login' : 'register');
+  const [username, setUsername] = useState(initialEmail || '');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [selectedAvatar, setSelectedAvatar] = useState('the_outlaw');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -43,25 +63,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [isUsernameValidating, setIsUsernameValidating] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'available' | 'taken' | 'invalid' | null>(null);
 
-  // Sync initial tab & email when modal opens
+  // Sync initial tab & username when modal opens
   useEffect(() => {
-    if (isOpen && initialTab) {
-      setTab(initialTab);
-      if (initialEmail) {
-        setEmail(initialEmail);
-      }
+    if (isOpen) {
+      if (initialTab) setTab(initialTab === 'login' ? 'login' : 'register');
+      if (initialEmail) setUsername(initialEmail);
       setErrorMessage(null);
       setSuccessMessage(null);
     }
   }, [isOpen, initialTab, initialEmail]);
 
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const t = setTimeout(() => setResendCooldown(c => Math.max(0, c - 1)), 1000);
-    return () => clearTimeout(t);
-  }, [resendCooldown]);
-
-  // Debounced username availability check
+  // Debounced username availability check for registration
   useEffect(() => {
     if (tab !== 'register' || !username.trim()) {
       setUsernameStatus(null);
@@ -69,7 +81,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
 
     const clean = username.trim();
-    if (clean.length < 3 || clean.length > 20 || !/^[a-zA-Z0-9_]+$/.test(clean)) {
+    if (clean.length < 3 || clean.length > 20 || !/^[a-zA-Z0-9_-]+$/.test(clean)) {
       setUsernameStatus('invalid');
       return;
     }
@@ -79,7 +91,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const available = await authService.isUsernameAvailable(clean);
       setIsUsernameValidating(false);
       setUsernameStatus(available ? 'available' : 'taken');
-    }, 400);
+    }, 350);
 
     return () => clearTimeout(timer);
   }, [username, tab]);
@@ -87,9 +99,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   if (!isOpen) return null;
 
   const resetForm = () => {
-    setEmail('');
-    setPassword('');
     setUsername('');
+    setPassword('');
+    setConfirmPassword('');
     setErrorMessage(null);
     setSuccessMessage(null);
     setUsernameStatus(null);
@@ -100,15 +112,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    if (!email.trim() || !password) {
-      setErrorMessage('Please fill in all fields.');
+    const cleanName = username.trim();
+    if (!cleanName || !password) {
+      setErrorMessage('Please enter both username and password.');
       return;
     }
 
     setIsLoading(true);
     sounds.playUiClick();
 
-    const { user, session, error } = await authService.login(email.trim(), password);
+    const { user, session, error } = await authService.login(cleanName, password);
     setIsLoading(false);
 
     if (error) {
@@ -128,18 +141,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    if (!email.trim() || !password || !username.trim()) {
-      setErrorMessage('Please fill in all registration fields.');
+    const cleanName = username.trim();
+    if (!cleanName || !password) {
+      setErrorMessage('Please choose a username and password.');
+      return;
+    }
+
+    if (cleanName.length < 3 || cleanName.length > 20) {
+      setErrorMessage('Username must be between 3 and 20 characters.');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_-]+$/.test(cleanName)) {
+      setErrorMessage('Username can only contain letters, numbers, underscores, and hyphens.');
       return;
     }
 
     if (usernameStatus === 'taken') {
-      setErrorMessage(`Username "${username}" is already taken.`);
-      return;
-    }
-
-    if (usernameStatus === 'invalid') {
-      setErrorMessage('Username must be 3-20 characters (letters, numbers, underscores).');
+      setErrorMessage(`Username "${cleanName}" is already taken.`);
       return;
     }
 
@@ -148,49 +167,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
+    if (password !== confirmPassword) {
+      setErrorMessage('Passwords do not match. Please verify your password.');
+      return;
+    }
+
     setIsLoading(true);
     sounds.playUiClick();
 
     const { user, session, error } = await authService.register(
-      email.trim(),
+      cleanName,
       password,
-      username.trim()
+      selectedAvatar
     );
-    setIsLoading(false);
-
-    if (error) {
-      setErrorMessage(error);
-      return;
-    }
-
-    if (user) {
-      if (!session) {
-        setOtpCode('');
-        setResendCooldown(30);
-        setTab('confirm_email');
-        setSuccessMessage('Account created! Click the link in your email or enter your verification code below to activate.');
-      } else {
-        sounds.playVictoryFanfare();
-        onAuthSuccess(user, session.access_token);
-        onClose();
-      }
-    }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    if (!otpCode.trim()) {
-      setErrorMessage('Enter the 6-digit verification code from your email.');
-      return;
-    }
-
-    setIsLoading(true);
-    sounds.playUiClick();
-
-    const { user, session, error } = await authService.verifyEmailOtpCode(email.trim(), otpCode.trim());
     setIsLoading(false);
 
     if (error) {
@@ -201,78 +190,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (user) {
       sounds.playVictoryFanfare();
       onAuthSuccess(user, session?.access_token);
-      onClose();
       onSignupActivated?.(user, session?.access_token);
-    }
-  };
-
-  const handleResendEmail = async () => {
-    if (!email.trim() || resendCooldown > 0) return;
-    setErrorMessage(null);
-    setIsLoading(true);
-    sounds.playUiClick();
-
-    const { success, error } = await authService.resendConfirmationEmail(email.trim());
-    setIsLoading(false);
-
-    if (success) {
-      setResendCooldown(30);
-      setSuccessMessage(`A fresh confirmation email was sent to ${email.trim()}.`);
-    } else if (error) {
-      setErrorMessage(error);
-    }
-  };
-
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    if (!email.trim()) {
-      setErrorMessage('Please enter your account email address.');
-      return;
-    }
-
-    setIsLoading(true);
-    sounds.playUiClick();
-
-    const { error } = await authService.resetPassword(email.trim());
-    setIsLoading(false);
-
-    if (error) {
-      setErrorMessage(error);
-    } else {
-      setSuccessMessage('Password reset link sent! Check your inbox to update your password.');
+      onClose();
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-slate-900 border-2 border-amber-500/70 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md bg-slate-900 border-2 border-amber-500/70 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
         {/* Header Ribbon */}
-        <div className="relative bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 p-5 flex items-center justify-between shadow-md">
+        <div className="relative bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 p-4 sm:p-5 flex items-center justify-between shadow-md">
           <div className="flex items-center space-x-2.5">
             <div className="w-9 h-9 rounded-xl bg-slate-950/40 border border-slate-900/50 flex items-center justify-center text-white shadow-inner">
               <ShieldCheck className="w-5 h-5 text-amber-200" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-slate-950 tracking-wide uppercase leading-tight">
-                {tab === 'login'
-                  ? 'Player Sign In'
-                  : tab === 'register'
-                  ? 'Create Account'
-                  : tab === 'confirm_email'
-                  ? 'Verify Your Email'
-                  : 'Account Recovery'}
+              <h2 className="text-base sm:text-lg font-black text-slate-950 tracking-wide uppercase leading-tight">
+                {tab === 'login' ? 'Player Sign In' : 'Create Account'}
               </h2>
               <p className="text-[11px] text-amber-950 font-bold">
                 {tab === 'login'
-                  ? 'Access your permanent BOWER JJ profile & rank'
-                  : tab === 'register'
-                  ? 'Join competitive multiplayer & cloud saves'
-                  : tab === 'confirm_email'
-                  ? 'One quick step to activate your account'
-                  : 'We will send you a secure password reset link'}
+                  ? 'Access your BOWER JJ profile, stats & rank'
+                  : 'Join competitive matchmaking & save progress'}
               </p>
             </div>
           </div>
@@ -288,7 +227,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </button>
         </div>
 
-        {/* Custom Reason Prompt Banner */}
+        {/* Reason Prompt Banner */}
         {reason && (
           <div className="px-4 py-2.5 bg-amber-500/15 border-b border-amber-500/30 text-amber-200 text-xs font-semibold flex items-center space-x-2">
             <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0" />
@@ -300,48 +239,44 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {!isSupabaseConfigured && (
           <div className="px-5 py-2.5 bg-blue-950/40 border-b border-blue-800/40 text-[11px] text-blue-200 flex items-center space-x-2">
             <Sparkles className="w-4 h-4 text-blue-400 flex-shrink-0" />
-            <span>
-              Offline / Local mode active. Guest play and local profiles are fully supported.
-            </span>
+            <span>Offline mode active. Local guest play is supported.</span>
           </div>
         )}
 
         {/* Tab Selection */}
-        {tab !== 'confirm_email' && (
-          <div className="flex border-b border-slate-800 bg-slate-950/50 text-xs font-black">
-            <button
-              onClick={() => {
-                sounds.playUiClick();
-                setTab('login');
-                resetForm();
-              }}
-              className={`flex-1 py-3 text-center border-b-2 transition-all ${
-                tab === 'login'
-                  ? 'border-amber-400 text-amber-400 bg-slate-800/40'
-                  : 'border-transparent text-gray-400 hover:text-gray-200'
-              }`}
-            >
-              SIGN IN
-            </button>
-            <button
-              onClick={() => {
-                sounds.playUiClick();
-                setTab('register');
-                resetForm();
-              }}
-              className={`flex-1 py-3 text-center border-b-2 transition-all ${
-                tab === 'register'
-                  ? 'border-amber-400 text-amber-400 bg-slate-800/40'
-                  : 'border-transparent text-gray-400 hover:text-gray-200'
-              }`}
-            >
-              REGISTER
-            </button>
-          </div>
-        )}
+        <div className="flex border-b border-slate-800 bg-slate-950/50 text-xs font-black">
+          <button
+            onClick={() => {
+              sounds.playUiClick();
+              setTab('login');
+              resetForm();
+            }}
+            className={`flex-1 py-3 text-center border-b-2 transition-all ${
+              tab === 'login'
+                ? 'border-amber-400 text-amber-400 bg-slate-800/40'
+                : 'border-transparent text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            SIGN IN
+          </button>
+          <button
+            onClick={() => {
+              sounds.playUiClick();
+              setTab('register');
+              resetForm();
+            }}
+            className={`flex-1 py-3 text-center border-b-2 transition-all ${
+              tab === 'register'
+                ? 'border-amber-400 text-amber-400 bg-slate-800/40'
+                : 'border-transparent text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            CREATE ACCOUNT
+          </button>
+        </div>
 
         {/* Form Body */}
-        <div className="p-6 space-y-4">
+        <div className="p-5 sm:p-6 space-y-4 overflow-y-auto">
           {errorMessage && (
             <div className="p-3 bg-red-950/50 border border-red-500/50 rounded-2xl flex items-start space-x-2 text-xs text-red-200 animate-in fade-in">
               <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
@@ -356,37 +291,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           )}
 
+          {/* SIGN IN TAB */}
           {tab === 'login' && (
             <form onSubmit={handleLogin} className="space-y-3.5">
               <div>
-                <label className="block text-[11px] font-bold text-gray-300 uppercase mb-1">Email Address</label>
+                <label className="block text-[11px] font-bold text-gray-300 uppercase mb-1">
+                  Account Name (Username)
+                </label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                   <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="player@bowerjj.com"
+                    type="text"
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    placeholder="Enter your username"
                     required
-                    className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl pl-10 pr-3 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none transition-colors font-mono"
+                    autoFocus
+                    className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl pl-10 pr-3 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="block text-[11px] font-bold text-gray-300 uppercase">Password</label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      sounds.playUiClick();
-                      setTab('forgot');
-                    }}
-                    className="text-[11px] text-amber-400 hover:text-amber-300 font-bold"
-                  >
-                    Forgot Password?
-                  </button>
-                </div>
+                <label className="block text-[11px] font-bold text-gray-300 uppercase mb-1">
+                  Password
+                </label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                   <input
@@ -413,7 +342,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/25 transition-all active:scale-98 disabled:opacity-50 flex items-center justify-center space-x-2 mt-2"
               >
                 {isLoading ? (
-                  <span className="animate-pulse">Authenticating...</span>
+                  <span className="animate-pulse">Signing In...</span>
                 ) : (
                   <>
                     <span>Sign In to Account</span>
@@ -424,11 +353,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </form>
           )}
 
+          {/* REGISTER TAB */}
           {tab === 'register' && (
             <form onSubmit={handleRegister} className="space-y-3.5">
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="block text-[11px] font-bold text-gray-300 uppercase">Username</label>
+                  <label className="block text-[11px] font-bold text-gray-300 uppercase">
+                    Choose Username
+                  </label>
                   {isUsernameValidating && (
                     <span className="text-[10px] text-gray-400 animate-pulse font-mono">Checking...</span>
                   )}
@@ -454,28 +386,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     placeholder="BowerChampion"
                     required
                     maxLength={20}
+                    autoFocus
                     className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl pl-10 pr-3 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-gray-300 uppercase mb-1">Email Address</label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="player@bowerjj.com"
-                    required
-                    className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl pl-10 pr-3 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none transition-colors font-mono"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-gray-300 uppercase mb-1">Password (min. 6 chars)</label>
+                <label className="block text-[11px] font-bold text-gray-300 uppercase mb-1">
+                  Choose Password (min. 6 characters)
+                </label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                   <input
@@ -497,6 +417,57 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               </div>
 
+              <div>
+                <label className="block text-[11px] font-bold text-gray-300 uppercase mb-1">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    minLength={6}
+                    className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl pl-10 pr-10 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none transition-colors font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Starter Avatar Picker */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-300 uppercase mb-1.5">
+                  Choose Your Starter Avatar
+                </label>
+                <div className="grid grid-cols-6 gap-2 bg-slate-950 p-2.5 rounded-2xl border border-slate-800">
+                  {STARTER_AVATARS.map(avatar => {
+                    const isSelected = selectedAvatar === avatar.id;
+                    return (
+                      <button
+                        key={avatar.id}
+                        type="button"
+                        onClick={() => {
+                          sounds.playUiClick();
+                          setSelectedAvatar(avatar.id);
+                        }}
+                        className={`relative rounded-xl p-1 transition-all flex flex-col items-center group ${
+                          isSelected
+                            ? 'ring-2 ring-amber-400 bg-amber-400/10 scale-105'
+                            : 'hover:bg-slate-800/60 opacity-80 hover:opacity-100'
+                        }`}
+                        title={avatar.name}
+                      >
+                        <AvatarPortrait avatarId={avatar.id} size="sm" shape="rounded" />
+                        <span className="text-[9px] font-semibold text-gray-300 truncate w-full text-center mt-1">
+                          {avatar.name.split(' ')[0]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <button
                 type="submit"
                 disabled={isLoading || usernameStatus === 'taken'}
@@ -512,107 +483,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 )}
               </button>
             </form>
-          )}
-
-          {tab === 'forgot' && (
-            <form onSubmit={handleForgotPassword} className="space-y-3.5">
-              <div>
-                <label className="block text-[11px] font-bold text-gray-300 uppercase mb-1">Your Registered Email</label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="player@bowerjj.com"
-                    required
-                    className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl pl-10 pr-3 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none transition-colors font-mono"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/25 transition-all active:scale-98 disabled:opacity-50 flex items-center justify-center space-x-2 mt-2"
-              >
-                {isLoading ? (
-                  <span className="animate-pulse">Sending Reset Link...</span>
-                ) : (
-                  <span>Send Recovery Email</span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTab('login')}
-                className="w-full text-center text-xs text-gray-400 hover:text-white pt-2 font-bold"
-              >
-                ← Back to Sign In
-              </button>
-            </form>
-          )}
-
-          {tab === 'confirm_email' && (
-            <div className="space-y-4">
-              <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1.5 text-xs">
-                <div className="text-gray-400 font-semibold">Confirmation sent to:</div>
-                <div className="font-mono font-bold text-amber-300 break-all">{email}</div>
-                <p className="text-[11px] text-gray-400 leading-relaxed pt-1">
-                  Open the confirmation email and click the activation button—or enter the 6-digit verification code if shown in your email.
-                </p>
-              </div>
-
-              <form onSubmit={handleVerifyOtp} className="space-y-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-300 uppercase mb-1">
-                    6-Digit Verification Code (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={otpCode}
-                    onChange={e => setOtpCode(e.target.value)}
-                    placeholder="123456"
-                    maxLength={10}
-                    className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-2.5 text-center text-sm tracking-[0.3em] text-white placeholder-gray-600 focus:outline-none font-mono"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isLoading || !otpCode.trim()}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
-                >
-                  <span>{isLoading ? 'Verifying...' : 'Activate Account with Code'}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </form>
-
-              <div className="flex items-center justify-between gap-2 pt-1 text-xs">
-                <button
-                  type="button"
-                  disabled={isLoading || resendCooldown > 0}
-                  onClick={handleResendEmail}
-                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-bold text-amber-300 disabled:opacity-50"
-                >
-                  {resendCooldown > 0 ? `Resend (${resendCooldown}s)` : 'Resend Email'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    sounds.playUiClick();
-                    setErrorMessage(null);
-                    setSuccessMessage(null);
-                    setTab('login');
-                  }}
-                  className="px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/40 font-bold text-amber-300"
-                >
-                  Already Confirmed? Sign In →
-                </button>
-              </div>
-            </div>
           )}
 
           {/* Divider */}

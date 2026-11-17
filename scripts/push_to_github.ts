@@ -36,9 +36,10 @@ function getFilesToCommit(dir: string, baseDir: string = dir): string[] {
       relPath.startsWith('node_modules') ||
       relPath.startsWith('dist') ||
       relPath.startsWith('.git') ||
+      relPath.startsWith('.vercel') ||
       relPath.startsWith('data') ||
       relPath.startsWith('server/data') ||
-      relPath === '.env' ||
+      relPath.startsWith('.env') ||
       relPath.endsWith('.bat') ||
       relPath.endsWith('.vbs') ||
       relPath.endsWith('.exe') ||
@@ -115,6 +116,7 @@ async function main() {
       continue;
     }
 
+    console.log(`Uploading file (${uploaded + 1}): ${file}`);
     const isBinary = content.includes(0);
     const blobData = await ghFetch(`/repos/${OWNER}/${REPO}/git/blobs`, {
       method: 'POST',
@@ -132,7 +134,6 @@ async function main() {
     });
 
     uploaded++;
-    console.log(`Uploaded changed file (${uploaded}): ${file}`);
   }
 
   if (treeItems.length === 0) {

@@ -48,15 +48,17 @@ class AuthService {
   >();
 
   /**
-   * Check if username is already taken
+   * Check if username is already taken (case-insensitive)
    */
   public async isUsernameAvailable(username: string): Promise<boolean> {
     if (!supabase) return true;
     try {
+      const clean = username.trim();
+      if (!clean) return false;
       const { data, error } = await supabase
         .from('profiles')
         .select('id')
-        .eq('username', username.trim())
+        .ilike('username', clean)
         .maybeSingle();
 
       if (error) return true;
@@ -67,12 +69,11 @@ class AuthService {
   }
 
   /**
-   * Register new player with Email, Password & desired Username
+   * Register new player with Username and Password (no email required)
    */
   public async register(
-    email: string,
-    password: string,
     username: string,
+    password: string,
     avatarIcon: string = 'the_outlaw'
   ): Promise<{ user: User | null; session: Session | null; error: string | null }> {
     if (!supabase) {
@@ -88,6 +89,9 @@ class AuthService {
     if (cleanUsername.length < 3 || cleanUsername.length > 20) {
       return { user: null, session: null, error: 'Username must be between 3 and 20 characters.' };
     }
+    if (!/^[a-zA-Z0-9_-]+$/.test(cleanUsername)) {
+      return { user: null, session: null, error: 'Username can only contain letters, numbers, underscores, and hyphens.' };
+    }
 
     const available = await this.isUsernameAvailable(cleanUsername);
     if (!available) {
@@ -96,9 +100,10 @@ class AuthService {
 
     try {
       const redirectUrl = this.getPublicAppUrl();
+      const synthesizedEmail = `${cleanUsername.toLowerCase().replace(/[^a-z0-9]/g, '')}@bowerjj.app`;
 
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: synthesizedEmail,
         password,
         options: {
           emailRedirectTo: redirectUrl,
@@ -113,9 +118,36 @@ class AuthService {
         return { user: null, session: null, error: formatAuthError(error, 'Registration failed.') };
       }
 
+      let user = data.user;
+      let session = data.session;
+
+      // If Supabase didn't return session immediately, sign in right away
+      if (!session && user) {
+        const loginRes = await supabase.auth.signInWithPassword({
+          email: synthesizedEmail,
+          password,
+        });
+        if (loginRes.data.session) {
+          session = loginRes.data.session;
+          user = loginRes.data.user;
+        }
+      }
+
+      // Ensure public.profiles has email and metadata synced
+      if (user?.id) {
+        await supabase
+          .from('profiles')
+          .update({
+            email: synthesizedEmail,
+            username: cleanUsername,
+            avatar_icon: avatarIcon,
+          })
+          .eq('id', user.id);
+      }
+
       return {
-        user: data.user,
-        session: data.session,
+        user,
+        session,
         error: null,
       };
     } catch (err: any) {
@@ -124,10 +156,11 @@ class AuthService {
   }
 
   /**
-   * Sign in with Email and Password
+   * Sign in with Username (or Email) and Password
+   * Supports existing users by username via public.profiles email lookup.
    */
   public async login(
-    email: string,
+    identifier: string,
     password: string
   ): Promise<{ user: User | null; session: Session | null; error: string | null }> {
     if (!supabase) {
@@ -138,14 +171,37 @@ class AuthService {
       };
     }
 
+    const cleanIdentifier = identifier.trim();
+    if (!cleanIdentifier || !password) {
+      return { user: null, session: null, error: 'Please enter both username and password.' };
+    }
+
     try {
+      let emailToUse = cleanIdentifier;
+
+      // If identifier is not already an email, lookup user's registered email in public.profiles
+      if (!cleanIdentifier.includes('@')) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('email, username')
+          .ilike('username', cleanIdentifier)
+          .maybeSingle();
+
+        if (profile?.email) {
+          emailToUse = profile.email;
+        } else {
+          // Fallback to internal synthesized domain
+          emailToUse = `${cleanIdentifier.toLowerCase().replace(/[^a-z0-9]/g, '')}@bowerjj.app`;
+        }
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: emailToUse,
         password,
       });
 
       if (error) {
-        return { user: null, session: null, error: formatAuthError(error, 'Login failed.') };
+        return { user: null, session: null, error: 'Invalid username or password.' };
       }
 
       return {

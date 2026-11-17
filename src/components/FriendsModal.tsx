@@ -27,6 +27,8 @@ interface FriendsModalProps {
   friends: FriendSummary[];
   incomingRequests: UserAccount['friendRequests'];
   onInviteToParty?: (friendId: string) => void;
+  isAuthenticated?: boolean;
+  onOpenAuth?: (tab?: 'login' | 'register', reason?: string) => void;
 }
 
 export const FriendsModal: React.FC<FriendsModalProps> = ({
@@ -35,13 +37,15 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
   friends,
   incomingRequests,
   onInviteToParty,
+  isAuthenticated = true,
+  onOpenAuth,
 }) => {
   const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'add'>('friends');
   const [searchUsername, setSearchUsername] = useState('');
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; isError?: boolean } | null>(null);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !isAuthenticated) return;
     multiplayerClient.fetchFriends();
     const unsub = multiplayerClient.setCallbacks({
       onError: (err) => {
@@ -54,7 +58,7 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
       },
     });
     return () => unsub();
-  }, [isOpen]);
+  }, [isOpen, isAuthenticated]);
 
   if (!isOpen) return null;
 
@@ -108,7 +112,7 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
                 Social & Friends
               </h2>
               <p className="text-xs text-gray-400">
-                {friends.length} Friends ({onlineFriends.length} Online)
+                {isAuthenticated ? `${friends.length} Friends (${onlineFriends.length} Online)` : 'Account Required'}
               </p>
             </div>
           </div>
@@ -120,8 +124,44 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
           </button>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex border-b border-slate-800 bg-slate-950/50 p-1.5 space-x-1.5">
+        {!isAuthenticated ? (
+          <div className="p-8 text-center flex flex-col items-center justify-center space-y-4 my-auto">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-lg">
+              <Users className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-white uppercase tracking-wider">
+                Account Required
+              </h3>
+              <p className="text-xs text-gray-400 max-w-xs mt-1.5 leading-relaxed">
+                Friends, party invites, and social multiplayer require a registered player account.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2.5 w-full max-w-xs pt-2">
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenAuth?.('register', 'Create an account to add friends, form parties, and play multiplayer together!');
+                }}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/25 transition-all"
+              >
+                Create Account
+              </button>
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenAuth?.('login', 'Sign in to access your friends list and party invites.');
+                }}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-gray-200 font-bold text-xs border border-slate-700 transition-colors"
+              >
+                Sign In
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Tab Navigation */}
+            <div className="flex border-b border-slate-800 bg-slate-950/50 p-1.5 space-x-1.5">
           <button
             onClick={() => setActiveTab('friends')}
             className={`flex-1 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center space-x-1.5 ${
@@ -408,6 +448,8 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
     </div>
   );

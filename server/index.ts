@@ -637,6 +637,10 @@ export async function createMultiplayerServer(
           }
 
           case 'QUEUE_ENTER': {
+            if ((msg.mode === 'solo' || msg.mode === 'duo' || msg.mode === 'rivals') && (uid.startsWith('guest_') || uid.startsWith('dev_'))) {
+              sendError(ws, 'Ranked queue requires a registered account. Please sign in or create an account to play Ranked!');
+              break;
+            }
             activeRm.enterQueue(uid, msg.mode);
             break;
           }
@@ -673,6 +677,10 @@ export async function createMultiplayerServer(
 
           // Social / Friends
           case 'FRIEND_REQUEST_SEND': {
+            if (uid.startsWith('guest_') || uid.startsWith('dev_')) {
+              sendError(ws, 'Guest accounts cannot add friends. Please sign in or create a free account.');
+              break;
+            }
             const res = (activeDb as any).sendFriendRequestAsync
               ? await (activeDb as any).sendFriendRequestAsync(uid, msg.targetUsername)
               : await activeDb.sendFriendRequest(uid, msg.targetUsername);
@@ -699,6 +707,10 @@ export async function createMultiplayerServer(
           }
 
           case 'FRIEND_REQUEST_ACCEPT': {
+            if (uid.startsWith('guest_') || uid.startsWith('dev_')) {
+              sendError(ws, 'Guest accounts cannot manage friends. Please sign in or create an account.');
+              break;
+            }
             const res = await activeDb.acceptFriendRequest(uid, msg.fromUserId);
             if (res.success) {
               await activeRm.sendFriendListUpdate(uid);
@@ -711,12 +723,14 @@ export async function createMultiplayerServer(
           }
 
           case 'FRIEND_REQUEST_DECLINE': {
+            if (uid.startsWith('guest_') || uid.startsWith('dev_')) break;
             await activeDb.declineFriendRequest(uid, msg.fromUserId);
             await activeRm.sendFriendListUpdate(uid);
             break;
           }
 
           case 'FRIEND_REMOVE': {
+            if (uid.startsWith('guest_') || uid.startsWith('dev_')) break;
             await activeDb.removeFriend(uid, msg.friendUserId);
             await activeRm.sendFriendListUpdate(uid);
             await activeRm.sendFriendListUpdate(msg.friendUserId);
@@ -724,6 +738,14 @@ export async function createMultiplayerServer(
           }
 
           case 'GET_FRIENDS': {
+            if (uid.startsWith('guest_') || uid.startsWith('dev_')) {
+              ws.send(JSON.stringify({
+                type: 'FRIENDS_LIST',
+                friends: [],
+                incomingRequests: [],
+              }));
+              break;
+            }
             await activeRm.sendFriendListUpdate(uid);
             break;
           }

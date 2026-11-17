@@ -82,32 +82,47 @@ function formatMatchMode(mode?: string): string {
   }
 }
 
-const DEFAULT_PROFILE: PlayerProfileData = {
-  username: 'BowerKing',
-  playerId: 'JJ-7892',
-  avatarIcon: 'the_outlaw',
-  level: 1,
-  xp: 350,
-  nextLevelXp: 1000,
-  rankTier: '9',
-  rankPoints: 45,
-  totalGames: 12,
-  wins: 9,
-  losses: 3,
-  tricksWon: 44,
-  euchres: 8,
-  marches: 6,
-  successfulLoners: 2,
-  currentStreak: 3,
-  bestStreak: 5,
-  favTrumpSuit: 'hearts',
-  equippedCosmetics: {
-    hat: 'the_outlaw',
-    cardBack: 'classic_blue',
-    banner: 'default_navy',
-    title: 'Recruit',
-  },
-};
+export function createGuestProfile(): PlayerProfileData {
+  let guestNum = '';
+  try {
+    const cachedNum = sessionStorage.getItem('bower_jj_guest_suffix');
+    if (cachedNum) {
+      guestNum = cachedNum;
+    } else {
+      guestNum = String(Math.floor(1000 + Math.random() * 9000));
+      sessionStorage.setItem('bower_jj_guest_suffix', guestNum);
+    }
+  } catch {
+    guestNum = String(Math.floor(1000 + Math.random() * 9000));
+  }
+
+  return {
+    username: `Guest ${guestNum}`,
+    playerId: `GUEST-${guestNum}`,
+    avatarIcon: 'the_outlaw',
+    level: 1,
+    xp: 0,
+    nextLevelXp: 1000,
+    rankTier: '9',
+    rankPoints: 0,
+    totalGames: 0,
+    wins: 0,
+    losses: 0,
+    tricksWon: 0,
+    euchres: 0,
+    marches: 0,
+    successfulLoners: 0,
+    currentStreak: 0,
+    bestStreak: 0,
+    favTrumpSuit: 'hearts',
+    equippedCosmetics: {
+      hat: 'the_outlaw',
+      cardBack: 'classic_blue',
+      banner: 'default_navy',
+      title: 'Recruit',
+    },
+  };
+}
 
 export function extractInviteCodeFromUrl(): string | null {
   if (typeof window === 'undefined') return null;
@@ -177,8 +192,13 @@ export const App: React.FC = () => {
   const [profile, setProfile] = useState<PlayerProfileData>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (!saved) return DEFAULT_PROFILE;
+      if (!saved) return createGuestProfile();
       const parsed = JSON.parse(saved) as PlayerProfileData;
+      // If cached profile is the legacy shared BowerKing default, purge and create unique guest
+      if (parsed.username === 'BowerKing' || parsed.playerId === 'JJ-7892') {
+        localStorage.removeItem(STORAGE_KEY);
+        return createGuestProfile();
+      }
       const norm = normalizeXpProgress(parsed.xp, parsed.level);
       const normAvatar = resolveAvatarId(parsed.avatarIcon);
       const normCardBack = resolveCardBackId(parsed.equippedCosmetics?.cardBack);
@@ -195,7 +215,7 @@ export const App: React.FC = () => {
         nextLevelXp: norm.nextLevelXp,
       };
     } catch {
-      return DEFAULT_PROFILE;
+      return createGuestProfile();
     }
   });
 
@@ -638,16 +658,16 @@ export const App: React.FC = () => {
             showActivatedModal(session.user);
           }
         } else if (!isReturningFromAuthLink) {
-          // Unauthenticated visitor: prompt new players to register or sign in (skip if joining via direct invite)
+          // Unauthenticated visitor: prompt new players to register or sign in (skip if joining via direct invite or tracker view)
           try {
-            const hasPrompted = localStorage.getItem('bower_jj_auth_prompted');
             const isDirectInvite = Boolean(extractInviteCodeFromUrl());
-            if (!hasPrompted && !isDirectInvite) {
+            const isTrackerView = typeof window !== 'undefined' && window.location.hash.startsWith('#tracker');
+            if (!isDirectInvite && !isTrackerView) {
               setTimeout(() => {
                 setAuthModalInitialTab('register');
-                setAuthModalReason('Create a free account or sign in to track your competitive rank, card packs, collections, and match history!');
+                setAuthModalReason('Welcome to BOWER JJ! Create your free account or sign in to start playing.');
                 setIsAuthOpen(true);
-              }, 600);
+              }, 400);
             }
           } catch {}
         }
@@ -890,37 +910,15 @@ export const App: React.FC = () => {
     multiplayerClient.joinRoom(code);
   }, []);
 
-  // Handle first time tutorial trigger
-  useEffect(() => {
-    const hasSeenTutorial = localStorage.getItem('bower_jj_tutorial_seen');
-    const hasPromptedAuth = localStorage.getItem('bower_jj_auth_prompted');
-    // If auth modal is about to prompt a brand new user, let auth finish first; NEVER prompt logged in users
-    if (!hasSeenTutorial && hasPromptedAuth && !authUser) {
-      setIsTutorialOpen(true);
-    }
-  }, [authUser]);
-
   const handleTutorialComplete = () => {
-    localStorage.setItem('bower_jj_tutorial_seen', 'true');
+    try {
+      localStorage.setItem('bower_jj_tutorial_seen', 'true');
+    } catch {}
     setIsTutorialOpen(false);
   };
 
   const handleAuthDismissOrContinue = () => {
     setIsAuthOpen(false);
-    try {
-      localStorage.setItem('bower_jj_auth_prompted', 'true');
-    } catch {}
-    // If logged in, do not prompt tutorial
-    if (authUser) {
-      try {
-        localStorage.setItem('bower_jj_tutorial_seen', 'true');
-      } catch {}
-      return;
-    }
-    const hasSeenTutorial = localStorage.getItem('bower_jj_tutorial_seen');
-    if (!hasSeenTutorial) {
-      setTimeout(() => setIsTutorialOpen(true), 350);
-    }
   };
 
   const handleOpenMatchmaking = (queue: QueueType) => {
@@ -930,14 +928,10 @@ export const App: React.FC = () => {
       return;
     }
     if (!authUser && (queue === 'ranked_solo' || queue === 'ranked_duo')) {
-      const hasPromptedRanked = sessionStorage.getItem('bower_jj_ranked_prompted');
-      if (!hasPromptedRanked) {
-        sessionStorage.setItem('bower_jj_ranked_prompted', 'true');
-        setAuthModalInitialTab('register');
-        setAuthModalReason('Ranked Queue records your MMR & Global Leaderboard rank! Sign in or register to save your progression.');
-        setIsAuthOpen(true);
-        return;
-      }
+      setAuthModalInitialTab('register');
+      setAuthModalReason('Ranked Competitive matches record your MMR and Global Leaderboard rank. Please create an account or sign in to play Ranked!');
+      setIsAuthOpen(true);
+      return;
     }
     setMatchmakingQueue(queue);
   };
@@ -953,7 +947,8 @@ export const App: React.FC = () => {
     await authService.logout();
     setAuthUser(null);
     setAuthToken(null);
-    setProfile(DEFAULT_PROFILE);
+    const guestProfile = createGuestProfile();
+    setProfile(guestProfile);
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {}
@@ -1400,6 +1395,12 @@ export const App: React.FC = () => {
             setIsProfileOpen(true);
           }}
           onOpenFriends={() => {
+            if (!authUser) {
+              setAuthModalInitialTab('register');
+              setAuthModalReason('Friends list, parties, and social features require an account! Create an account or sign in to connect.');
+              setIsAuthOpen(true);
+              return;
+            }
             presenceTracker.updateState({ activity: 'Checking Friends' });
             multiplayerClient.fetchFriends();
             setIsFriendsOpen(true);
@@ -1483,6 +1484,12 @@ export const App: React.FC = () => {
         onClose={() => setIsFriendsOpen(false)}
         friends={friendsList}
         incomingRequests={incomingFriendRequests}
+        isAuthenticated={Boolean(authUser)}
+        onOpenAuth={(tab, reason) => {
+          setAuthModalInitialTab(tab || 'register');
+          if (reason) setAuthModalReason(reason);
+          setIsAuthOpen(true);
+        }}
         onInviteToParty={() => {
           showToast('Invited friend to party!');
           setIsFriendsOpen(false);
@@ -1619,19 +1626,27 @@ export const App: React.FC = () => {
           setAuthUser(user);
           if (token) setAuthToken(token);
           if (user?.id) syncAuthoritativeProfile(user.id);
-          handleAuthDismissOrContinue();
+          setIsAuthOpen(false);
           showToast(`Signed in as ${user.user_metadata?.username || user.email}. Cloud sync active.`, 'Welcome Back!');
+          const hasSeenTutorial = localStorage.getItem('bower_jj_tutorial_seen');
+          if (!hasSeenTutorial) {
+            setTimeout(() => setIsTutorialOpen(true), 400);
+          }
         }}
-        onSignupActivated={(user) => {
-          setActivationState({
-            status: 'activated',
-            username: user?.user_metadata?.username,
-            email: user?.email,
-          });
+        onSignupActivated={(user, token) => {
+          setAuthUser(user);
+          if (token) setAuthToken(token);
+          if (user?.id) syncAuthoritativeProfile(user.id);
+          setIsAuthOpen(false);
+          showToast(`Account created for ${user?.user_metadata?.username}! Welcome to BOWER JJ.`, 'Account Created!');
+          const hasSeenTutorial = localStorage.getItem('bower_jj_tutorial_seen');
+          if (!hasSeenTutorial) {
+            setTimeout(() => setIsTutorialOpen(true), 400);
+          }
         }}
         onContinueAsGuest={() => {
           handleAuthDismissOrContinue();
-          showToast('Playing locally as guest. Progression is stored on this device.', 'Guest Mode Active');
+          showToast('Playing as guest. Create an account anytime to unlock ranked play and friends!', 'Guest Mode');
         }}
       />
     </div>
