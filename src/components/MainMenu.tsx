@@ -25,6 +25,7 @@ import {
   Check,
   SlidersHorizontal,
   X,
+  Activity,
 } from 'lucide-react';
 import { PlayerProfileData } from './ProfileModal';
 import { AIDifficulty, EuchreHouseRules, DEFAULT_RULES } from '../engine/types';
@@ -55,6 +56,7 @@ interface MainMenuProps {
   isAuthenticated?: boolean;
   onOpenAuth?: (tab?: 'login' | 'register', reason?: string) => void;
   onLogout?: () => void;
+  onOpenTracker?: () => void;
 }
 
 type QuickModeId = 'ranked_solo' | 'unranked' | 'rivalry' | 'private' | 'ai_bots';
@@ -77,6 +79,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   isAuthenticated = false,
   onOpenAuth,
   onLogout,
+  onOpenTracker,
 }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<AIDifficulty>('medium');
   const [targetScore, setTargetScore] = useState<number>(10);
@@ -362,9 +365,24 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 </div>
               </div>
 
-              {/* Right: Audio Popover & Cloud Status */}
+              {/* Right: Audio Popover & Cloud Status & Live Traffic Tracker */}
               <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#161f30] border border-slate-700/80 shadow-inner">
                 <AudioControlsPopover />
+                <button
+                  onClick={() => {
+                    sounds.playUiClick();
+                    if (onOpenTracker) {
+                      onOpenTracker();
+                    } else {
+                      window.location.href = '/tracker';
+                    }
+                  }}
+                  className="relative p-1 rounded-full text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors cursor-pointer"
+                  title="Live Traffic Tracker (bowerjj.com/tracker)"
+                >
+                  <Activity className="w-3.5 h-3.5" />
+                  <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                </button>
                 {isAuthenticated ? (
                   <button
                     onClick={() => {

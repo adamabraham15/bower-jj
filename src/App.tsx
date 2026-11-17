@@ -23,6 +23,8 @@ import { AuthModal } from './components/AuthModal';
 import { AccountActivationModal, AccountActivationState } from './components/AccountActivationModal';
 import { EmoteWheel } from './components/EmoteWheel';
 import { RankTier } from './components/RankBadge';
+import { LiveSiteTracker } from './components/LiveSiteTracker';
+import { presenceTracker } from './services/presenceTracker';
 import { authService } from './services/supabaseClient';
 import {
   getCapturedAuthRedirect,
@@ -200,6 +202,54 @@ export const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'menu' | 'ai_game' | 'multiplayer_game'>('menu');
   const [activeGameState, setActiveGameState] = useState<EuchreGameState | null>(null);
   const [multiplayerState, setMultiplayerState] = useState<SanitizedGameState | null>(null);
+
+  // Dedicated Live Site Tracker View (Direct route: /tracker or ?tracker)
+  const [isTrackerView, setIsTrackerView] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const path = window.location.pathname.toLowerCase();
+    const search = window.location.search.toLowerCase();
+    const hash = window.location.hash.toLowerCase();
+    return path.startsWith('/tracker') || search.includes('tracker') || hash.includes('tracker');
+  });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname.toLowerCase();
+      const search = window.location.search.toLowerCase();
+      const hash = window.location.hash.toLowerCase();
+      setIsTrackerView(path.startsWith('/tracker') || search.includes('tracker') || hash.includes('tracker'));
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Initialize and synchronize real-time presence tracking
+  useEffect(() => {
+    presenceTracker.startPlayerTracking({
+      playerId: profile.playerId,
+      username: profile.username,
+      rankTier: profile.rankTier,
+      activity: 'Main Menu',
+    });
+  }, []);
+
+  useEffect(() => {
+    presenceTracker.updateState({
+      playerId: profile.playerId,
+      username: profile.username,
+      rankTier: profile.rankTier,
+    });
+  }, [profile.playerId, profile.username, profile.rankTier]);
+
+  useEffect(() => {
+    if (currentView === 'menu') {
+      presenceTracker.updateState({ activity: 'Main Menu' });
+    } else if (currentView === 'ai_game') {
+      presenceTracker.updateState({ activity: 'Playing vs Bots' });
+    } else if (currentView === 'multiplayer_game') {
+      presenceTracker.updateState({ activity: 'In 2v2 Ranked Match' });
+    }
+  }, [currentView]);
 
   // Modals
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
@@ -1129,6 +1179,11 @@ export const App: React.FC = () => {
     }
   };
 
+  // Dedicated Live Site Traffic & Online User Tracker
+  if (isTrackerView) {
+    return <LiveSiteTracker />;
+  }
+
   return (
     <div className="relative w-full min-h-[100dvh] bg-slate-950 font-sans">
       {/* Toast Notice */}
@@ -1260,17 +1315,26 @@ export const App: React.FC = () => {
           profile={profile}
           onStartAIMatch={handleStartAIMatch}
           onOpenMatchmaking={handleOpenMatchmaking}
-          onOpenTutorial={() => setIsTutorialOpen(true)}
-          onOpenRules={() => setIsRulesOpen(true)}
+          onOpenTutorial={() => {
+            presenceTracker.updateState({ activity: 'Playing Tutorial' });
+            setIsTutorialOpen(true);
+          }}
+          onOpenRules={() => {
+            presenceTracker.updateState({ activity: 'Reading Rulebook' });
+            setIsRulesOpen(true);
+          }}
           onOpenProfile={() => {
+            presenceTracker.updateState({ activity: 'Viewing Profile' });
             if (authUser?.id) syncAuthoritativeProfile(authUser.id);
             setIsProfileOpen(true);
           }}
           onOpenFriends={() => {
+            presenceTracker.updateState({ activity: 'Checking Friends' });
             multiplayerClient.fetchFriends();
             setIsFriendsOpen(true);
           }}
           onOpenLeaderboard={() => {
+            presenceTracker.updateState({ activity: 'Viewing World Rankings' });
             if (authUser?.id) syncAuthoritativeProfile(authUser.id);
             authService.getLeaderboard().then(entries => setLeaderboardEntries(entries));
             multiplayerClient.fetchLeaderboard();
@@ -1278,11 +1342,13 @@ export const App: React.FC = () => {
           }}
           unopenedPacksCount={collectionState?.unopenedPacksCount ?? 0}
           onOpenCollection={(tab = 'packs') => {
+            presenceTracker.updateState({ activity: 'Browsing Vault & Decks' });
             setCollectionInitialTab(tab);
             multiplayerClient.fetchCollectionState();
             setIsCollectionOpen(true);
           }}
           onOpenPackOpener={() => {
+            presenceTracker.updateState({ activity: 'Tearing Card Packs' });
             setPendingPackResult(null);
             setIsOpeningPack(false);
             multiplayerClient.fetchCollectionState();
@@ -1303,6 +1369,12 @@ export const App: React.FC = () => {
             setIsAuthOpen(true);
           }}
           onLogout={handleLogout}
+          onOpenTracker={() => {
+            setIsTrackerView(true);
+            try {
+              window.history.pushState({}, '', '/tracker');
+            } catch {}
+          }}
         />
       )}
 
