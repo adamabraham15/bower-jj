@@ -58,6 +58,17 @@ import { AudioControlsPopover } from './AudioControlsPopover';
 import { RankBadge, RankTier } from './RankBadge';
 import { PostMatchModal } from './PostMatchModal';
 import { PublicProfileModal, PublicPlayerData } from './PublicProfileModal';
+
+function formatRelativeHandMessage(message: string, myTeam: 0 | 1): string {
+  if (!message) return '';
+  const team0Label = myTeam === 0 ? 'Your Team' : 'Opponents';
+  const team1Label = myTeam === 1 ? 'Your Team' : 'Opponents';
+  return message
+    .replace(/Team Blue/g, team0Label)
+    .replace(/Team Red/g, team1Label)
+    .replace(/Team 0/g, team0Label)
+    .replace(/Team 1/g, team1Label);
+}
 import { AvatarPortrait } from './AvatarPortrait';
 import {
   BOT_AVATAR_BY_DIFFICULTY,
@@ -1033,7 +1044,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                     : 'HAND COMPLETED'}
                 </h3>
                 <p className="text-xs text-amber-300 font-semibold mt-1">
-                  {state.lastHandResult.message}
+                  {formatRelativeHandMessage(state.lastHandResult.message, 0)}
                 </p>
               </div>
 

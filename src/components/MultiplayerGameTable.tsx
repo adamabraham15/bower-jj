@@ -65,6 +65,17 @@ interface MultiplayerGameTableProps {
   onExitGame: (forfeit?: boolean) => void;
 }
 
+function formatRelativeHandMessage(message: string, myTeam: 0 | 1): string {
+  if (!message) return '';
+  const team0Label = myTeam === 0 ? 'Your Team' : 'Opponents';
+  const team1Label = myTeam === 1 ? 'Your Team' : 'Opponents';
+  return message
+    .replace(/Team Blue/g, team0Label)
+    .replace(/Team Red/g, team1Label)
+    .replace(/Team 0/g, team0Label)
+    .replace(/Team 1/g, team1Label);
+}
+
 export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
   serverState,
   profile,
@@ -891,7 +902,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                     : 'HAND COMPLETED'}
                 </h3>
                 <p className="text-xs text-amber-300 font-semibold mt-1">
-                  {serverState.lastHandResult.message}
+                  {formatRelativeHandMessage(serverState.lastHandResult.message, getPlayerTeam(serverState.yourPosition))}
                 </p>
               </div>
 
