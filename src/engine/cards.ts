@@ -247,6 +247,62 @@ export function getSuitSymbol(suit: Suit): string {
   return symbols[suit];
 }
 
-export function getSuitColor(suit: Suit): 'red' | 'black' {
-  return isRedSuit(suit) ? 'red' : 'black';
+export function getSuitColor(suit: Suit): 'red' | 'black' | 'green' {
+  if (suit === 'hearts' || suit === 'diamonds') return 'red';
+  if (suit === 'clubs') return 'green';
+  return 'black';
+}
+
+const RANK_SORT_VALUES: Record<string, number> = {
+  'A': 14,
+  'K': 13,
+  'Q': 12,
+  'J': 11,
+  '10': 10,
+  '9': 9,
+};
+
+/**
+ * Organizes a player's hand cards by suit and rank.
+ * When trumpSuit is known:
+ *  - Trump cards are grouped first (Right Bower, Left Bower, A, K, Q, 10, 9).
+ *  - Non-trump suits follow in alternating colors with ranks high-to-low.
+ * When trumpSuit is not yet known:
+ *  - Suits are ordered in alternating colors (Spades, Hearts, Clubs, Diamonds) with ranks high-to-low.
+ */
+export function sortCardsBySuit(cards: Card[], trumpSuit?: Suit | null): Card[] {
+  if (!cards || cards.length <= 1) return cards || [];
+
+  const suitOrder: Suit[] = trumpSuit
+    ? [
+        trumpSuit,
+        ...(['spades', 'hearts', 'clubs', 'diamonds'] as Suit[]).filter(s => s !== trumpSuit),
+      ]
+    : ['spades', 'hearts', 'clubs', 'diamonds'];
+
+  return [...cards].sort((a, b) => {
+    // 1. Effective suit (Left Bower belongs to trump suit if trump is active)
+    const effectiveSuitA = trumpSuit ? getEffectiveSuit(a, trumpSuit) : a.suit;
+    const effectiveSuitB = trumpSuit ? getEffectiveSuit(b, trumpSuit) : b.suit;
+
+    const suitIndexA = suitOrder.indexOf(effectiveSuitA);
+    const suitIndexB = suitOrder.indexOf(effectiveSuitB);
+
+    if (suitIndexA !== suitIndexB) {
+      return suitIndexA - suitIndexB;
+    }
+
+    // 2. If same suit, sort by card power within that suit
+    if (trumpSuit && effectiveSuitA === trumpSuit) {
+      const getTrumpPower = (c: Card) => {
+        if (isRightBower(c, trumpSuit)) return 100;
+        if (isLeftBower(c, trumpSuit)) return 99;
+        return RANK_SORT_VALUES[c.rank] || 0;
+      };
+      return getTrumpPower(b) - getTrumpPower(a);
+    }
+
+    // Non-trump suit: sort descending by rank (A, K, Q, J, 10, 9)
+    return (RANK_SORT_VALUES[b.rank] || 0) - (RANK_SORT_VALUES[a.rank] || 0);
+  });
 }

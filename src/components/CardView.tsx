@@ -15,7 +15,7 @@ interface CardViewProps {
   isSelected?: boolean;
   isFacedown?: boolean;
   onClick?: () => void;
-  size?: 'xs' | 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'hand';
   rotation?: number; // In degrees, for trick orientation or hand fanning
   elevated?: boolean;
   badge?: string;
@@ -23,67 +23,86 @@ interface CardViewProps {
   cardBackSkin?: string;
 }
 
-// Guaranteed Pixel Dimensions (Prevents any CSS purge or 0-width collapse)
+// Guaranteed Dimensions (With mobile-responsive scaling for 'hand' size)
 const SIZE_CONFIG = {
   xs: {
-    w: 36,
-    h: 52,
+    wClass: 'w-[36px]',
+    hClass: 'h-[52px]',
+    wStyle: 36,
+    hStyle: 52,
     rankClass: 'text-[10px] font-black',
     cornerIconClass: 'w-2 h-2',
     centerIconClass: 'w-3.5 h-3.5',
     ribbonClass: 'text-[6px] py-0.5',
   },
   sm: {
-    w: 64,
-    h: 92,
+    wClass: 'w-[64px]',
+    hClass: 'h-[92px]',
+    wStyle: 64,
+    hStyle: 92,
     rankClass: 'text-sm font-black',
     cornerIconClass: 'w-3 h-3',
     centerIconClass: 'w-6 h-6',
     ribbonClass: 'text-[7px] sm:text-[8px] py-0.5',
   },
   md: {
-    w: 80,
-    h: 116,
+    wClass: 'w-[80px]',
+    hClass: 'h-[116px]',
+    wStyle: 80,
+    hStyle: 116,
     rankClass: 'text-base font-black',
     cornerIconClass: 'w-3.5 h-3.5',
     centerIconClass: 'w-8 h-8',
     ribbonClass: 'text-[8px] sm:text-[9px] py-0.5',
   },
   lg: {
-    w: 100,
-    h: 144,
+    wClass: 'w-[100px]',
+    hClass: 'h-[144px]',
+    wStyle: 100,
+    hStyle: 144,
     rankClass: 'text-lg font-black',
     cornerIconClass: 'w-4.5 h-4.5',
     centerIconClass: 'w-10 h-10',
     ribbonClass: 'text-[9px] sm:text-[10px] py-1',
   },
+  hand: {
+    // Fits all 5 cards comfortably on mobile screens (>= 320px) without scrolling, scales up to full size on desktop
+    wClass: 'w-[58px] xs:w-[64px] sm:w-[80px]',
+    hClass: 'h-[84px] xs:h-[94px] sm:h-[116px]',
+    wStyle: undefined,
+    hStyle: undefined,
+    rankClass: 'text-xs xs:text-sm sm:text-base font-black',
+    cornerIconClass: 'w-2.5 h-2.5 xs:w-3 xs:h-3 sm:w-3.5 sm:h-3.5',
+    centerIconClass: 'w-5 h-5 xs:w-6 xs:h-6 sm:w-8 sm:h-8',
+    ribbonClass: 'text-[6px] xs:text-[7px] sm:text-[8px] py-0.5',
+  },
 };
 
-// Crisp Vector SVG Suit Icons (Authentic Casino Shapes, Deep Black Spades/Clubs, Crimson Red Hearts/Diamonds)
+// Crisp Vector SVG Suit Icons (Authentic Casino Shapes, Deep Black Spades, Dark Green Clubs, Crimson Red Hearts/Diamonds)
 export const SuitIcon: React.FC<{ suit: Suit; className?: string }> = ({ suit, className = 'w-4 h-4' }) => {
   switch (suit) {
     case 'hearts':
       return (
-        <svg viewBox="0 0 24 24" className={`${className} fill-red-600 drop-shadow-sm flex-shrink-0`}>
+        <svg viewBox="0 0 24 24" className={`${className} fill-red-600 drop-shadow-sm flex-shrink-0`} style={{ fill: '#dc2626' }}>
           <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
         </svg>
       );
     case 'diamonds':
       return (
-        <svg viewBox="0 0 24 24" className={`${className} fill-red-600 drop-shadow-sm flex-shrink-0`}>
+        <svg viewBox="0 0 24 24" className={`${className} fill-red-600 drop-shadow-sm flex-shrink-0`} style={{ fill: '#dc2626' }}>
           <path d="M12 2.5L4.5 12 12 21.5 19.5 12z" />
         </svg>
       );
     case 'spades':
       return (
-        <svg viewBox="0 0 24 24" className={`${className} fill-black drop-shadow-sm flex-shrink-0`}>
+        <svg viewBox="0 0 24 24" className={`${className} fill-black drop-shadow-sm flex-shrink-0`} style={{ fill: '#0f172a' }}>
           <path d="M12 2.5C8.8 6.8 5 10.8 5 14.2a4.2 4.2 0 0 0 7 3.1l-.8 3.7h1.6l-.8-3.7a4.2 4.2 0 0 0 7-3.1c0-3.4-3.8-7.4-7-11.7z" />
         </svg>
       );
     case 'clubs':
       return (
-        <svg viewBox="0 0 24 24" className={`${className} fill-black drop-shadow-sm flex-shrink-0`}>
-          {/* Authentic Standard Casino Trefoil Club */}
+        <svg viewBox="0 0 24 24" className={`${className} fill-[#15803d] drop-shadow-sm flex-shrink-0`} style={{ fill: '#15803d' }}>
+          {/* Authentic Standard Casino Trefoil Club in Dark Greenish */}
           <circle cx="12" cy="7.2" r="3.7" />
           <circle cx="7.4" cy="13.2" r="3.7" />
           <circle cx="16.6" cy="13.2" r="3.7" />
@@ -120,14 +139,18 @@ export const CardView: React.FC<CardViewProps> = ({
         onClick={onClick}
         className={`relative ${size === 'xs' ? 'rounded-md border' : 'rounded-xl border-2'} select-none ${
           onClick ? 'cursor-pointer active:scale-95' : ''
-        } ${rarityMeta.borderClass} shadow-xl transition-transform duration-200 flex items-center justify-center overflow-hidden flex-shrink-0 bg-slate-950`}
+        } ${rarityMeta.borderClass} shadow-xl transition-transform duration-200 flex items-center justify-center overflow-hidden flex-shrink-0 bg-slate-950 ${cfg.wClass} ${cfg.hClass}`}
         style={{
-          width: `${cfg.w}px`,
-          height: `${cfg.h}px`,
-          minWidth: `${cfg.w}px`,
-          minHeight: `${cfg.h}px`,
-          maxWidth: `${cfg.w}px`,
-          maxHeight: `${cfg.h}px`,
+          ...(cfg.wStyle !== undefined
+            ? {
+                width: `${cfg.wStyle}px`,
+                height: `${cfg.hStyle}px`,
+                minWidth: `${cfg.wStyle}px`,
+                minHeight: `${cfg.hStyle}px`,
+                maxWidth: `${cfg.wStyle}px`,
+                maxHeight: `${cfg.hStyle}px`,
+              }
+            : {}),
           ...(rotation !== 0 || elevated
             ? { transform: `rotate(${rotation}deg) ${elevated ? 'translateY(-12px)' : ''}`.trim() }
             : {}),
@@ -165,15 +188,24 @@ export const CardView: React.FC<CardViewProps> = ({
 
   const isRight = isRightBower(card, trumpSuit);
   const isLeft = isLeftBower(card, trumpSuit);
-  const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
+  const rankColorClass =
+    card.suit === 'hearts' || card.suit === 'diamonds'
+      ? 'text-red-600'
+      : card.suit === 'clubs'
+      ? 'text-[#15803d]'
+      : 'text-slate-950';
 
   return (
     <div
-      className="flex flex-col items-center select-none flex-shrink-0"
-      style={{
-        width: `${cfg.w}px`,
-        minWidth: `${cfg.w}px`,
-      }}
+      className={`flex flex-col items-center select-none flex-shrink-0 ${cfg.wClass}`}
+      style={
+        cfg.wStyle !== undefined
+          ? {
+              width: `${cfg.wStyle}px`,
+              minWidth: `${cfg.wStyle}px`,
+            }
+          : {}
+      }
     >
       {/* Player Tag */}
       {playerTag && (
@@ -185,19 +217,23 @@ export const CardView: React.FC<CardViewProps> = ({
       {/* Card Body */}
       <div
         onClick={isPlayable ? onClick : undefined}
-        className={`relative rounded-xl transition-all duration-200 ease-out flex-shrink-0
+        className={`relative rounded-xl transition-all duration-200 ease-out flex-shrink-0 ${cfg.wClass} ${cfg.hClass}
           ${isPlayable ? 'cursor-pointer hover:-translate-y-2 active:scale-95' : 'opacity-60 cursor-not-allowed'}
           ${isSelected ? '-translate-y-3 ring-4 ring-amber-400 shadow-amber-500/60 scale-105' : ''}
           ${isPlayable && !isSelected ? 'hover:shadow-amber-500/30 hover:ring-2 hover:ring-amber-400/70' : ''}
           border-2 ${isRight ? 'border-amber-400 ring-2 ring-amber-400/70' : isLeft ? 'border-amber-300 ring-2 ring-amber-300/60' : 'border-slate-300'}
           bg-gradient-to-b from-white via-stone-50 to-stone-100 shadow-xl overflow-hidden`}
         style={{
-          width: `${cfg.w}px`,
-          height: `${cfg.h}px`,
-          minWidth: `${cfg.w}px`,
-          minHeight: `${cfg.h}px`,
-          maxWidth: `${cfg.w}px`,
-          maxHeight: `${cfg.h}px`,
+          ...(cfg.wStyle !== undefined
+            ? {
+                width: `${cfg.wStyle}px`,
+                height: `${cfg.hStyle}px`,
+                minWidth: `${cfg.wStyle}px`,
+                minHeight: `${cfg.hStyle}px`,
+                maxWidth: `${cfg.wStyle}px`,
+                maxHeight: `${cfg.hStyle}px`,
+              }
+            : {}),
           ...(rotation !== 0 || elevated
             ? { transform: `rotate(${rotation}deg) ${elevated ? 'translateY(-14px)' : ''}`.trim() }
             : {}),
@@ -234,7 +270,7 @@ export const CardView: React.FC<CardViewProps> = ({
 
         {/* Top Left Corner */}
         <div className={`absolute left-1 sm:left-1.5 flex flex-col items-center leading-none ${isRight || isLeft || badge ? 'top-3.5 sm:top-4' : 'top-1 sm:top-1.5'}`}>
-          <span className={`${cfg.rankClass} ${isRed ? 'text-red-600' : 'text-black'}`}>
+          <span className={`${cfg.rankClass} ${rankColorClass}`}>
             {card.rank}
           </span>
           <SuitIcon suit={card.suit} className={cfg.cornerIconClass} />
@@ -247,7 +283,7 @@ export const CardView: React.FC<CardViewProps> = ({
 
         {/* Bottom Right Corner (Inverted) */}
         <div className="absolute bottom-1 sm:bottom-1.5 right-1 sm:right-1.5 flex flex-col items-center leading-none rotate-180">
-          <span className={`${cfg.rankClass} ${isRed ? 'text-red-600' : 'text-black'}`}>
+          <span className={`${cfg.rankClass} ${rankColorClass}`}>
             {card.rank}
           </span>
           <SuitIcon suit={card.suit} className={cfg.cornerIconClass} />

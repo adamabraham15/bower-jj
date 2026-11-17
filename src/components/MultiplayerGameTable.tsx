@@ -3,11 +3,11 @@
  * Powered by real-time WebSockets with Hand Privacy Anti-Cheat.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { SanitizedGameState, PlayerSlot, RankTier } from '../../server/types';
 import { Card, Suit, PlayerPosition, getPlayerTeam, getPlayerPartner } from '../engine/types';
 import { getWinningTeam, isCanadianLonerForced, isHandCardInteractive } from '../engine/game';
-import { isCardPlayLegal, formatCardName, ALL_SUITS } from '../engine/cards';
+import { isCardPlayLegal, formatCardName, sortCardsBySuit, ALL_SUITS } from '../engine/cards';
 import { CardView, SuitIcon } from './CardView';
 import { TrumpBanner, MakerBadge } from './TrumpBanner';
 import {
@@ -42,6 +42,7 @@ import {
   WifiOff,
   Zap,
   AlertTriangle,
+  ArrowUpDown,
 } from 'lucide-react';
 
 interface MultiplayerGameTableProps {
@@ -82,6 +83,30 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
   const [mutedUsernames, setMutedUsernames] = useState<Set<string>>(new Set());
   const [autoDealCountdown, setAutoDealCountdown] = useState<number>(6);
   const [showExitConfirmModal, setShowExitConfirmModal] = useState<boolean>(false);
+  const [autoSortBySuit, setAutoSortBySuit] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('bower_jj_auto_sort_by_suit');
+      return saved === null ? true : saved === 'true';
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleAutoSort = () => {
+    const next = !autoSortBySuit;
+    setAutoSortBySuit(next);
+    sounds.playUiClick();
+    try {
+      localStorage.setItem('bower_jj_auto_sort_by_suit', String(next));
+    } catch {}
+  };
+
+  const displayHand = useMemo(() => {
+    if (autoSortBySuit) {
+      return sortCardsBySuit(serverState.yourHand || [], serverState.trumpSuit);
+    }
+    return serverState.yourHand || [];
+  }, [serverState.yourHand, serverState.trumpSuit, autoSortBySuit]);
 
   useEffect(() => {
     const unsubscribe = multiplayerClient.setCallbacks({
@@ -756,39 +781,57 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
           className={`relative bg-slate-900/95 border-t border-slate-800 px-2 py-2 flex flex-col items-center z-50 flex-shrink-0 min-h-[145px] shadow-2xl transition-opacity duration-300 ${serverState.phase === 'hand_scored' ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
         >
-          {/* Turn prompt indicator */}
-          <div className="text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-2.5 sm:mb-3.5 flex items-center space-x-1.5">
-            {serverState.phase === 'hand_scored' ? (
-              <span className="text-amber-400 font-bold">Hand Scored — Next Deal Starting in {autoDealCountdown}s...</span>
-            ) : serverState.phase === 'trick_resolving' ? (
-              <span className="text-amber-400 font-bold animate-pulse">Resolving Trick...</span>
-            ) : isDealerDiscardPhase ? (
-              <span className="text-amber-400 font-black animate-pulse">
-                {isBenched
-                  ? 'Partner Going Alone — Tap a card to discard before sitting out'
-                  : 'Tap a card to discard it to the kitty'}
-              </span>
-            ) : isBenched ? (
-              <span className="text-gray-400">Partner is going alone. Your hand is sitting out.</span>
-            ) : isYourTurn && (serverState.phase === 'bidding_round_1' || serverState.phase === 'bidding_round_2') ? (
-              <span className="text-amber-400 font-black animate-pulse flex items-center space-x-1">
-                <span>👉 Your Call: Choose Trump or Pass! Hand cards below 👇</span>
-              </span>
-            ) : isYourTurn && serverState.phase === 'playing' ? (
-              <span className="text-amber-400 font-black animate-pulse flex items-center space-x-1">
-                <span>👉 Your turn!</span>
-                {leadSuit && (
-                  <span>Must follow {leadSuit.toUpperCase()} if you have it!</span>
-                )}
-              </span>
-            ) : (
-              <span className="text-gray-400">Waiting for other players...</span>
-            )}
+          {/* Turn prompt indicator & Sort Option */}
+          <div className="w-full flex items-center justify-between text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-1.5 sm:mb-2.5 px-1 sm:px-2">
+            <div className="flex-1 text-center truncate pr-2">
+              {serverState.phase === 'hand_scored' ? (
+                <span className="text-amber-400 font-bold">
+                  Hand Scored — Next Deal Starting in {autoDealCountdown}s...
+                </span>
+              ) : serverState.phase === 'trick_resolving' ? (
+                <span className="text-amber-400 font-bold animate-pulse">Resolving Trick...</span>
+              ) : isDealerDiscardPhase ? (
+                <span className="text-amber-400 font-black animate-pulse">
+                  {isBenched
+                    ? 'Partner Going Alone — Tap a card to discard'
+                    : 'Tap a card to discard it to the kitty'}
+                </span>
+              ) : isBenched ? (
+                <span className="text-gray-400">Partner is going alone. Your hand is sitting out.</span>
+              ) : isYourTurn && (serverState.phase === 'bidding_round_1' || serverState.phase === 'bidding_round_2') ? (
+                <span className="text-amber-400 font-black animate-pulse flex items-center justify-center space-x-1">
+                  <span>👉 Your Call: Choose Trump or Pass!</span>
+                </span>
+              ) : isYourTurn && serverState.phase === 'playing' ? (
+                <span className="text-amber-400 font-black animate-pulse flex items-center justify-center space-x-1">
+                  <span>👉 Your turn!</span>
+                  {leadSuit && (
+                    <span className="hidden xs:inline">Must follow {leadSuit.toUpperCase()}!</span>
+                  )}
+                </span>
+              ) : (
+                <span className="text-gray-400 truncate">Waiting for other players...</span>
+              )}
+            </div>
+
+            {/* Organize Hand by Suit Button */}
+            <button
+              onClick={toggleAutoSort}
+              title={autoSortBySuit ? 'Auto-Sort by Suit is ON (tap to toggle)' : 'Auto-Sort by Suit is OFF (tap to sort)'}
+              className={`flex items-center space-x-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border flex-shrink-0 active:scale-95 ${
+                autoSortBySuit
+                  ? 'bg-amber-400/20 border-amber-400/60 text-amber-300 hover:bg-amber-400/30'
+                  : 'bg-slate-800/80 border-slate-700 text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              <ArrowUpDown className="w-3 h-3 text-amber-400" />
+              <span>{autoSortBySuit ? 'Sort: Suit' : 'Sort: Off'}</span>
+            </button>
           </div>
 
-          {/* Hand Cards (Clear positive spacing — zero overlapping symbols) */}
-          <div className="flex justify-center items-center space-x-1.5 sm:space-x-2.5 max-w-full overflow-x-auto px-4 py-2 min-h-[130px]">
-            {serverState.yourHand.map((card, idx) => {
+          {/* Hand Cards (Mobile-first responsive sizing: all 5 cards fit on any mobile screen) */}
+          <div className="flex justify-center items-center space-x-1 sm:space-x-2.5 max-w-full overflow-hidden px-1 sm:px-4 py-1 sm:py-2 min-h-[90px] sm:min-h-[125px]">
+            {displayHand.map((card, idx) => {
               const isLegal = serverState.phase === 'playing'
                 ? isCardPlayLegal(card, serverState.yourHand, serverState.currentTrick, serverState.trumpSuit)
                 : isDealerDiscardPhase;
@@ -808,7 +851,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                       isYourTurn,
                       isLegal,
                     })}
-                    size="md"
+                    size="hand"
                     onClick={() => {
                       sounds.playCardSnap();
                       if (isDealerDiscardPhase) {

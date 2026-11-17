@@ -39,7 +39,7 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
       <SuitIcon suit={trumpSuit} className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
       <span
         className={`text-[10px] sm:text-xs font-black uppercase tracking-wider flex-shrink-0 ${
-          isRedSuit ? 'text-red-400' : 'text-slate-100'
+          isRedSuit ? 'text-red-400' : trumpSuit === 'clubs' ? 'text-emerald-400' : 'text-slate-100'
         }`}
       >
         {trumpSuit}

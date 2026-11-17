@@ -286,7 +286,11 @@ export const LeadSuitBadge: React.FC<LeadSuitBadgeProps> = ({
     <SuitIcon suit={leadSuit} className="w-3.5 h-3.5" />
     <span
       className={`text-[11px] font-black uppercase ${
-        leadSuit === 'hearts' || leadSuit === 'diamonds' ? 'text-red-400' : 'text-white'
+        leadSuit === 'hearts' || leadSuit === 'diamonds'
+          ? 'text-red-400'
+          : leadSuit === 'clubs'
+          ? 'text-emerald-400'
+          : 'text-white'
       }`}
     >
       {leadSuit}

@@ -3,7 +3,7 @@
  * Mobile-first portrait/landscape interactive Euchre arena.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   Suit,
@@ -20,6 +20,7 @@ import {
   getSuitSymbol,
   getSuitColor,
   formatCardName,
+  sortCardsBySuit,
   ALL_SUITS,
 } from '../engine/cards';
 import {
@@ -76,6 +77,7 @@ import {
   ShieldAlert,
   Sparkles,
   Award,
+  ArrowUpDown,
 } from 'lucide-react';
 
 interface GameTableProps {
@@ -130,6 +132,23 @@ export const GameTable: React.FC<GameTableProps> = ({
   const [isProcessingAI, setIsProcessingAI] = useState(false);
   const [inspectedPlayer, setInspectedPlayer] = useState<PublicPlayerData | null>(null);
   const [matchReported, setMatchReported] = useState(false);
+  const [autoSortBySuit, setAutoSortBySuit] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('bower_jj_auto_sort_by_suit');
+      return saved === null ? true : saved === 'true';
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleAutoSort = () => {
+    const next = !autoSortBySuit;
+    setAutoSortBySuit(next);
+    sounds.playUiClick();
+    try {
+      localStorage.setItem('bower_jj_auto_sort_by_suit', String(next));
+    } catch {}
+  };
 
   // Synchronize internal state whenever a brand new game instance is initialized
   useEffect(() => {
@@ -457,7 +476,13 @@ export const GameTable: React.FC<GameTableProps> = ({
     );
   };
 
-  const humanHand = state.hands[0];
+  const humanHand = state.hands[0] || [];
+  const displayHand = useMemo(() => {
+    if (autoSortBySuit) {
+      return sortCardsBySuit(humanHand, state.trumpSuit);
+    }
+    return humanHand;
+  }, [humanHand, state.trumpSuit, autoSortBySuit]);
   const isHumanTurn = state.currentTurn === 0;
   const isDealerDiscardPhase = state.phase === 'dealer_discard' && state.dealer === 0;
   const isHumanBenched = state.benchedPlayer === 0;
@@ -877,39 +902,55 @@ export const GameTable: React.FC<GameTableProps> = ({
           }`}
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
         >
-          {/* Turn prompt indicator */}
-          <div className="text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-2.5 sm:mb-3.5 flex items-center space-x-1.5">
-            {state.phase === 'hand_scored' ? (
-              <span className="text-amber-400 font-bold">Hand Scored — Ready for Next Deal</span>
-            ) : state.phase === 'trick_resolving' ? (
-              <span className="text-amber-400 font-bold animate-pulse">Resolving Trick...</span>
-            ) : isDealerDiscardPhase ? (
-              <span className="text-amber-400 font-black animate-pulse">
-                {isHumanBenched
-                  ? 'Partner Going Alone — Tap a card to discard before sitting out'
-                  : 'Tap a card to discard it to the kitty'}
-              </span>
-            ) : isHumanBenched ? (
-              <span className="text-gray-400">Partner is going alone. Your hand is sitting out.</span>
-            ) : isHumanTurn && (state.phase === 'bidding_round_1' || state.phase === 'bidding_round_2') ? (
-              <span className="text-amber-400 font-black animate-pulse flex items-center space-x-1">
-                <span>👉 Your Call: Choose Trump or Pass! Hand cards below 👇</span>
-              </span>
-            ) : isHumanTurn && state.phase === 'playing' ? (
-              <span className="text-amber-400 font-black animate-pulse flex items-center space-x-1">
-                <span>👉 Your turn!</span>
-                {leadSuit && (
-                  <span>Must follow {leadSuit.toUpperCase()} if you have it!</span>
-                )}
-              </span>
-            ) : (
-              <span className="text-gray-400">Waiting for {state.players[state.currentTurn]?.name || 'Opponent'}...</span>
-            )}
+          {/* Turn prompt indicator & Sort Option */}
+          <div className="w-full flex items-center justify-between text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-1.5 sm:mb-2.5 px-1 sm:px-2">
+            <div className="flex-1 text-center truncate pr-2">
+              {state.phase === 'hand_scored' ? (
+                <span className="text-amber-400 font-bold">Hand Scored — Ready for Next Deal</span>
+              ) : state.phase === 'trick_resolving' ? (
+                <span className="text-amber-400 font-bold animate-pulse">Resolving Trick...</span>
+              ) : isDealerDiscardPhase ? (
+                <span className="text-amber-400 font-black animate-pulse">
+                  {isHumanBenched
+                    ? 'Partner Going Alone — Tap to discard'
+                    : 'Tap a card to discard to kitty'}
+                </span>
+              ) : isHumanBenched ? (
+                <span className="text-gray-400">Partner is going alone. Sitting out.</span>
+              ) : isHumanTurn && (state.phase === 'bidding_round_1' || state.phase === 'bidding_round_2') ? (
+                <span className="text-amber-400 font-black animate-pulse flex items-center justify-center space-x-1">
+                  <span>👉 Your Call: Choose Trump or Pass!</span>
+                </span>
+              ) : isHumanTurn && state.phase === 'playing' ? (
+                <span className="text-amber-400 font-black animate-pulse flex items-center justify-center space-x-1">
+                  <span>👉 Your turn!</span>
+                  {leadSuit && (
+                    <span className="hidden xs:inline">Must follow {leadSuit.toUpperCase()}!</span>
+                  )}
+                </span>
+              ) : (
+                <span className="text-gray-400 truncate">Waiting for {state.players[state.currentTurn]?.name || 'Opponent'}...</span>
+              )}
+            </div>
+
+            {/* Organize Hand by Suit Button */}
+            <button
+              onClick={toggleAutoSort}
+              title={autoSortBySuit ? 'Auto-Sort by Suit is ON (tap to toggle)' : 'Auto-Sort by Suit is OFF (tap to sort)'}
+              className={`flex items-center space-x-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border flex-shrink-0 active:scale-95 ${
+                autoSortBySuit
+                  ? 'bg-amber-400/20 border-amber-400/60 text-amber-300 hover:bg-amber-400/30'
+                  : 'bg-slate-800/80 border-slate-700 text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              <ArrowUpDown className="w-3 h-3 text-amber-400" />
+              <span>{autoSortBySuit ? 'Sort: Suit' : 'Sort: Off'}</span>
+            </button>
           </div>
 
-          {/* Hand Cards (Clear positive spacing — zero overlapping symbols) */}
-          <div className="flex justify-center items-center space-x-1.5 sm:space-x-2.5 max-w-full overflow-x-auto px-4 py-2 min-h-[130px]">
-            {humanHand.map((card, idx) => {
+          {/* Hand Cards (Mobile-first responsive sizing: all 5 cards fit on any mobile screen) */}
+          <div className="flex justify-center items-center space-x-1 sm:space-x-2.5 max-w-full overflow-hidden px-1 sm:px-4 py-1 sm:py-2 min-h-[90px] sm:min-h-[125px]">
+            {displayHand.map((card, idx) => {
               const isLegal = state.phase === 'playing'
                 ? isCardPlayLegal(card, humanHand, state.currentTrick, state.trumpSuit)
                 : isDealerDiscardPhase;
@@ -929,7 +970,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                       isYourTurn: isHumanTurn,
                       isLegal,
                     })}
-                    size="md"
+                    size="hand"
                     onClick={() => {
                       if (isDealerDiscardPhase) {
                         handleHumanDiscard(card);
