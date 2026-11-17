@@ -19,6 +19,7 @@ import { sounds, loadSavedAudioPreferences } from '../../audio/sound';
 import { RoomManager } from '../../../server/roomManager';
 import { GameTable } from '../GameTable';
 import { MultiplayerGameTable } from '../MultiplayerGameTable';
+import { MainMenu } from '../MainMenu';
 import { initializeGame } from '../../engine/game';
 import { DEFAULT_RULES, Player } from '../../engine/types';
 import { SanitizedGameState } from '../../../server/types';
@@ -398,5 +399,51 @@ describe('Table UI & Tutorial Helpers', () => {
     expect(htmlMulti6).toContain('cursor-grab active:cursor-grabbing');
     expect(htmlMulti6).toContain('px-3 sm:px-6');
     expect(htmlMulti6).not.toContain('calc((100vw - 48px) / 5)');
+  });
+
+  it('renders MainMenu with accessible Game Mode selector and uncluttered Play Bots actions', () => {
+    const mockProfile = {
+      id: 'test-user',
+      username: 'EuchreChampion',
+      avatarIcon: 'default',
+      rankTier: 'Gold' as const,
+      rankPoints: 75,
+      level: 12,
+      xp: 1200,
+      stats: {
+        handsPlayed: 100,
+        handsWon: 60,
+        tricksWon: 250,
+        lonersAttempted: 10,
+        lonersMade: 7,
+        renegesReported: 0,
+        euchresForced: 15,
+      },
+    };
+
+    const htmlMenu = renderToStaticMarkup(
+      React.createElement(MainMenu, {
+        profile: mockProfile,
+        onStartAIMatch: () => {},
+        onOpenMatchmaking: () => {},
+        onOpenTutorial: () => {},
+        onOpenRules: () => {},
+        onOpenProfile: () => {},
+        onOpenFriends: () => {},
+        onOpenLeaderboard: () => {},
+        onOpenCollection: () => {},
+        onOpenPackOpener: () => {},
+        onOpenRivalryInvite: () => {},
+        onOpenAchievements: () => {},
+        isMuted: false,
+        onToggleMute: () => {},
+      })
+    );
+
+    expect(htmlMenu).toContain('Select Game Mode');
+    expect(htmlMenu).toContain('Start Game');
+    expect(htmlMenu).toContain('Play Bots');
+    expect(htmlMenu).toContain('Instant offline AI practice');
+    expect(htmlMenu).not.toContain('absolute top-full left-0 right-0 z-40 mt-1.5');
   });
 });

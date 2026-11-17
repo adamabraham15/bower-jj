@@ -4,7 +4,7 @@
  * Unified "Select Game Mode" selector, tactile 3D Start Game CTA, compact action cards, and zero mobile scrolling.
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Trophy,
   Bot,
@@ -100,6 +100,19 @@ export const MainMenu: React.FC<MainMenuProps> = ({
 
   // Quick Learn Dialog (Tutorial vs Rules)
   const [isLearnDialogOpen, setIsLearnDialogOpen] = useState<boolean>(false);
+
+  // Close modals on Escape key
+  useEffect(() => {
+    if (!isQuickSelectorOpen && !isLearnDialogOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsQuickSelectorOpen(false);
+        setIsLearnDialogOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isQuickSelectorOpen, isLearnDialogOpen]);
 
   // Hidden owner shortcut: 5 rapid clicks on logo opens the private tracker
   const logoClicksRef = useRef<{ count: number; lastTime: number }>({ count: 0, lastTime: 0 });
@@ -606,138 +619,207 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 </div>
               </button>
 
-              {/* The Slide-Down Modal/Drawer (Holds ALL game modes in one clean menu) */}
+              {/* =================================================================
+                  GAME MODE SELECTOR MODAL / BOTTOM SHEET (Never occludes main buttons)
+              ================================================================= */}
               {isQuickSelectorOpen && (
-                <div className="absolute top-full left-0 right-0 z-40 mt-1.5 p-3 rounded-2xl bg-[#131b2b] border border-slate-700 shadow-2xl space-y-2 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="flex items-center justify-between px-1">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                      Choose Your Game Mode
-                    </span>
-                    <button
-                      onClick={() => setIsQuickSelectorOpen(false)}
-                      className="p-1 rounded-md text-slate-400 hover:text-white cursor-pointer"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                <div
+                  onClick={() => {
+                    sounds.playUiClick();
+                    setIsQuickSelectorOpen(false);
+                  }}
+                  className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150"
+                >
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full sm:max-w-md bg-[#131b2b] border-t sm:border border-slate-700/80 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[80vh] overflow-hidden animate-in slide-in-from-bottom duration-200"
+                    style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}
+                  >
+                    {/* Mobile Drag Indicator */}
+                    <div className="w-12 h-1.5 bg-slate-700/80 rounded-full mx-auto mt-2.5 sm:hidden flex-shrink-0" />
 
-                  <div className="grid grid-cols-1 gap-1">
-                    {(
-                      [
-                        {
-                          id: 'ranked_solo',
-                          label: 'Ranked Solo Queue',
-                          desc: 'Competitive MMR • 10 pts • Earn Rank LP',
-                          icon: <Zap className="w-5 h-5 text-amber-400 fill-amber-400" />,
-                        },
-                        {
-                          id: 'unranked',
-                          label: 'Casual Play (Unranked)',
-                          desc: 'Zero rank loss • Practice & Earn XP',
-                          icon: <Shield className="w-5 h-5 text-cyan-400" />,
-                        },
-                        {
-                          id: 'rivalry',
-                          label: 'Friendly Rivalry',
-                          desc: 'Challenge a friend head-to-head',
-                          icon: <Swords className="w-5 h-5 text-cyan-300" />,
-                        },
-                        {
-                          id: 'private',
-                          label: 'Private Room Lobby',
-                          desc: 'Play with friends using room code',
-                          icon: <Users className="w-5 h-5 text-amber-300" />,
-                        },
-                        {
-                          id: 'ai_bots',
-                          label: 'Play Bots (Instant AI)',
-                          desc: `${selectedDifficulty.toUpperCase()} • ${targetScore} pts • Offline & Ready`,
-                          icon: <Bot className="w-5 h-5 text-emerald-400" />,
-                        },
-                      ] as const
-                    ).map((opt) => (
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 flex-shrink-0">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shadow-inner">
+                          <Zap className="w-4 h-4 fill-amber-400" />
+                        </div>
+                        <div>
+                          <h3 className="font-black text-sm text-white uppercase tracking-wider">Choose Game Mode</h3>
+                          <p className="text-[11px] text-slate-400 font-medium">Select how you want to play</p>
+                        </div>
+                      </div>
                       <button
-                        key={opt.id}
                         onClick={() => {
                           sounds.playUiClick();
-                          setQuickMode(opt.id);
-                          if (opt.id !== 'ai_bots') {
-                            setIsQuickSelectorOpen(false);
-                          }
+                          setIsQuickSelectorOpen(false);
                         }}
-                        className={`w-full px-3.5 py-2.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
-                          quickMode === opt.id
-                            ? 'bg-emerald-500/15 border-emerald-400/70 text-white'
-                            : 'bg-[#182235] border-slate-800 text-slate-300 hover:bg-[#1e2a40]'
-                        }`}
+                        className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                        aria-label="Close mode selector"
                       >
-                        <div className="flex items-center gap-3">
-                          {opt.icon}
-                          <div>
-                            <div className="text-sm font-black">{opt.label}</div>
-                            <div className="text-[11px] text-slate-400">{opt.desc}</div>
-                          </div>
-                        </div>
-                        {quickMode === opt.id && <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Inline Bot Rules when AI Bots is chosen */}
-                  {quickMode === 'ai_bots' && (
-                    <div className="pt-2 border-t border-slate-800 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">AI Difficulty:</span>
-                        <div className="flex gap-1">
-                          {(['easy', 'medium', 'hard'] as AIDifficulty[]).map((d) => (
-                            <button
-                              key={d}
-                              onClick={() => {
-                                sounds.playUiClick();
-                                setSelectedDifficulty(d);
-                              }}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-black capitalize cursor-pointer ${
-                                selectedDifficulty === d
-                                  ? 'bg-emerald-500 text-slate-950'
-                                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                              }`}
-                            >
-                              {d}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Target Score:</span>
-                        <div className="flex gap-1">
-                          {[5, 7, 10].map((pts) => (
-                            <button
-                              key={pts}
-                              onClick={() => {
-                                sounds.playUiClick();
-                                setTargetScore(pts);
-                              }}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer ${
-                                targetScore === pts
-                                  ? 'bg-amber-400 text-slate-950'
-                                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                              }`}
-                            >
-                              {pts} pts
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => setIsQuickSelectorOpen(false)}
-                        className="w-full py-2 rounded-xl bg-emerald-500/20 text-emerald-300 font-bold text-xs cursor-pointer"
-                      >
-                        Confirm &amp; Close Selector
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
-                  )}
+
+                    {/* Scrollable Mode List */}
+                    <div className="p-3.5 sm:p-4 overflow-y-auto space-y-2 flex-1 overscroll-contain">
+                      <div className="grid grid-cols-1 gap-1.5">
+                        {(
+                          [
+                            {
+                              id: 'ranked_solo',
+                              label: 'Ranked Solo Queue',
+                              desc: 'Competitive MMR • 10 pts • Earn Rank LP',
+                              icon: <Zap className="w-5 h-5 text-amber-400 fill-amber-400" />,
+                            },
+                            {
+                              id: 'unranked',
+                              label: 'Casual Play (Unranked)',
+                              desc: 'Zero rank loss • Practice & Earn XP',
+                              icon: <Shield className="w-5 h-5 text-cyan-400" />,
+                            },
+                            {
+                              id: 'rivalry',
+                              label: 'Friendly Rivalry',
+                              desc: 'Challenge a friend head-to-head',
+                              icon: <Swords className="w-5 h-5 text-cyan-300" />,
+                            },
+                            {
+                              id: 'private',
+                              label: 'Private Room Lobby',
+                              desc: 'Play with friends using room code',
+                              icon: <Users className="w-5 h-5 text-amber-300" />,
+                            },
+                            {
+                              id: 'ai_bots',
+                              label: 'Play Bots (Instant AI)',
+                              desc: `${selectedDifficulty.toUpperCase()} • ${targetScore} pts • Offline & Ready`,
+                              icon: <Bot className="w-5 h-5 text-emerald-400" />,
+                            },
+                          ] as const
+                        ).map((opt) => (
+                          <button
+                            key={opt.id}
+                            onClick={() => {
+                              sounds.playUiClick();
+                              setQuickMode(opt.id);
+                              if (opt.id !== 'ai_bots') {
+                                setIsQuickSelectorOpen(false);
+                              }
+                            }}
+                            className={`w-full px-3.5 py-3 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                              quickMode === opt.id
+                                ? 'bg-emerald-500/15 border-emerald-400/70 text-white shadow-sm'
+                                : 'bg-[#182235] border-slate-800 text-slate-300 hover:bg-[#1e2a40]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-slate-900/60 border border-slate-700/60 flex items-center justify-center flex-shrink-0">
+                                {opt.icon}
+                              </div>
+                              <div>
+                                <div className="text-sm font-black text-white">{opt.label}</div>
+                                <div className="text-[11px] text-slate-400 font-medium">{opt.desc}</div>
+                              </div>
+                            </div>
+                            {quickMode === opt.id && <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Bot Settings Panel (smoothly embedded inside the scrollable drawer) */}
+                      {quickMode === 'ai_bots' && (
+                        <div className="mt-2.5 p-3.5 rounded-2xl bg-[#0f1624] border border-emerald-500/40 space-y-3 animate-in fade-in duration-150">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-black text-emerald-400 uppercase tracking-wide">
+                              Bot Difficulty
+                            </span>
+                            <div className="flex gap-1.5">
+                              {(['easy', 'medium', 'hard'] as AIDifficulty[]).map((d) => (
+                                <button
+                                  key={d}
+                                  onClick={() => {
+                                    sounds.playUiClick();
+                                    setSelectedDifficulty(d);
+                                  }}
+                                  className={`px-3 py-1.5 rounded-xl text-xs font-black capitalize transition-all cursor-pointer ${
+                                    selectedDifficulty === d
+                                      ? 'bg-emerald-500 text-slate-950 shadow-md'
+                                      : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'
+                                  }`}
+                                >
+                                  {d}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-black text-emerald-400 uppercase tracking-wide">
+                              Target Points
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <div className="flex gap-1.5">
+                                {[5, 7, 10].map((pts) => (
+                                  <button
+                                    key={pts}
+                                    onClick={() => {
+                                      sounds.playUiClick();
+                                      setTargetScore(pts);
+                                    }}
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                      targetScore === pts
+                                        ? 'bg-amber-400 text-slate-950 shadow-md'
+                                        : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'
+                                    }`}
+                                  >
+                                    {pts} pts
+                                  </button>
+                                ))}
+                              </div>
+
+                              <label className="flex items-center gap-1.5 text-xs text-slate-300 font-bold cursor-pointer ml-1 select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={stickTheDealer}
+                                  onChange={(e) => setStickTheDealer(e.target.checked)}
+                                  className="rounded text-emerald-500 focus:ring-0 accent-emerald-500"
+                                />
+                                <span>Stick</span>
+                              </label>
+                            </div>
+                          </div>
+
+                          <div className="pt-1 grid grid-cols-2 gap-2">
+                            <button
+                              onClick={() => {
+                                sounds.playUiClick();
+                                setIsQuickSelectorOpen(false);
+                              }}
+                              className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs cursor-pointer text-center transition-colors"
+                            >
+                              Confirm Mode
+                            </button>
+                            <button
+                              onClick={() => {
+                                sounds.playVictoryFanfare();
+                                setIsQuickSelectorOpen(false);
+                                onStartAIMatch(selectedDifficulty, {
+                                  ...DEFAULT_RULES,
+                                  targetScore,
+                                  stickTheDealer,
+                                });
+                              }}
+                              className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:brightness-110 text-slate-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                            >
+                              <Play className="w-3.5 h-3.5 fill-slate-950" />
+                              <span>Launch Now</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
