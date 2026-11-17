@@ -156,17 +156,16 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       <aside className="hidden lg:flex w-64 xl:w-72 flex-col justify-between bg-[#0f1523]/95 border-r border-slate-800/80 p-5 z-20 flex-shrink-0">
         <div className="space-y-6">
           {/* Brand Logo */}
-          <div className="flex items-center gap-3 px-2">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 p-[2px] shadow-lg shadow-amber-500/20 flex-shrink-0">
-              <div className="w-full h-full rounded-[14px] bg-slate-950 flex flex-col items-center justify-center">
-                <span className="text-[9px] font-black tracking-tighter text-amber-300 leading-none">BOWER</span>
-                <span className="text-sm font-black text-amber-400 leading-none mt-0.5">JJ</span>
-              </div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-lg font-black tracking-wider text-amber-400 leading-none">BOWER JJ</div>
-              <div className="text-[11px] text-slate-400 font-semibold mt-1 truncate">Competitive Euchre Arena</div>
-            </div>
+          <div
+            onClick={handleLogoClick}
+            title="BOWER JJ — Home of Competitive Euchre"
+            className="flex items-center gap-3 px-2 cursor-pointer select-none group"
+          >
+            <img
+              src="/assets/bower_jj_pack_logo.png?v=pack_crest"
+              alt="BOWER JJ"
+              className="h-11 w-auto object-contain group-hover:scale-105 transition-transform duration-200 drop-shadow-[0_4px_16px_rgba(245,158,11,0.45)]"
+            />
           </div>
 
           {/* Primary Navigation Links */}
@@ -346,19 +345,13 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               <div
                 onClick={handleLogoClick}
                 title="BOWER JJ — Home of Competitive Euchre"
-                className="flex items-center gap-2 sm:gap-2.5 select-none cursor-pointer group"
+                className="flex items-center justify-center select-none cursor-pointer group py-0.5"
               >
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-b from-amber-200 via-amber-400 to-amber-700 p-[2px] shadow-[0_0_15px_rgba(245,158,11,0.35)] flex items-center justify-center group-hover:scale-105 transition-transform">
-                  <div className="w-full h-full rounded-[9px] bg-gradient-to-b from-[#182338] via-[#0d1524] to-[#070b13] flex flex-col items-center justify-center border border-amber-400/30">
-                    <span className="text-[7px] sm:text-[8px] font-black tracking-widest text-amber-200 leading-none">BOWER</span>
-                    <span className="text-xs sm:text-sm font-black bg-gradient-to-b from-amber-100 via-amber-300 to-amber-600 bg-clip-text text-transparent leading-none mt-0.5">JJ</span>
-                  </div>
-                </div>
-                <div className="flex flex-col text-left">
-                  <h1 className="text-xl sm:text-2xl font-black tracking-widest uppercase text-transparent bg-clip-text bg-gradient-to-b from-[#fff6d1] via-[#f59e0b] to-[#92400e] drop-shadow-[0_2px_0px_#78350f] drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)] drop-shadow-[0_0_12px_rgba(245,158,11,0.45)] leading-none select-none">
-                    BOWER JJ
-                  </h1>
-                </div>
+                <img
+                  src="/assets/bower_jj_pack_logo.png?v=pack_crest"
+                  alt="BOWER JJ"
+                  className="h-10 sm:h-12 md:h-14 w-auto max-w-[190px] sm:max-w-[240px] object-contain select-none group-hover:scale-105 active:scale-95 transition-transform duration-200 drop-shadow-[0_4px_16px_rgba(245,158,11,0.45)]"
+                />
               </div>
 
               {/* Right: Audio Popover & Cloud Status */}
