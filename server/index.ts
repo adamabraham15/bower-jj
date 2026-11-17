@@ -107,6 +107,10 @@ export async function createMultiplayerServer(
         activeDb = repo;
         activeRm.setPostgresRepository(repo);
         logger.info(`[DATABASE] Authoritative PostgreSQL database connected. Latency: ${health.latencyMs}ms, Pool: ${JSON.stringify(health.poolStats)}`);
+        const restoredPgMatches = await activeRm.restoreActiveMatchesFromPostgres();
+        if (restoredPgMatches > 0) {
+          logger.info(`[ACTIVE MATCH PG] Successfully restored ${restoredPgMatches} live clustered matches from PostgreSQL.`);
+        }
       }
     } catch (err: any) {
       if (process.env.NODE_ENV === 'production') {
@@ -651,21 +655,25 @@ export async function createMultiplayerServer(
           }
 
           case 'GAME_BID': {
+            await activeRm.ensureRoomLoaded(uid);
             activeRm.handleClientBid(uid, msg.bidType, msg.suit, msg.alone);
             break;
           }
 
           case 'GAME_DISCARD': {
+            await activeRm.ensureRoomLoaded(uid);
             activeRm.handleClientDiscard(uid, msg.cardId);
             break;
           }
 
           case 'GAME_PLAY_CARD': {
+            await activeRm.ensureRoomLoaded(uid);
             activeRm.handleClientPlayCard(uid, msg.cardId);
             break;
           }
 
           case 'GAME_NEXT_HAND': {
+            await activeRm.ensureRoomLoaded(uid);
             activeRm.handleClientNextHand(uid);
             break;
           }

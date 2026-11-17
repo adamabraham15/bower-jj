@@ -140,6 +140,7 @@ describe('Friends List, Match History & Rank Progression', () => {
         wins: 4,
         losses: 2,
         totalGames: 6,
+        winStreak: 0,
       });
 
       // Win a ranked match that crosses 100 LP threshold

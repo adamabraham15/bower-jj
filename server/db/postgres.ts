@@ -1111,7 +1111,8 @@ export class PostgresDatabaseRepository {
       const playerResults: any[] = [];
       const isRankedMode =
         input.mode === 'ranked_solo' ||
-        input.mode === 'ranked_duo';
+        input.mode === 'ranked_duo' ||
+        input.mode === 'ranked_rivals';
 
       // 3. Process Each Human Player Atomically
       for (const p of input.humanPlayers) {
@@ -1381,6 +1382,35 @@ export class PostgresDatabaseRepository {
       room: r.room_data as Room,
       state: r.game_state as EuchreGameState,
     }));
+  }
+
+  public async getActiveMatchByCode(roomCode: string): Promise<{ room: Room; state: EuchreGameState } | null> {
+    const res = await this.queryWithRetry(
+      `
+      SELECT room_data, game_state FROM public.active_matches
+      WHERE room_code = $1
+      LIMIT 1;
+      `,
+      [roomCode.toUpperCase()]
+    );
+    if (!res.rows || res.rows.length === 0) return null;
+    return {
+      room: res.rows[0].room_data as Room,
+      state: res.rows[0].game_state as EuchreGameState,
+    };
+  }
+
+  public async getActiveMatchForUser(userId: string): Promise<{ room: Room; state: EuchreGameState } | null> {
+    const matches = await this.loadActiveMatches(30);
+    for (const match of matches) {
+      if (match.room && match.state && match.room.status === 'playing') {
+        const hasUser = match.room.slots.some(s => s && s.userId === userId);
+        if (hasUser) {
+          return match;
+        }
+      }
+    }
+    return null;
   }
 
   // --- SOCIAL & FRIENDSHIPS ---

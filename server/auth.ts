@@ -130,8 +130,8 @@ export class TokenVerifier {
     if (allowGuest || !isServerSupabaseConfigured) {
       const cleanName = (fallbackUsername || 'Guest').trim();
       const uniqueSuffix = Math.floor(1000 + Math.random() * 9000);
-      const isNamedGuest = cleanName.toLowerCase().startsWith('guest');
-      const finalUsername = isNamedGuest ? cleanName : `Guest ${uniqueSuffix}`;
+      const isGenericDefault = !cleanName || cleanName.toLowerCase() === 'guest' || cleanName.toLowerCase() === 'bowerking';
+      const finalUsername = isGenericDefault ? `Guest ${uniqueSuffix}` : cleanName;
       const guestId = token?.startsWith('usr_') || token?.startsWith('tok_')
         ? token.replace('tok_', 'usr_')
         : `guest_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;

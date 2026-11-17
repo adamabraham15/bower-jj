@@ -319,9 +319,9 @@ export class RoomManager {
     if (!this.pgRepo) return 0;
     let restoredCount = 0;
     try {
-      const records = await this.pgRepo.loadActiveMatches(15);
+      const records = await this.pgRepo.loadActiveMatches(30);
       for (const rec of records) {
-        if (!rec.room || !rec.state) continue;
+        if (!rec.room || !rec.state || rec.room.status !== 'playing') continue;
         const room: Room = rec.room;
         if (!room.id) room.id = crypto.randomUUID();
         const state: EuchreGameState = rec.state;
@@ -343,6 +343,19 @@ export class RoomManager {
           }
         });
 
+        // If current turn belongs to an AI, schedule next AI step
+        if (
+          state.phase === 'playing' ||
+          state.phase === 'bidding_round_1' ||
+          state.phase === 'bidding_round_2' ||
+          state.phase === 'dealer_discard'
+        ) {
+          const currentSlot = room.slots[state.currentTurn];
+          if (currentSlot && currentSlot.isAI) {
+            setTimeout(() => this.triggerAITurn(room.code), 1000);
+          }
+        }
+
         console.log(
           `[ACTIVE MATCH PG] Successfully restored clustered match ${room.code} (Phase: ${state.phase}, Scores: ${state.scores.join('-')})`
         );
@@ -351,6 +364,77 @@ export class RoomManager {
     } catch (err) {
       console.warn('[ACTIVE MATCH PG] Failed restoring active matches from PostgreSQL:', err);
       return 0;
+    }
+  }
+
+  public async rehydrateRoom(roomCode: string): Promise<boolean> {
+    if (!this.pgRepo) return false;
+    try {
+      const active = await this.pgRepo.getActiveMatchByCode(roomCode);
+      if (active && active.room && active.state && active.room.status === 'playing') {
+        const code = active.room.code;
+        this.rooms.set(code, active.room);
+        this.gameStates.set(code, active.state);
+        logger.info(`[ROOM REHYDRATION] Successfully rehydrated room ${code} from PostgreSQL`);
+        return true;
+      }
+    } catch (err) {
+      logger.warn(`[ROOM REHYDRATION] Failed to rehydrate room ${roomCode}: ${err}`);
+    }
+    return false;
+  }
+
+  public async rehydrateUserActiveMatch(userId: string, conn: ClientConnection): Promise<boolean> {
+    if (!this.pgRepo) return false;
+    try {
+      const active = await this.pgRepo.getActiveMatchForUser(userId);
+      if (active && active.room && active.state && active.room.status === 'playing') {
+        const code = active.room.code;
+        this.rooms.set(code, active.room);
+        this.gameStates.set(code, active.state);
+
+        const slotIdx = active.room.slots.findIndex(s => s && s.userId === userId);
+        if (slotIdx !== -1) {
+          const slot = active.room.slots[slotIdx]!;
+          slot.isAI = false;
+          slot.abandoned = false;
+          slot.connected = true;
+          if (slot.username && slot.username.endsWith(' (Bot)')) {
+            slot.username = conn.username;
+          }
+          conn.roomCode = code;
+
+          const timerKey = `${code}_${slotIdx}`;
+          const existingTimer = this.disconnectTimers.get(timerKey);
+          if (existingTimer) {
+            clearTimeout(existingTimer);
+            this.disconnectTimers.delete(timerKey);
+          }
+
+          this.broadcastRoom(code, {
+            type: 'ROOM_UPDATE',
+            room: active.room,
+          });
+
+          this.sendStateToPlayer(code, slotIdx as PlayerPosition);
+          logger.info(`[USER REHYDRATION] Restored active match ${code} for user ${userId} (${conn.username})`);
+          return true;
+        }
+      }
+    } catch (err) {
+      logger.warn(`[USER REHYDRATION] Error querying Postgres for active match for ${userId}: ${err}`);
+    }
+    return false;
+  }
+
+  public async ensureRoomLoaded(userId: string): Promise<void> {
+    const conn = this.connections.get(userId);
+    if (!conn) return;
+
+    if (conn.roomCode && !this.rooms.has(conn.roomCode)) {
+      await this.rehydrateRoom(conn.roomCode);
+    } else if (!conn.roomCode) {
+      await this.rehydrateUserActiveMatch(userId, conn);
     }
   }
 
@@ -401,14 +485,22 @@ export class RoomManager {
   public registerConnection(userId: string, conn: ClientConnection) {
     this.connections.set(userId, conn);
 
-    // Reconnection check (skip already-finished rooms so stale matches don't hijack new lobbies)
+    let reconnected = false;
+
+    // 1. Reconnection check against in-memory active rooms
     for (const [code, room] of this.rooms.entries()) {
       if (room.status === 'finished') continue;
       const slotIdx = room.slots.findIndex(s => s && s.userId === userId);
       if (slotIdx !== -1) {
         const slot = room.slots[slotIdx]!;
         slot.connected = true;
+        slot.isAI = false;
+        slot.abandoned = false;
+        if (slot.username && slot.username.endsWith(' (Bot)')) {
+          slot.username = conn.username;
+        }
         conn.roomCode = code;
+        reconnected = true;
 
         const timerKey = `${code}_${slotIdx}`;
         const existingTimer = this.disconnectTimers.get(timerKey);
@@ -427,6 +519,13 @@ export class RoomManager {
         }
         break;
       }
+    }
+
+    // 2. If not found in memory, asynchronously check PostgreSQL for any active match in progress
+    if (!reconnected && this.pgRepo) {
+      this.rehydrateUserActiveMatch(userId, conn).catch(err => {
+        logger.warn(`[RECONNECT PG] Failed checking active match for ${userId}:`, err);
+      });
     }
   }
 
@@ -758,15 +857,30 @@ export class RoomManager {
     const room = this.rooms.get(targetCode);
     if (!room) throw new Error(`Room ${code} not found`);
 
-    if (room.status !== 'lobby') {
-      throw new Error('Game is already in progress');
-    }
-
+    // If player is already seated in this room, reconnect / reclaim seat immediately
     const existing = room.slots.findIndex(s => s && s.userId === userId);
     if (existing !== -1) {
       this.clearPendingInvite(room.code, userId);
       conn.roomCode = room.code;
+      const slot = room.slots[existing]!;
+      slot.connected = true;
+      slot.isAI = false;
+      slot.abandoned = false;
+      if (slot.username && slot.username.endsWith(' (Bot)')) {
+        slot.username = conn.username;
+      }
+      this.broadcastRoom(room.code, {
+        type: 'ROOM_UPDATE',
+        room,
+      });
+      if (room.status === 'playing') {
+        this.sendStateToPlayer(room.code, existing as PlayerPosition);
+      }
       return room;
+    }
+
+    if (room.status !== 'lobby') {
+      throw new Error('Game is already in progress');
     }
 
     // In Rivals mode, ensure Friend 2 is placed at Seat 1 (Team 1, Opposing team from Host at Seat 0, Team 0)
