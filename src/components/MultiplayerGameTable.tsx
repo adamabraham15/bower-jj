@@ -166,9 +166,9 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
     const emote = activeEmotes[pos];
 
     const positionStyle = {
-      bottom: 'bottom-2 sm:bottom-4',
+      bottom: 'bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 sm:left-8 md:left-14 sm:translate-x-0',
       left: 'left-2 sm:left-6 top-1/2 -translate-y-1/2',
-      top: 'top-1.5 sm:top-3',
+      top: 'top-1.5 sm:top-3 left-1/2 -translate-x-1/2',
       right: 'right-2 sm:right-6 top-1/2 -translate-y-1/2',
     }[relPos];
 
@@ -750,7 +750,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
         >
           {/* Turn prompt indicator */}
-          <div className="text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-1.5 flex items-center space-x-1.5">
+          <div className="text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-2.5 sm:mb-3.5 flex items-center space-x-1.5">
             {serverState.phase === 'hand_scored' ? (
               <span className="text-amber-400 font-bold">Hand Scored — Next Deal Starting in {autoDealCountdown}s...</span>
             ) : serverState.phase === 'trick_resolving' ? (

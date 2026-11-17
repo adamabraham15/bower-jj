@@ -4,7 +4,7 @@
  * Unified "Select Game Mode" selector, tactile 3D Start Game CTA, compact action cards, and zero mobile scrolling.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Trophy,
   Bot,
@@ -25,7 +25,6 @@ import {
   Check,
   SlidersHorizontal,
   X,
-  Activity,
 } from 'lucide-react';
 import { PlayerProfileData } from './ProfileModal';
 import { AIDifficulty, EuchreHouseRules, DEFAULT_RULES } from '../engine/types';
@@ -94,6 +93,25 @@ export const MainMenu: React.FC<MainMenuProps> = ({
 
   // Quick Learn Dialog (Tutorial vs Rules)
   const [isLearnDialogOpen, setIsLearnDialogOpen] = useState<boolean>(false);
+
+  // Hidden owner shortcut: 5 rapid clicks on logo opens the private tracker
+  const logoClicksRef = useRef<{ count: number; lastTime: number }>({ count: 0, lastTime: 0 });
+  const handleLogoClick = () => {
+    const now = Date.now();
+    if (now - logoClicksRef.current.lastTime < 1800) {
+      logoClicksRef.current.count += 1;
+      if (logoClicksRef.current.count >= 5) {
+        logoClicksRef.current.count = 0;
+        if (onOpenTracker) {
+          onOpenTracker();
+        } else {
+          window.location.href = '/tracker';
+        }
+      }
+    } else {
+      logoClicksRef.current = { count: 1, lastTime: now };
+    }
+  };
 
   const handleStartSelectedGame = () => {
     sounds.playUiClick();
@@ -351,7 +369,11 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               </button>
 
               {/* Center: Cool BOWER JJ Logo Emblem filling the top */}
-              <div className="flex items-center gap-2.5 select-none">
+              <div
+                onClick={handleLogoClick}
+                title="BOWER JJ"
+                className="flex items-center gap-2.5 select-none cursor-pointer"
+              >
                 <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 p-[1.5px] shadow-lg shadow-amber-500/25 flex items-center justify-center">
                   <div className="w-full h-full rounded-[9.5px] bg-[#0c121e] flex flex-col items-center justify-center">
                     <span className="text-[7px] sm:text-[8px] font-black tracking-tighter text-amber-300 leading-none">BOWER</span>
@@ -365,24 +387,9 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 </div>
               </div>
 
-              {/* Right: Audio Popover & Cloud Status & Live Traffic Tracker */}
+              {/* Right: Audio Popover & Cloud Status */}
               <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#161f30] border border-slate-700/80 shadow-inner">
                 <AudioControlsPopover />
-                <button
-                  onClick={() => {
-                    sounds.playUiClick();
-                    if (onOpenTracker) {
-                      onOpenTracker();
-                    } else {
-                      window.location.href = '/tracker';
-                    }
-                  }}
-                  className="relative p-1 rounded-full text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors cursor-pointer"
-                  title="Live Traffic Tracker (bowerjj.com/tracker)"
-                >
-                  <Activity className="w-3.5 h-3.5" />
-                  <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                </button>
                 {isAuthenticated ? (
                   <button
                     onClick={() => {

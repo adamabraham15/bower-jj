@@ -20,6 +20,8 @@ import {
   Clock,
   Radio,
   Sparkles,
+  Lock,
+  ShieldCheck,
 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { presenceTracker, LivePresenceRecord } from '../services/presenceTracker';
@@ -63,7 +65,31 @@ function formatTimeAgo(isoDate: string): string {
   return `${hrs}h ago`;
 }
 
+const VALID_ADMIN_KEYS = ['bower777', 'boweradmin', 'bowerjj2026', 'bowerjj777'];
+
 export const LiveSiteTracker: React.FC<LiveSiteTrackerProps> = ({ onBackToGame }) => {
+  // Admin authorization gate: Only the site owner can view live telemetry
+  const [isAuthorized, setIsAuthorized] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    if (localStorage.getItem('bower_tracker_admin_authorized') === 'true') {
+      return true;
+    }
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const keyParam = (params.get('key') || params.get('admin') || params.get('pin') || params.get('pass') || '').trim().toLowerCase();
+      if (VALID_ADMIN_KEYS.includes(keyParam)) {
+        localStorage.setItem('bower_tracker_admin_authorized', 'true');
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, '', cleanUrl);
+        return true;
+      }
+    } catch {}
+    return false;
+  });
+
+  const [passcodeAttempt, setPasscodeAttempt] = useState<string>('');
+  const [passcodeError, setPasscodeError] = useState<string | null>(null);
+
   const [realtimeMap, setRealtimeMap] = useState<Record<string, LivePresenceRecord>>({});
   const [dbPresence, setDbPresence] = useState<LivePresenceRecord[]>([]);
   const [recentVisits, setRecentVisits] = useState<VisitRow[]>([]);
@@ -131,6 +157,7 @@ export const LiveSiteTracker: React.FC<LiveSiteTrackerProps> = ({ onBackToGame }
   }, []);
 
   useEffect(() => {
+    if (!isAuthorized) return;
     fetchMetrics();
 
     const pollInterval = setInterval(fetchMetrics, 8000);
@@ -163,7 +190,7 @@ export const LiveSiteTracker: React.FC<LiveSiteTrackerProps> = ({ onBackToGame }
         supabase.removeChannel(dbChangesChannel);
       }
     };
-  }, [fetchMetrics]);
+  }, [fetchMetrics, isAuthorized]);
 
   // Merge Realtime WebSocket presence + active DB heartbeat rows
   const mergedSessionsMap = new Map<string, LivePresenceRecord>();
@@ -208,6 +235,98 @@ export const LiveSiteTracker: React.FC<LiveSiteTrackerProps> = ({ onBackToGame }
     setCopiedLink(label);
     setTimeout(() => setCopiedLink(null), 2000);
   };
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen w-full bg-[#070b14] text-slate-100 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
+        {/* Ambient Top Glow */}
+        <div className="pointer-events-none fixed inset-x-0 top-0 h-96 bg-gradient-to-b from-amber-500/10 via-yellow-500/5 to-transparent" />
+
+        <div className="w-full max-w-md bg-[#0f172a] border border-amber-500/30 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col items-center text-center relative overflow-hidden z-10 backdrop-blur-xl">
+          {/* Top Gold Accent Bar */}
+          <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600" />
+
+          {/* Logo badge */}
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 p-0.5 shadow-xl shadow-amber-500/25 mb-4">
+            <div className="w-full h-full bg-[#0b1324] rounded-[14px] flex flex-col items-center justify-center leading-none">
+              <span className="text-[10px] font-black tracking-tighter text-amber-300">BOWER</span>
+              <span className="text-base font-black text-amber-400">JJ</span>
+            </div>
+          </div>
+
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-black uppercase tracking-wider mb-2">
+            <Lock className="w-3.5 h-3.5" />
+            <span>Private Live Telemetry</span>
+          </div>
+
+          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white mt-1">
+            Admin Verification Required
+          </h2>
+          <p className="text-xs text-slate-400 font-medium mt-1.5 mb-6 max-w-xs">
+            This real-time traffic and presence dashboard is private. Please enter your administrator passcode to proceed.
+          </p>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const trimmed = passcodeAttempt.trim().toLowerCase();
+              if (VALID_ADMIN_KEYS.includes(trimmed)) {
+                try {
+                  localStorage.setItem('bower_tracker_admin_authorized', 'true');
+                } catch {}
+                setIsAuthorized(true);
+                setPasscodeError(null);
+              } else {
+                setPasscodeError('Invalid administrator passcode. Access denied.');
+              }
+            }}
+            className="w-full space-y-3.5"
+          >
+            <div>
+              <input
+                type="password"
+                value={passcodeAttempt}
+                onChange={(e) => {
+                  setPasscodeAttempt(e.target.value);
+                  if (passcodeError) setPasscodeError(null);
+                }}
+                placeholder="Enter Administrator Passcode"
+                className="w-full px-4 py-3 bg-[#080d1a] border border-slate-700 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 rounded-xl text-sm font-mono text-white placeholder-slate-500 outline-none transition-all text-center"
+                autoFocus
+              />
+              {passcodeError && (
+                <div className="mt-2 text-xs font-bold text-rose-400 animate-pulse">
+                  {passcodeError}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-sm tracking-wide shadow-lg shadow-amber-500/25 active:scale-98 transition-all cursor-pointer"
+            >
+              Unlock Dashboard
+            </button>
+          </form>
+
+          <div className="mt-6 pt-5 border-t border-slate-800/80 w-full flex items-center justify-center">
+            <button
+              onClick={() => {
+                if (onBackToGame) {
+                  onBackToGame();
+                } else {
+                  window.location.href = '/';
+                }
+              }}
+              className="text-xs font-bold text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              ← Return to BOWER JJ Game
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full bg-[#060a14] text-slate-100 font-sans selection:bg-amber-400 selection:text-slate-950 overflow-y-auto pb-16">
@@ -264,6 +383,19 @@ export const LiveSiteTracker: React.FC<LiveSiteTrackerProps> = ({ onBackToGame }
               Open Game
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
+            <button
+              onClick={() => {
+                try {
+                  localStorage.removeItem('bower_tracker_admin_authorized');
+                } catch {}
+                setIsAuthorized(false);
+              }}
+              title="Lock Live Tracker (Sign Out)"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-rose-950/60 border border-slate-700 hover:border-rose-500/40 text-xs font-bold text-slate-400 hover:text-rose-300 transition-all cursor-pointer"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Lock</span>
+            </button>
           </div>
         </div>
       </header>

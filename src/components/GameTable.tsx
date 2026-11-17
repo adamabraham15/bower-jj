@@ -570,10 +570,10 @@ export const GameTable: React.FC<GameTableProps> = ({
         </div>
 
         {/* Player Pods */}
-        {renderPlayerPod(2, 'top-1.5 sm:top-3')} {/* Partner (North) */}
+        {renderPlayerPod(2, 'top-1.5 sm:top-3 left-1/2 -translate-x-1/2')} {/* Partner (North) */}
         {renderPlayerPod(1, 'left-2 sm:left-6 top-1/2 -translate-y-1/2')} {/* Opponent 1 (West) */}
         {renderPlayerPod(3, 'right-2 sm:right-6 top-1/2 -translate-y-1/2')} {/* Opponent 2 (East) */}
-        {renderPlayerPod(0, 'bottom-2 sm:bottom-4')} {/* You (South) */}
+        {renderPlayerPod(0, 'bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 sm:left-8 md:left-14 sm:translate-x-0')} {/* You (South) */}
 
         {/* Center Trick Arena & Table Hub */}
         <div className="relative w-72 h-72 sm:w-84 sm:h-84 rounded-full border-2 border-amber-400/25 bg-[#070d18]/65 shadow-[0_0_50px_rgba(0,0,0,0.8),inset_0_0_30px_rgba(245,158,11,0.04)] backdrop-blur-xs flex items-center justify-center">
@@ -870,7 +870,7 @@ export const GameTable: React.FC<GameTableProps> = ({
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
         >
           {/* Turn prompt indicator */}
-          <div className="text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-1.5 flex items-center space-x-1.5">
+          <div className="text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-2.5 sm:mb-3.5 flex items-center space-x-1.5">
             {state.phase === 'hand_scored' ? (
               <span className="text-amber-400 font-bold">Hand Scored — Ready for Next Deal</span>
             ) : state.phase === 'trick_resolving' ? (
