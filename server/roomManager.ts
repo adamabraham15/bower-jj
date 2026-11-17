@@ -90,6 +90,8 @@ export class RoomManager {
   public inviteExpiryMs: number = 30000;
   public pgRepo?: PostgresDatabaseRepository;
   private userCache: Map<string, UserAccount> = new Map();
+  private nextHandReady: Map<string, Set<string>> = new Map();
+  private handScoredTimers: Map<string, NodeJS.Timeout> = new Map();
 
   public setPostgresRepository(repo: PostgresDatabaseRepository): void {
     this.pgRepo = repo;
@@ -1512,12 +1514,35 @@ export class RoomManager {
     const state = this.gameStates.get(conn.roomCode);
     if (!room || !state || state.phase !== 'hand_scored') return;
 
-    const nextState = startNextHand(state);
-    this.gameStates.set(room.code, nextState);
-    this.persistActiveMatch(room.code);
-    this.broadcastGameSync(room.code);
+    let readySet = this.nextHandReady.get(room.code);
+    if (!readySet) {
+      readySet = new Set<string>();
+      this.nextHandReady.set(room.code, readySet);
+    }
+    readySet.add(userId);
+    if (conn.username) readySet.add(conn.username);
 
-    this.triggerAITurn(room.code);
+    // Require all seated human players to click Deal Next Hand before next deal
+    const humanSlots = room.slots.filter((s): s is PlayerSlot => Boolean(s && !s.isAI && (s.userId || s.username)));
+    const allHumansReady = humanSlots.every(s => (s.userId && readySet!.has(s.userId)) || (s.username && readySet!.has(s.username)));
+
+    if (allHumansReady) {
+      const timer = this.handScoredTimers.get(room.code);
+      if (timer) {
+        clearTimeout(timer);
+        this.handScoredTimers.delete(room.code);
+      }
+      this.nextHandReady.delete(room.code);
+
+      const nextState = startNextHand(state);
+      this.gameStates.set(room.code, nextState);
+      this.persistActiveMatch(room.code);
+      this.broadcastGameSync(room.code);
+      this.triggerAITurn(room.code);
+    } else {
+      // Sync readiness count to all clients
+      this.broadcastGameSync(room.code);
+    }
   }
 
   private resolveCompletedTrick(roomCode: string) {
@@ -1540,18 +1565,29 @@ export class RoomManager {
     if (nextState.phase === 'playing') {
       this.triggerAITurn(roomCode);
     } else if (nextState.phase === 'hand_scored') {
-      // Auto-advance hand after 8 seconds if no client requests nextHand
+      // Mark AI bot slots as automatically ready for the next deal
+      const readySet = new Set<string>();
+      for (const slot of room.slots) {
+        if (slot && slot.isAI) {
+          readySet.add(slot.username);
+        }
+      }
+      this.nextHandReady.set(roomCode, readySet);
+
+      // Failsafe 60s timeout in case a player completely disconnects / goes AFK
       const autoTimer = setTimeout(() => {
         const cur = this.gameStates.get(roomCode);
         if (cur && cur.phase === 'hand_scored') {
+          this.nextHandReady.delete(roomCode);
           const advanced = startNextHand(cur);
           this.gameStates.set(roomCode, advanced);
           this.persistActiveMatch(roomCode);
           this.broadcastGameSync(roomCode);
           this.triggerAITurn(roomCode);
         }
-      }, 8000);
+      }, 60000);
       if (typeof autoTimer.unref === 'function') autoTimer.unref();
+      this.handScoredTimers.set(roomCode, autoTimer);
     }
   }
 
@@ -1909,6 +1945,7 @@ export class RoomManager {
       queueMode: room?.queueMode,
       rules: state.rules,
       winningTeam: state.phase === 'game_over' ? getWinningTeam(state.scores, state.rules.targetScore) : undefined,
+      readyForNextHand: room ? Array.from(this.nextHandReady.get(room.code) || []) : undefined,
     };
   }
 

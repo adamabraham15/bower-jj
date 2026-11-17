@@ -18,6 +18,7 @@ import { PackOpeningModal } from './components/PackOpeningModal';
 import { AvatarPortrait } from './components/AvatarPortrait';
 import { RankUpModal } from './components/RankUpModal';
 import { GameLobbyModal, LobbyGameMode } from './components/GameLobbyModal';
+import { MatchFoundModal } from './components/matchmaking/MatchFoundModal';
 import { AchievementsModal } from './components/AchievementsModal';
 import { AuthModal } from './components/AuthModal';
 import { AccountActivationModal, AccountActivationState } from './components/AccountActivationModal';
@@ -53,6 +54,7 @@ import {
 import {
   resolveAvatarId,
   resolveCardBackId,
+  resolveTableFeltId,
   COLLECTIBLE_CARDS,
   CardIdentity,
   BOT_AVATAR_BY_DIFFICULTY,
@@ -123,6 +125,7 @@ export function createGuestProfile(): PlayerProfileData {
       cardBack: 'classic_blue',
       banner: 'default_navy',
       title: 'Recruit',
+      tableFelt: 'midnight_navy',
     },
   };
 }
@@ -301,6 +304,12 @@ export const App: React.FC = () => {
   const [pendingPackResult, setPendingPackResult] = useState<PackOpenResult | null>(null);
   const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
   const [matchmakingQueue, setMatchmakingQueue] = useState<QueueType | null>(null);
+  const [matchFoundData, setMatchFoundData] = useState<{
+    isOpen: boolean;
+    modeTitle: string;
+    yourTeam: { name: string; avatarId?: string; rankTier?: string }[];
+    opponents: { name: string; avatarId?: string; rankTier?: string }[];
+  } | null>(null);
   const [isLobbyOpen, setIsLobbyOpen] = useState(false);
   const [lobbyInitialMode, setLobbyInitialMode] = useState<LobbyGameMode>('custom');
   const [lobbyAutoFillBots, setLobbyAutoFillBots] = useState<boolean>(false);
@@ -1184,7 +1193,12 @@ export const App: React.FC = () => {
       handleUpdateAvatar(id);
       return;
     }
-    const finalId = category === 'cardBack' ? resolveCardBackId(id) : id;
+    const finalId =
+      category === 'cardBack'
+        ? resolveCardBackId(id)
+        : category === 'tableFelt'
+        ? resolveTableFeltId(id)
+        : id;
     setProfile(prev => ({
       ...prev,
       equippedCosmetics: {
@@ -1251,6 +1265,47 @@ export const App: React.FC = () => {
         ...prev,
         cards: updatedCards,
       };
+    });
+  };
+
+  const triggerMatchFound = (modeTitle: string) => {
+    setIsLobbyOpen(false);
+    setLobbyAutoFillBots(false);
+    setMatchmakingQueue(null);
+
+    const room = multiplayerClient.getCurrentRoom();
+    const myPos = room?.slots.findIndex(s => s && (s.userId === profile.playerId || s.username === profile.username));
+    const normalizedMyPos = myPos !== undefined && myPos >= 0 ? myPos : 0;
+    const partnerPos = (normalizedMyPos + 2) % 4;
+    const opp1Pos = (normalizedMyPos + 1) % 4;
+    const opp2Pos = (normalizedMyPos + 3) % 4;
+
+    const yourTeam = [
+      { name: profile.username, avatarId: profile.avatarIcon, rankTier: profile.rankTier },
+      {
+        name: room?.slots[partnerPos]?.username || 'Partner',
+        avatarId: room?.slots[partnerPos]?.avatarIcon || 'cyber_bot',
+        rankTier: room?.slots[partnerPos]?.rankTier || profile.rankTier,
+      },
+    ];
+    const opponents = [
+      {
+        name: room?.slots[opp1Pos]?.username || 'Opponent 1',
+        avatarId: room?.slots[opp1Pos]?.avatarIcon || 'crimson_rogue',
+        rankTier: room?.slots[opp1Pos]?.rankTier || '9',
+      },
+      {
+        name: room?.slots[opp2Pos]?.username || 'Opponent 2',
+        avatarId: room?.slots[opp2Pos]?.avatarIcon || 'elven_trickster',
+        rankTier: room?.slots[opp2Pos]?.rankTier || '9',
+      },
+    ];
+
+    setMatchFoundData({
+      isOpen: true,
+      modeTitle,
+      yourTeam,
+      opponents,
     });
   };
 
@@ -1629,10 +1684,19 @@ export const App: React.FC = () => {
         autoFillBots={lobbyAutoFillBots}
         onStartAIMatch={handleStartAIMatch}
         onMatchFound={() => {
-          setIsLobbyOpen(false);
-          setLobbyAutoFillBots(false);
+          triggerMatchFound(lobbyAutoFillBots ? 'Practice Bots Arena' : 'Game Room Match');
         }}
       />
+
+      {matchFoundData && (
+        <MatchFoundModal
+          isOpen={matchFoundData.isOpen}
+          modeTitle={matchFoundData.modeTitle}
+          yourTeam={matchFoundData.yourTeam}
+          opponents={matchFoundData.opponents}
+          onReady={() => setMatchFoundData(null)}
+        />
+      )}
 
       {rankUpData && (
         <RankUpModal
@@ -1653,7 +1717,15 @@ export const App: React.FC = () => {
           friends={friendsList}
           onClose={() => setMatchmakingQueue(null)}
           onMatchFound={() => {
-            setMatchmakingQueue(null);
+            triggerMatchFound(
+              matchmakingQueue === 'ranked_solo'
+                ? 'Ranked Solo 2v2'
+                : matchmakingQueue === 'ranked_duo'
+                ? 'Ranked Duo 2v2'
+                : matchmakingQueue === 'ranked_rivals'
+                ? 'Ranked Rivals'
+                : 'Casual 2v2 Arena'
+            );
           }}
         />
       )}

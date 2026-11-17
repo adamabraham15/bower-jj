@@ -136,9 +136,9 @@ describe('Table UI & Tutorial Helpers', () => {
       <TrickProgressStrip tricksWon={[2, 0]} phase="playing" yourTeam={0} />
     );
     expect(stripHtml).toContain('Trick 3 of 5');
-    expect(stripHtml).toContain('Team 1:');
+    expect(stripHtml).toContain('Your Team:');
     expect(stripHtml).toContain('2');
-    expect(stripHtml).toContain('Team 2:');
+    expect(stripHtml).toContain('Opponents:');
     expect(stripHtml).toContain('0');
 
     // Hand complete: 3 + 2 = 5 tricks

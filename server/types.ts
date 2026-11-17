@@ -255,6 +255,7 @@ export interface SanitizedGameState {
   queueMode?: 'solo' | 'rivals' | 'duo' | 'casual' | 'custom';
   rules?: EuchreHouseRules;
   winningTeam?: Team;
+  readyForNextHand?: string[];
 }
 
 export interface LeaderboardEntry {
@@ -316,7 +317,7 @@ export type ClientMessage =
   | { type: 'OPEN_CARD_PACK'; packId?: string }
   | { type: 'EQUIP_AVATAR'; avatarId: string }
   | { type: 'EQUIP_CARD_BACK'; cardBackId: string }
-  | { type: 'EQUIP_COSMETIC'; category: 'hat' | 'cardBack' | 'banner' | 'title'; itemId?: string }
+  | { type: 'EQUIP_COSMETIC'; category: 'hat' | 'cardBack' | 'banner' | 'title' | 'tableFelt'; itemId?: string }
   | { type: 'PARTY_INVITE_SEND'; friendUserId?: string; friendUsername?: string; mode?: 'rivals' | 'custom' | 'duo' }
   | { type: 'PARTY_INVITE_ACCEPT'; partyRoomCode: string }
   | { type: 'PARTY_INVITE_DECLINE'; partyRoomCode: string }

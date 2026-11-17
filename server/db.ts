@@ -1025,7 +1025,7 @@ class Database {
 
   public equipCosmetic(
     userId: string,
-    category: 'hat' | 'cardBack' | 'banner' | 'title',
+    category: 'hat' | 'cardBack' | 'banner' | 'title' | 'tableFelt',
     itemId?: string
   ): boolean {
     const user = this.data.users[userId];
@@ -1037,6 +1037,9 @@ class Database {
       return this.equipCardBack(userId, itemId).success;
     }
 
+    if (!user.equippedCosmetics) {
+      user.equippedCosmetics = { hat: 'the_outlaw', cardBack: 'classic_blue' };
+    }
     user.equippedCosmetics[category] = itemId;
     this.save();
     return true;

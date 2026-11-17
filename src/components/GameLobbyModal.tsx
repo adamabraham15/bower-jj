@@ -498,17 +498,17 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
 
                   {/* Ergonomic Quick Team Switch right above seats */}
                   <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-slate-400 font-semibold mr-0.5">Team:</span>
+                    <span className="text-[10px] text-slate-400 font-semibold mr-0.5">Side:</span>
                     <button
                       onClick={() => handleSwitchTeam('blue')}
                       disabled={myPosition === 0 || myPosition === 2}
                       className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer ${
                         myPosition === 0 || myPosition === 2
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'bg-slate-800 text-blue-300 hover:bg-blue-950/60 border border-blue-500/40'
+                          ? 'bg-cyan-600 text-white shadow-sm'
+                          : 'bg-slate-800 text-cyan-300 hover:bg-cyan-950/60 border border-cyan-500/40'
                       }`}
                     >
-                      <span>🔵 Blue</span>
+                      <span>Your Team</span>
                       {(myPosition === 0 || myPosition === 2) && <Check className="w-2.5 h-2.5" />}
                     </button>
                     <button
@@ -516,11 +516,11 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                       disabled={myPosition === 1 || myPosition === 3}
                       className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer ${
                         myPosition === 1 || myPosition === 3
-                          ? 'bg-red-600 text-white shadow-sm'
-                          : 'bg-slate-800 text-red-300 hover:bg-red-950/60 border border-red-500/40'
+                          ? 'bg-rose-600 text-white shadow-sm'
+                          : 'bg-slate-800 text-rose-300 hover:bg-rose-950/60 border border-rose-500/40'
                       }`}
                     >
-                      <span>🔴 Red</span>
+                      <span>Opponents</span>
                       {(myPosition === 1 || myPosition === 3) && <Check className="w-2.5 h-2.5" />}
                     </button>
                   </div>
@@ -533,12 +533,12 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                     const isMe = myPosition === pos;
                     const seatRole =
                       pos === 0
-                        ? 'South (Host / Blue)'
+                        ? 'South (Host / Team)'
                         : pos === 2
-                        ? 'North (Partner / Blue)'
+                        ? 'North (Partner / Team)'
                         : pos === 1
-                        ? 'West (Opponent / Red)'
-                        : 'East (Partner / Red)';
+                        ? 'West (Opponent)'
+                        : 'East (Opponent)';
 
                     return (
                       <div

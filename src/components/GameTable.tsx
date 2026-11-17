@@ -433,7 +433,7 @@ export const GameTable: React.FC<GameTableProps> = ({
     const isTrumpCaller = state.trumpSuit !== undefined && state.callingPlayer === pos;
     const isCurrentTurn = state.currentTurn === pos && isActiveDecisionPhase(state.phase);
     const isBenched = state.benchedPlayer === pos;
-    const isTeamBlue = getPlayerTeam(pos) === 0;
+    const isTeammate = getPlayerTeam(pos) === 0;
     const hand = state.hands[pos];
     const emote = activeEmotes[pos];
     const relPos: 'bottom' | 'left' | 'top' | 'right' =
@@ -512,7 +512,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                 {/* Avatar Container */}
                 <div
                   className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 transition-all duration-300 flex items-center justify-center relative
-                    ${isTeamBlue ? 'bg-gradient-to-tr from-blue-600 to-cyan-400' : 'bg-gradient-to-tr from-red-600 to-amber-500'}
+                    ${isTeammate ? 'bg-gradient-to-tr from-cyan-600 to-sky-400' : 'bg-gradient-to-tr from-rose-600 to-amber-500'}
                     ${isCurrentTurn ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : isDealer ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/30' : 'opacity-90'}
                     ${isBenched ? 'grayscale opacity-50' : ''}`}
                 >
@@ -575,7 +575,7 @@ export const GameTable: React.FC<GameTableProps> = ({
 
                 {/* Trump Maker Chip */}
                 {isTrumpCaller && state.trumpSuit && (
-                  <MakerBadge trumpSuit={state.trumpSuit} isBlueTeam={isTeamBlue} />
+                  <MakerBadge trumpSuit={state.trumpSuit} isUserTeam={state.callingTeam === 0} />
                 )}
 
                 {/* Card Count Badge */}
@@ -692,18 +692,18 @@ export const GameTable: React.FC<GameTableProps> = ({
             <div className="flex items-center space-x-1 sm:space-x-1.5">
               <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyan-400" />
               <span className="font-black text-cyan-300">
-                <span className="hidden sm:inline">BLUE: </span>
-                <span className="sm:hidden">B: </span>
+                <span className="hidden sm:inline">YOUR TEAM: </span>
+                <span className="sm:hidden">TEAM: </span>
                 {state.scores[0]}
               </span>
               <span className="hidden md:inline text-[10px] text-gray-400 font-mono">({state.tricksWon[0]} trk)</span>
             </div>
             <span className="text-gray-600 font-bold text-xs">-</span>
             <div className="flex items-center space-x-1.5">
-              <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-red-400" />
-              <span className="font-black text-red-300">
-                <span className="hidden sm:inline">RED: </span>
-                <span className="sm:hidden">R: </span>
+              <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-rose-400" />
+              <span className="font-black text-rose-300">
+                <span className="hidden sm:inline">OPPONENTS: </span>
+                <span className="sm:hidden">OPP: </span>
                 {state.scores[1]}
               </span>
               <span className="hidden md:inline text-[10px] text-gray-400 font-mono">({state.tricksWon[1]} trk)</span>
@@ -718,6 +718,7 @@ export const GameTable: React.FC<GameTableProps> = ({
             callerName={callerName}
             callerTeam={callerTeam}
             isAlone={state.isAlone}
+            isUserTeam={callerTeam === 0}
           />
         )}
 
@@ -1039,12 +1040,12 @@ export const GameTable: React.FC<GameTableProps> = ({
               {/* Score Update */}
               <div className="p-3 bg-slate-800 rounded-2xl border border-slate-700 flex justify-around items-center">
                 <div>
-                  <div className="text-xs font-bold text-cyan-300">Team Blue</div>
+                  <div className="text-xs font-bold text-cyan-300">Your Team</div>
                   <div className="text-2xl font-black text-white">{state.scores[0]}</div>
                 </div>
                 <div className="text-xs text-gray-500 font-bold">vs</div>
                 <div>
-                  <div className="text-xs font-bold text-red-300">Team Red</div>
+                  <div className="text-xs font-bold text-rose-300">Opponents</div>
                   <div className="text-2xl font-black text-white">{state.scores[1]}</div>
                 </div>
               </div>

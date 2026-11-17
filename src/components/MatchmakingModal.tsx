@@ -389,9 +389,9 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
                 {/* Team Switch Bar */}
                 <div className="p-2.5 bg-slate-950/80 rounded-2xl border border-slate-800 flex items-center justify-between gap-2">
                   <div className="text-[11px] font-bold text-gray-400">
-                    Your Team:{' '}
-                    <span className={myPosition === 0 || myPosition === 2 ? 'text-blue-400 font-black' : myPosition === 1 || myPosition === 3 ? 'text-red-400 font-black' : 'text-gray-400'}>
-                      {myPosition === 0 || myPosition === 2 ? '🔵 Blue Team' : myPosition === 1 || myPosition === 3 ? '🔴 Red Team' : 'Unassigned'}
+                    Your Side:{' '}
+                    <span className={myPosition === 0 || myPosition === 2 ? 'text-cyan-400 font-black' : myPosition === 1 || myPosition === 3 ? 'text-rose-400 font-black' : 'text-gray-400'}>
+                      {myPosition === 0 || myPosition === 2 ? 'Your Team' : myPosition === 1 || myPosition === 3 ? 'Opponents' : 'Unassigned'}
                     </span>
                   </div>
                   <div className="flex space-x-1.5">
@@ -400,11 +400,11 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
                       disabled={myPosition === 0 || myPosition === 2}
                       className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all flex items-center space-x-1 ${
                         myPosition === 0 || myPosition === 2
-                          ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 cursor-default'
-                          : 'bg-slate-800 text-blue-300 hover:bg-blue-950/60 border border-blue-500/40 active:scale-95'
+                          ? 'bg-cyan-600 text-white shadow-md shadow-cyan-500/30 cursor-default'
+                          : 'bg-slate-800 text-cyan-300 hover:bg-cyan-950/60 border border-cyan-500/40 active:scale-95'
                       }`}
                     >
-                      <span>🔵 Join Blue</span>
+                      <span>Your Team</span>
                       {(myPosition === 0 || myPosition === 2) && <Check className="w-3.5 h-3.5" />}
                     </button>
                     <button
@@ -412,11 +412,11 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
                       disabled={myPosition === 1 || myPosition === 3}
                       className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all flex items-center space-x-1 ${
                         myPosition === 1 || myPosition === 3
-                          ? 'bg-red-600 text-white shadow-md shadow-red-500/30 cursor-default'
-                          : 'bg-slate-800 text-red-300 hover:bg-red-950/60 border border-red-500/40 active:scale-95'
+                          ? 'bg-rose-600 text-white shadow-md shadow-rose-500/30 cursor-default'
+                          : 'bg-slate-800 text-rose-300 hover:bg-rose-950/60 border border-rose-500/40 active:scale-95'
                       }`}
                     >
-                      <span>🔴 Join Red</span>
+                      <span>Opponents</span>
                       {(myPosition === 1 || myPosition === 3) && <Check className="w-3.5 h-3.5" />}
                     </button>
                   </div>
@@ -437,12 +437,12 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
                       const isBlueTeam = pos % 2 === 0;
                       const isMe = myPosition === pos;
                       const seatRole = pos === 0
-                        ? 'South (Host / Blue)'
+                        ? 'South (Host / Team)'
                         : pos === 2
-                        ? 'North (Partner / Blue)'
+                        ? 'North (Partner / Team)'
                         : pos === 1
-                        ? 'West (Opponent / Red)'
-                        : 'East (Partner / Red)';
+                        ? 'West (Opponent)'
+                        : 'East (Opponent)';
 
                       return (
                         <div

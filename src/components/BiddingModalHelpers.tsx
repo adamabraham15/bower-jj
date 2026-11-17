@@ -366,26 +366,25 @@ export const TrickProgressStrip: React.FC<TrickProgressStripProps> = ({
     isHandComplete,
   } = computeTrickProgress(tricksWon, phase);
 
+  const myTricks = yourTeam === 0 ? team1Tricks : team2Tricks;
+  const oppTricks = yourTeam === 0 ? team2Tricks : team1Tricks;
+
   return (
     <div
       role="status"
-      aria-label={`Trick ${currentTrick} of ${totalTricks}. Team 1: ${team1Tricks} tricks, Team 2: ${team2Tricks} tricks`}
+      aria-label={`Trick ${currentTrick} of ${totalTricks}. Your Team: ${myTricks} tricks, Opponents: ${oppTricks} tricks`}
       className="w-full px-2.5 sm:px-4 py-1 bg-slate-900/90 border-b border-slate-800/90 flex items-center justify-between gap-1.5 sm:gap-3 z-25 flex-shrink-0 text-[10px] sm:text-xs select-none"
     >
-      {/* Team 1 (Blue) Tricks Won */}
+      {/* Your Team Tricks Won */}
       <div
-        className={`flex items-center space-x-1 sm:space-x-1.5 px-2 py-0.5 rounded-full border transition-all ${
-          yourTeam === 0
-            ? 'bg-cyan-950/80 border-cyan-500/40 text-cyan-200'
-            : 'bg-slate-950/80 border-cyan-500/30 text-cyan-300'
-        }`}
+        className="flex items-center space-x-1 sm:space-x-1.5 px-2 py-0.5 rounded-full border transition-all bg-cyan-950/80 border-cyan-500/40 text-cyan-200"
       >
         <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-cyan-400 flex-shrink-0" />
         <span className="font-bold whitespace-nowrap">
-          <span className="sm:hidden">Team 1: </span>
-          <span className="hidden sm:inline">Team 1 (Blue): </span>
-          <strong className="font-black text-white">{team1Tricks}</strong>{' '}
-          {team1Tricks === 1 ? 'trick' : 'tricks'}
+          <span className="sm:hidden">TEAM: </span>
+          <span className="hidden sm:inline">Your Team: </span>
+          <strong className="font-black text-white">{myTricks}</strong>{' '}
+          {myTricks === 1 ? 'trick' : 'tricks'}
         </span>
       </div>
 
@@ -421,20 +420,16 @@ export const TrickProgressStrip: React.FC<TrickProgressStripProps> = ({
         )}
       </div>
 
-      {/* Team 2 (Red) Tricks Won */}
+      {/* Opponents Tricks Won */}
       <div
-        className={`flex items-center space-x-1 sm:space-x-1.5 px-2 py-0.5 rounded-full border transition-all ${
-          yourTeam === 1
-            ? 'bg-red-950/80 border-red-500/40 text-red-200'
-            : 'bg-slate-950/80 border-red-500/30 text-red-300'
-        }`}
+        className="flex items-center space-x-1 sm:space-x-1.5 px-2 py-0.5 rounded-full border transition-all bg-rose-950/80 border-rose-500/40 text-rose-200"
       >
-        <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-400 flex-shrink-0" />
+        <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-rose-400 flex-shrink-0" />
         <span className="font-bold whitespace-nowrap">
-          <span className="sm:hidden">Team 2: </span>
-          <span className="hidden sm:inline">Team 2 (Red): </span>
-          <strong className="font-black text-white">{team2Tricks}</strong>{' '}
-          {team2Tricks === 1 ? 'trick' : 'tricks'}
+          <span className="sm:hidden">OPP: </span>
+          <span className="hidden sm:inline">Opponents: </span>
+          <strong className="font-black text-white">{oppTricks}</strong>{' '}
+          {oppTricks === 1 ? 'trick' : 'tricks'}
         </span>
       </div>
     </div>

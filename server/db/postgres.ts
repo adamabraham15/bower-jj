@@ -37,8 +37,10 @@ import {
   getAvatarDefinition,
   getCardBackDefinition,
   getEligibleMilestoneAvatars,
+  getTableFeltDefinition,
   resolveAvatarId,
   resolveCardBackId,
+  resolveTableFeltId,
 } from '../../src/config/collectiblesCatalog';
 import { PROGRESSION_CONFIG, rollPackCards } from '../config/progressionConfig';
 
@@ -543,6 +545,7 @@ export class PostgresDatabaseRepository {
     try {
       await this.pool.query(`ALTER TABLE public.profiles ALTER COLUMN avatar_icon SET DEFAULT 'the_outlaw'`);
       await this.pool.query(`ALTER TABLE public.player_cosmetics ALTER COLUMN equipped_hat SET DEFAULT 'the_outlaw'`);
+      await this.pool.query(`ALTER TABLE public.player_cosmetics ADD COLUMN IF NOT EXISTS equipped_felt TEXT DEFAULT 'midnight_navy'`);
     } catch {
       // Ignore if table ownership prohibits ALTER COLUMN
     }
@@ -717,7 +720,7 @@ export class PostgresDatabaseRepository {
         s.euchres, s.marches, s.successful_loners as "successfulLoners",
         s.current_streak as "winStreak", s.best_streak as "bestWinStreak",
         x.level, x.xp, x.next_level_xp as "nextLevelXp",
-        c.equipped_hat, c.equipped_card_back, c.equipped_banner, c.equipped_title
+        c.equipped_hat, c.equipped_card_back, c.equipped_banner, c.equipped_title, c.equipped_felt
       FROM public.profiles p
       LEFT JOIN public.player_ranks r ON p.id = r.user_id
       LEFT JOIN public.player_statistics s ON p.id = s.user_id
@@ -776,7 +779,7 @@ export class PostgresDatabaseRepository {
         s.euchres, s.marches, s.successful_loners as "successfulLoners",
         s.current_streak as "winStreak", s.best_streak as "bestWinStreak",
         x.level, x.xp, x.next_level_xp as "nextLevelXp",
-        c.equipped_hat, c.equipped_card_back, c.equipped_banner, c.equipped_title
+        c.equipped_hat, c.equipped_card_back, c.equipped_banner, c.equipped_title, c.equipped_felt
       FROM public.profiles p
       LEFT JOIN public.player_ranks r ON p.id = r.user_id
       LEFT JOIN public.player_statistics s ON p.id = s.user_id
@@ -2092,7 +2095,7 @@ export class PostgresDatabaseRepository {
 
   public async equipCosmetic(
     userId: string,
-    category: 'hat' | 'cardBack' | 'banner' | 'title',
+    category: 'hat' | 'cardBack' | 'banner' | 'title' | 'tableFelt',
     itemId?: string
   ): Promise<boolean> {
     if (category === 'hat' && itemId) {
@@ -2103,18 +2106,43 @@ export class PostgresDatabaseRepository {
       const res = await this.equipCardBack(userId, itemId);
       return res.success;
     }
+    if (category === 'tableFelt' && itemId) {
+      const canonical = resolveTableFeltId(itemId);
+      const def = getTableFeltDefinition(canonical);
+      if (!def.unlockedByDefault && def.collectionId) {
+        const check = await this.queryWithRetry(
+          `SELECT 1 FROM player_card_backs WHERE user_id = $1 AND card_back_id = $2`,
+          [userId, def.collectionId]
+        );
+        if (check.rows.length === 0) {
+          const setRes = await this.queryWithRetry(
+            `SELECT COUNT(DISTINCT card_id) as cnt FROM public.player_card_inventory WHERE user_id = $1 AND collection_id = $2`,
+            [userId, def.collectionId]
+          );
+          if (parseInt(setRes.rows[0]?.cnt || '0', 10) < 5) {
+            return false;
+          }
+        }
+      }
+      const res = await this.queryWithRetry(
+        `UPDATE public.player_cosmetics SET equipped_felt = $1, updated_at = NOW() WHERE user_id = $2`,
+        [canonical, userId]
+      );
+      return (res.rowCount || 0) > 0;
+    }
 
     const colMap: Record<string, string> = {
       hat: 'equipped_hat',
       cardBack: 'equipped_card_back',
       banner: 'equipped_banner',
       title: 'equipped_title',
+      tableFelt: 'equipped_felt',
     };
     const col = colMap[category];
     if (!col) return false;
 
     const res = await this.queryWithRetry(
-      `UPDATE player_cosmetics
+      `UPDATE public.player_cosmetics
        SET ${col} = $1, updated_at = NOW()
        WHERE user_id = $2`,
       [itemId || null, userId]
@@ -2342,6 +2370,7 @@ export class PostgresDatabaseRepository {
         cardBack: resolvedCardBack,
         banner: row.equipped_banner || 'default_navy',
         title: row.equipped_title || 'Recruit',
+        tableFelt: row.equipped_felt || 'midnight_navy',
       },
       createdAt: row.createdAt ? new Date(row.createdAt).getTime() : Date.now(),
       lastActive: row.lastActive ? new Date(row.lastActive).getTime() : Date.now(),

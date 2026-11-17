@@ -743,11 +743,15 @@ export class MultiplayerClient {
     this.send({ type: 'EQUIP_CARD_BACK', cardBackId });
   }
 
-  public equipCosmetic(category: 'hat' | 'cardBack' | 'banner' | 'title', itemId?: string) {
+  public equipCosmetic(category: 'hat' | 'cardBack' | 'banner' | 'title' | 'tableFelt', itemId?: string) {
     if (category === 'hat' && itemId) {
       this.avatarIcon = resolveAvatarId(itemId);
     }
     this.send({ type: 'EQUIP_COSMETIC', category, itemId });
+  }
+
+  public equipTableFelt(feltId: string) {
+    this.equipCosmetic('tableFelt', feltId);
   }
 
   public sendPartyInvite(friendUserId?: string, mode: 'rivals' | 'custom' | 'duo' = 'rivals', friendUsername?: string) {

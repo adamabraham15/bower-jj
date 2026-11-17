@@ -342,20 +342,20 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 </div>
               </button>
 
-              {/* Center: Cool BOWER JJ Logo Emblem filling the top */}
+              {/* Center: BOWER JJ 3D Embossed Gold Foil Logo (Matches Card Pack) */}
               <div
                 onClick={handleLogoClick}
-                title="BOWER JJ"
-                className="flex items-center gap-2.5 select-none cursor-pointer"
+                title="BOWER JJ — Home of Competitive Euchre"
+                className="flex items-center gap-2 sm:gap-2.5 select-none cursor-pointer group"
               >
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 p-[1.5px] shadow-lg shadow-amber-500/25 flex items-center justify-center">
-                  <div className="w-full h-full rounded-[9.5px] bg-[#0c121e] flex flex-col items-center justify-center">
-                    <span className="text-[7px] sm:text-[8px] font-black tracking-tighter text-amber-300 leading-none">BOWER</span>
-                    <span className="text-xs sm:text-sm font-black text-amber-400 leading-none mt-0.5">JJ</span>
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-b from-amber-200 via-amber-400 to-amber-700 p-[2px] shadow-[0_0_15px_rgba(245,158,11,0.35)] flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <div className="w-full h-full rounded-[9px] bg-gradient-to-b from-[#182338] via-[#0d1524] to-[#070b13] flex flex-col items-center justify-center border border-amber-400/30">
+                    <span className="text-[7px] sm:text-[8px] font-black tracking-widest text-amber-200 leading-none">BOWER</span>
+                    <span className="text-xs sm:text-sm font-black bg-gradient-to-b from-amber-100 via-amber-300 to-amber-600 bg-clip-text text-transparent leading-none mt-0.5">JJ</span>
                   </div>
                 </div>
                 <div className="flex flex-col text-left">
-                  <h1 className="text-xl sm:text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400 drop-shadow-[0_2px_12px_rgba(251,191,36,0.35)] leading-none">
+                  <h1 className="text-xl sm:text-2xl font-black tracking-widest uppercase text-transparent bg-clip-text bg-gradient-to-b from-[#fff6d1] via-[#f59e0b] to-[#92400e] drop-shadow-[0_2px_0px_#78350f] drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)] drop-shadow-[0_0_12px_rgba(245,158,11,0.45)] leading-none select-none">
                     BOWER JJ
                   </h1>
                 </div>
@@ -568,14 +568,14 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shadow-inner group-hover:scale-105 transition-transform">
-                    <Zap className="w-5 h-5 sm:w-6 sm:h-6 fill-amber-400" />
+                    <Trophy className="w-5 h-5 sm:w-6 sm:h-6 fill-amber-400 text-amber-300" />
                   </div>
                   {quickMode === 'ranked_solo' && (
                     <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b] animate-ping" />
                   )}
                 </div>
                 <div>
-                  <div className="text-sm sm:text-base lg:text-lg font-black text-white tracking-wide group-hover:text-amber-300 transition-colors">
+                  <div className="text-base sm:text-lg lg:text-xl font-black text-white tracking-wide group-hover:text-amber-300 transition-colors leading-tight">
                     Ranked Solo
                   </div>
                 </div>
@@ -596,14 +596,14 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-400 shadow-inner group-hover:scale-105 transition-transform">
-                    <Shield className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400 fill-cyan-400/20" />
                   </div>
                   {quickMode === 'unranked' && (
                     <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#06b6d4] animate-ping" />
                   )}
                 </div>
                 <div>
-                  <div className="text-sm sm:text-base lg:text-lg font-black text-white tracking-wide group-hover:text-cyan-300 transition-colors">
+                  <div className="text-base sm:text-lg lg:text-xl font-black text-white tracking-wide group-hover:text-cyan-300 transition-colors leading-tight">
                     Casual 2v2
                   </div>
                 </div>
@@ -624,14 +624,14 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-sky-400 shadow-inner group-hover:scale-105 transition-transform">
-                    <Users className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <Users className="w-5 h-5 sm:w-6 sm:h-6 text-sky-400 fill-sky-400/20" />
                   </div>
                   {quickMode === 'private' && (
                     <span className="w-2.5 h-2.5 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8] animate-ping" />
                   )}
                 </div>
                 <div>
-                  <div className="text-sm sm:text-base lg:text-lg font-black text-white tracking-wide group-hover:text-sky-300 transition-colors">
+                  <div className="text-base sm:text-lg lg:text-xl font-black text-white tracking-wide group-hover:text-sky-300 transition-colors leading-tight">
                     Play a Friend
                   </div>
                 </div>
@@ -652,14 +652,14 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 shadow-inner group-hover:scale-105 transition-transform">
-                    <Bot className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <Bot className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400 fill-emerald-400/20" />
                   </div>
                   {quickMode === 'ai_bots' && (
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981] animate-ping" />
                   )}
                 </div>
                 <div>
-                  <div className="text-sm sm:text-base lg:text-lg font-black text-white tracking-wide group-hover:text-emerald-300 transition-colors">
+                  <div className="text-base sm:text-lg lg:text-xl font-black text-white tracking-wide group-hover:text-emerald-300 transition-colors leading-tight">
                     Play Bots
                   </div>
                 </div>

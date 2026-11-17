@@ -81,7 +81,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
   const [aloneToggle, setAloneToggle] = useState(false);
   const [inspectedPlayer, setInspectedPlayer] = useState<PublicPlayerData | null>(null);
   const [mutedUsernames, setMutedUsernames] = useState<Set<string>>(new Set());
-  const [autoDealCountdown, setAutoDealCountdown] = useState<number>(6);
+  const [isLocallyReadyForNextHand, setIsLocallyReadyForNextHand] = useState(false);
   const [showExitConfirmModal, setShowExitConfirmModal] = useState<boolean>(false);
   const [turnSecondsLeft, setTurnSecondsLeft] = useState<number>(15);
   const turnStartTimeRef = useRef<number>(Date.now());
@@ -119,24 +119,11 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
     return () => unsubscribe();
   }, []);
 
+  // Reset ready state whenever a new hand starts
   useEffect(() => {
     if (serverState.phase !== 'hand_scored') {
-      setAutoDealCountdown(6);
-      return;
+      setIsLocallyReadyForNextHand(false);
     }
-
-    const timer = setInterval(() => {
-      setAutoDealCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          multiplayerClient.nextHand();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
   }, [serverState.phase]);
 
   // Reset "Go Alone!" checkbox when leaving bidding or when a new hand is dealt
@@ -306,7 +293,8 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
     const isPlayerDealer = serverState.dealer === pos;
     const isTrumpCaller = serverState.trumpSuit !== undefined && serverState.callingPlayer === pos;
     const isSlotBenched = serverState.benchedPlayer === pos;
-    const isBlueTeam = getPlayerTeam(pos) === 0;
+    const myTeam = getPlayerTeam(serverState.yourPosition);
+    const isTeammate = getPlayerTeam(pos) === myTeam;
     const cardCount = serverState.handCounts?.[pos] || 0;
     const emote = activeEmotes[pos];
 
@@ -384,7 +372,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
               >
                 <div
                   className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 transition-all duration-300 flex items-center justify-center relative
-                    ${isBlueTeam ? 'bg-gradient-to-tr from-blue-600 to-cyan-400' : 'bg-gradient-to-tr from-red-600 to-amber-500'}
+                    ${isTeammate ? 'bg-gradient-to-tr from-cyan-600 to-sky-400' : 'bg-gradient-to-tr from-rose-600 to-amber-500'}
                     ${isCurrentTurn ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : isPlayerDealer ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/30' : 'opacity-90'}
                     ${isSlotBenched ? 'grayscale opacity-50' : ''}`}
                 >
@@ -451,7 +439,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
 
                 {/* Trump Maker Chip */}
                 {isTrumpCaller && serverState.trumpSuit && (
-                  <MakerBadge trumpSuit={serverState.trumpSuit} isBlueTeam={isBlueTeam} />
+                  <MakerBadge trumpSuit={serverState.trumpSuit} isUserTeam={serverState.callingTeam === myTeam} />
                 )}
 
                 {/* Online/Offline connection status */}
@@ -548,28 +536,39 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             ← Exit
           </button>
 
-          {/* Scores */}
-          <div className="flex items-center space-x-1.5 sm:space-x-2 bg-slate-950 px-2 sm:px-2.5 py-1 rounded-xl border border-slate-800 shadow-inner text-xs">
-            <div className="flex items-center space-x-1 sm:space-x-1.5">
-              <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyan-400" />
-              <span className="font-black text-cyan-300">
-                <span className="hidden sm:inline">BLUE: </span>
-                <span className="sm:hidden">B: </span>
-                {serverState.scores[0]}
-              </span>
-              <span className="hidden md:inline text-[10px] text-gray-400 font-mono">({serverState.tricksWon[0]} trk)</span>
-            </div>
-            <span className="text-gray-600 font-bold text-xs">-</span>
-            <div className="flex items-center space-x-1.5">
-              <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-red-400" />
-              <span className="font-black text-red-300">
-                <span className="hidden sm:inline">RED: </span>
-                <span className="sm:hidden">R: </span>
-                {serverState.scores[1]}
-              </span>
-              <span className="hidden md:inline text-[10px] text-gray-400 font-mono">({serverState.tricksWon[1]} trk)</span>
-            </div>
-          </div>
+          {/* Scores (Relative: Your Team vs Opponents) */}
+          {(() => {
+            const myTeamIdx = getPlayerTeam(serverState.yourPosition);
+            const oppTeamIdx = (myTeamIdx + 1) % 2;
+            const myScore = serverState.scores[myTeamIdx] || 0;
+            const oppScore = serverState.scores[oppTeamIdx] || 0;
+            const myTricks = serverState.tricksWon[myTeamIdx] || 0;
+            const oppTricks = serverState.tricksWon[oppTeamIdx] || 0;
+
+            return (
+              <div className="flex items-center space-x-1.5 sm:space-x-2 bg-slate-950 px-2 sm:px-2.5 py-1 rounded-xl border border-slate-800 shadow-inner text-xs">
+                <div className="flex items-center space-x-1 sm:space-x-1.5">
+                  <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyan-400" />
+                  <span className="font-black text-cyan-300">
+                    <span className="hidden sm:inline">YOUR TEAM: </span>
+                    <span className="sm:hidden">TEAM: </span>
+                    {myScore}
+                  </span>
+                  <span className="hidden md:inline text-[10px] text-gray-400 font-mono">({myTricks} trk)</span>
+                </div>
+                <span className="text-gray-600 font-bold text-xs">-</span>
+                <div className="flex items-center space-x-1.5">
+                  <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-rose-400" />
+                  <span className="font-black text-rose-300">
+                    <span className="hidden sm:inline">OPPONENTS: </span>
+                    <span className="sm:hidden">OPP: </span>
+                    {oppScore}
+                  </span>
+                  <span className="hidden md:inline text-[10px] text-gray-400 font-mono">({oppTricks} trk)</span>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Trump Banner (Header) */}
@@ -579,6 +578,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             callerName={callerName}
             callerTeam={callerTeam}
             isAlone={serverState.isAlone}
+            isUserTeam={callerTeam === getPlayerTeam(serverState.yourPosition)}
           />
         )}
 
@@ -895,27 +895,87 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 </p>
               </div>
 
-              <div className="p-3 bg-slate-800 rounded-2xl border border-slate-700 flex justify-around items-center">
-                <div>
-                  <div className="text-xs font-bold text-cyan-300">Team Blue</div>
-                  <div className="text-2xl font-black text-white">{serverState.scores[0]}</div>
-                </div>
-                <div className="text-xs text-gray-500 font-bold">vs</div>
-                <div>
-                  <div className="text-xs font-bold text-red-300">Team Red</div>
-                  <div className="text-2xl font-black text-white">{serverState.scores[1]}</div>
-                </div>
-              </div>
+              {(() => {
+                const myTeamIdx = getPlayerTeam(serverState.yourPosition);
+                const oppTeamIdx = (myTeamIdx + 1) % 2;
+                const myScore = serverState.scores[myTeamIdx] || 0;
+                const oppScore = serverState.scores[oppTeamIdx] || 0;
 
-              <button
-                onClick={() => {
-                  sounds.playDealCard();
-                  multiplayerClient.nextHand();
-                }}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-black text-sm shadow-xl shadow-amber-500/30 transition-all active:scale-95"
-              >
-                Deal Next Hand (Auto in {autoDealCountdown}s) →
-              </button>
+                const readyList = serverState.readyForNextHand || [];
+                const isReady =
+                  isLocallyReadyForNextHand ||
+                  Boolean(profile?.playerId && readyList.includes(profile.playerId)) ||
+                  Boolean(profile?.username && readyList.includes(profile.username));
+                const readyCount = Math.max(isReady ? 1 : 0, readyList.length);
+
+                return (
+                  <>
+                    <div className="p-3 bg-slate-800 rounded-2xl border border-slate-700 flex justify-around items-center">
+                      <div>
+                        <div className="text-xs font-bold text-cyan-300">Your Team</div>
+                        <div className="text-2xl font-black text-white">{myScore}</div>
+                      </div>
+                      <div className="text-xs text-gray-500 font-bold">vs</div>
+                      <div>
+                        <div className="text-xs font-bold text-rose-300">Opponents</div>
+                        <div className="text-2xl font-black text-white">{oppScore}</div>
+                      </div>
+                    </div>
+
+                    {/* All Seated Players Ready Status Indicator */}
+                    <div className="py-1">
+                      <div className="text-[11px] font-bold text-slate-400 mb-1">
+                        All players must click Deal Next Hand before next deal:
+                      </div>
+                      <div className="flex items-center justify-center gap-2 flex-wrap">
+                        {serverState.slots.map((slot, idx) => {
+                          if (!slot) return null;
+                          const isSlotReady =
+                            slot.isAI ||
+                            readyList.includes(slot.userId || slot.username) ||
+                            (idx === serverState.yourPosition && isReady);
+                          return (
+                            <span
+                              key={idx}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                isSlotReady
+                                  ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300'
+                                  : 'bg-slate-800 border-slate-700 text-slate-400'
+                              }`}
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  isSlotReady ? 'bg-emerald-400' : 'bg-slate-500'
+                                }`}
+                              />
+                              <span>{idx === serverState.yourPosition ? 'You' : slot.username}</span>
+                              <span>{isSlotReady ? '✓' : '⏳'}</span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {!isReady ? (
+                      <button
+                        onClick={() => {
+                          sounds.playDealCard();
+                          setIsLocallyReadyForNextHand(true);
+                          multiplayerClient.nextHand();
+                        }}
+                        className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-black text-sm shadow-xl shadow-amber-500/30 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <span>Deal Next Hand →</span>
+                      </button>
+                    ) : (
+                      <div className="w-full py-3.5 rounded-2xl bg-slate-800/90 border border-amber-400/50 text-amber-300 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-inner">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                        <span>Ready! Waiting for all players ({readyCount}/4)...</span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -995,7 +1055,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             <div className="flex-1 text-center truncate px-1">
               {serverState.phase === 'hand_scored' ? (
                 <span className="text-amber-400 font-bold">
-                  Hand Scored — Next Deal Starting in {autoDealCountdown}s...
+                  Hand Scored — Ready for Next Deal
                 </span>
               ) : serverState.phase === 'trick_resolving' ? (
                 <span className="text-amber-400 font-bold animate-pulse">Resolving Trick...</span>

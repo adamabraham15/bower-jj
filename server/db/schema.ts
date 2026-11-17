@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS player_cosmetics (
   equipped_card_back TEXT NOT NULL DEFAULT 'classic_blue',
   equipped_banner TEXT NOT NULL DEFAULT 'default_navy',
   equipped_title TEXT NOT NULL DEFAULT 'Recruit',
+  equipped_felt TEXT NOT NULL DEFAULT 'midnight_navy',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

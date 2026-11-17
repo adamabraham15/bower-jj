@@ -406,4 +406,39 @@ describe('Collectibles, Card Packs & Server Validation', () => {
 
     await repo.close();
   });
+
+  it('validates server-side tableFelt equips, rejects locked felts, and permits unlocked/starter felts', async () => {
+    const pool = createTestPostgresPool();
+    const repo = new PostgresDatabaseRepository(pool);
+    await repo.initSchema();
+
+    const { user } = await repo.getOrCreateUser('FeltTester', '🤠');
+
+    // Starter felt: emerald_baize -> must succeed
+    const starterFelt = await repo.equipCosmetic(user.id, 'tableFelt', 'emerald_baize');
+    expect(starterFelt).toBe(true);
+
+    const userWithEmerald = await repo.getUserById(user.id);
+    expect(userWithEmerald?.equippedCosmetics.tableFelt).toBe('emerald_baize');
+
+    // Locked collection felt without unlocking: saloon_wood (wild_west) -> must fail
+    const lockedFelt = await repo.equipCosmetic(user.id, 'tableFelt', 'saloon_wood');
+    expect(lockedFelt).toBe(false);
+
+    // Unlock wild_west collection card back
+    await pool.query(
+      `INSERT INTO public.player_card_backs (id, user_id, card_back_id, collection_id, source)
+       VALUES ($1, $2, 'wild_west', 'wild_west', 'collection')`,
+      [crypto.randomUUID(), user.id]
+    );
+
+    // Now equipping saloon_wood must succeed
+    const unlockedFelt = await repo.equipCosmetic(user.id, 'tableFelt', 'saloon_wood');
+    expect(unlockedFelt).toBe(true);
+
+    const userWithSaloon = await repo.getUserById(user.id);
+    expect(userWithSaloon?.equippedCosmetics.tableFelt).toBe('saloon_wood');
+
+    await repo.close();
+  });
 });
