@@ -28,19 +28,19 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
 
   return (
     <div
-      className="flex items-center space-x-1 sm:space-x-1.5 px-1.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-slate-950 border border-amber-400 shadow-md min-w-0 flex-shrink"
+      className="flex items-center space-x-1.5 sm:space-x-2 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-slate-950/95 border-2 border-amber-400/90 shadow-[0_0_15px_rgba(245,158,11,0.3)] min-w-0 flex-shrink"
       title={
         callerName
           ? `Trump: ${trumpSuit.toUpperCase()} — Called by ${callerName}${teamLabel ? ` (${teamLabel})` : ''}`
           : `Trump: ${trumpSuit.toUpperCase()}`
       }
     >
-      <span className="hidden md:inline text-[10px] text-amber-400 uppercase font-black tracking-wide">
+      <span className="hidden md:inline text-xs text-amber-400 uppercase font-black tracking-wider">
         TRUMP:
       </span>
-      <SuitIcon suit={trumpSuit} className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+      <SuitIcon suit={trumpSuit} className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
       <span
-        className={`text-[10px] sm:text-xs font-black uppercase tracking-wider flex-shrink-0 ${
+        className={`text-xs sm:text-sm font-black uppercase tracking-wider flex-shrink-0 ${
           isRedSuit ? 'text-red-400' : trumpSuit === 'clubs' ? 'text-emerald-400' : 'text-slate-100'
         }`}
       >
@@ -49,29 +49,29 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
 
       {callerName && (
         <span
-          className={`hidden xs:flex items-center space-x-1 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-full border min-w-0 flex-shrink ${
+          className={`flex items-center space-x-1 text-[10px] sm:text-xs font-black px-2 sm:px-2.5 py-0.5 rounded-full border shadow-sm min-w-0 flex-shrink ${
             callerTeam === undefined
               ? 'bg-slate-800 border-slate-700 text-gray-200'
               : isTeam
-              ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-300'
-              : 'bg-rose-500/15 border-rose-400/50 text-rose-300'
+              ? 'bg-cyan-500/20 border-cyan-400/70 text-cyan-200'
+              : 'bg-rose-500/20 border-rose-400/70 text-rose-200'
           }`}
         >
           {teamLabel && (
             <span
-              className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                isTeam ? 'bg-cyan-400' : 'bg-rose-400'
+              className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full flex-shrink-0 ${
+                isTeam ? 'bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]' : 'bg-rose-400 shadow-[0_0_6px_rgba(251,113,133,0.8)]'
               }`}
             />
           )}
-          <span className="hidden sm:inline flex-shrink-0">by</span>
-          <span className="truncate max-w-[64px] sm:max-w-[130px]">{callerName}</span>
-          {teamLabel && <span className="hidden sm:inline flex-shrink-0">({teamLabel})</span>}
+          <span className="text-[10px] sm:text-xs text-slate-400 font-bold hidden sm:inline flex-shrink-0">by</span>
+          <span className="truncate max-w-[80px] sm:max-w-[140px]">{callerName}</span>
+          {teamLabel && <span className="hidden sm:inline text-[10px] sm:text-xs text-slate-400 font-semibold flex-shrink-0">({teamLabel})</span>}
         </span>
       )}
 
       {isAlone && (
-        <span className="text-[8px] bg-red-600 text-white font-black px-1.5 rounded-sm flex-shrink-0 animate-pulse">
+        <span className="text-[9px] sm:text-[10px] bg-red-600 text-white font-black px-2 py-0.5 rounded-full flex-shrink-0 shadow-sm animate-pulse tracking-wide">
           ALONE
         </span>
       )}

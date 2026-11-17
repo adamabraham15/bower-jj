@@ -551,7 +551,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             ← Exit
           </button>
 
-          {/* Scores (Relative: Your Team vs Opponents) */}
+          {/* Scores (Relative: Your Team vs Opponents - Prominent & Legible) */}
           {(() => {
             const myTeamIdx = getPlayerTeam(serverState.yourPosition);
             const oppTeamIdx = (myTeamIdx + 1) % 2;
@@ -561,25 +561,33 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             const oppTricks = serverState.tricksWon[oppTeamIdx] || 0;
 
             return (
-              <div className="flex items-center space-x-1 sm:space-x-2 bg-slate-950 px-1.5 xs:px-2 sm:px-2.5 py-1 rounded-xl border border-slate-800 shadow-inner text-xs min-w-0 flex-shrink">
+              <div className="flex items-center space-x-1.5 sm:space-x-2.5 bg-slate-950/95 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-2xl border border-slate-700/80 shadow-md min-w-0 flex-shrink">
+                {/* Your Team */}
                 <div className="flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0">
-                  <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyan-400 flex-shrink-0" />
-                  <span className="font-black text-cyan-300">
-                    <span className="hidden sm:inline">YOUR TEAM: </span>
-                    <span className="hidden xs:inline sm:hidden">TEAM: </span>
+                  <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.7)] flex-shrink-0" />
+                  <span className="text-[11px] sm:text-xs font-black text-slate-300 uppercase tracking-wider">
+                    <span className="hidden sm:inline">YOUR TEAM:</span>
+                    <span className="sm:hidden">TEAM:</span>
+                  </span>
+                  <span className="text-sm sm:text-base font-black text-cyan-300 tabular-nums">
                     {myScore}
                   </span>
-                  <span className="hidden md:inline text-[10px] text-gray-400 font-mono">({myTricks} trk)</span>
+                  <span className="hidden lg:inline text-[10px] text-slate-400 font-mono">({myTricks})</span>
                 </div>
-                <span className="text-gray-600 font-bold text-xs">-</span>
+
+                <span className="text-slate-600 font-black text-xs sm:text-sm px-0.5">•</span>
+
+                {/* Opponents */}
                 <div className="flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0">
-                  <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-rose-400 flex-shrink-0" />
-                  <span className="font-black text-rose-300">
-                    <span className="hidden sm:inline">OPPONENTS: </span>
-                    <span className="hidden xs:inline sm:hidden">OPP: </span>
+                  <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.7)] flex-shrink-0" />
+                  <span className="text-[11px] sm:text-xs font-black text-slate-300 uppercase tracking-wider">
+                    <span className="hidden sm:inline">OPPONENTS:</span>
+                    <span className="sm:hidden">OPP:</span>
+                  </span>
+                  <span className="text-sm sm:text-base font-black text-rose-300 tabular-nums">
                     {oppScore}
                   </span>
-                  <span className="hidden md:inline text-[10px] text-gray-400 font-mono">({oppTricks} trk)</span>
+                  <span className="hidden lg:inline text-[10px] text-slate-400 font-mono">({oppTricks})</span>
                 </div>
               </div>
             );
@@ -597,28 +605,9 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
           />
         )}
 
-        {/* Controls */}
-        <div className="flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0 z-20">
-          <button
-            onClick={onOpenEmotes}
-            title="Emotes"
-            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 flex-shrink-0"
-          >
-            <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </button>
-          <div className="flex-shrink-0">
-            <AudioControlsPopover compact />
-          </div>
-          <button
-            onClick={() => {
-              sounds.playUiClick();
-              onOpenRules();
-            }}
-            title="Rules Compendium"
-            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-gray-300 flex-shrink-0"
-          >
-            <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </button>
+        {/* Top Header Sound Controls (Emotes moved to bottom hand bar, question mark removed) */}
+        <div className="flex items-center flex-shrink-0 z-20">
+          <AudioControlsPopover compact />
         </div>
       </header>
 
@@ -1067,8 +1056,18 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
           className={`relative bg-slate-900/95 border-t border-slate-800 px-2 py-2 flex flex-col items-center z-50 flex-shrink-0 min-h-[145px] xs:min-h-[155px] sm:min-h-[195px] md:min-h-[220px] lg:min-h-[240px] shadow-2xl transition-opacity duration-300 ${serverState.phase === 'hand_scored' ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
         >
-          {/* Turn prompt indicator & Sort Option */}
-          <div className="w-full flex items-center justify-between text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-1 sm:mb-2 px-1 sm:px-2 z-10">
+          {/* Turn prompt indicator, Emotes & Sort Option */}
+          <div className="w-full flex items-center justify-between text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-1 sm:mb-2 px-1 sm:px-2 z-10 gap-1.5">
+            {/* Left: Emotes & Quick Chat Button (Moved from top to bottom hand tray) */}
+            <button
+              onClick={onOpenEmotes}
+              title="Emotes & Quick Chat"
+              className="flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all border border-amber-500/50 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 shadow-sm active:scale-95 flex-shrink-0 cursor-pointer"
+            >
+              <MessageSquare className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400" />
+              <span>Emote</span>
+            </button>
+
             <div className="flex-1 text-center truncate px-1">
               {serverState.phase === 'hand_scored' ? (
                 <span className="text-amber-400 font-bold">
@@ -1249,6 +1248,18 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 className="w-full py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 border border-slate-600 hover:border-amber-400/60 text-amber-300 font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <span>Return to Menu (Keep Match Active)</span>
+              </button>
+
+              {/* View Illustrated Rules Compendium */}
+              <button
+                onClick={() => {
+                  sounds.playUiClick();
+                  onOpenRules();
+                }}
+                className="w-full py-2 rounded-xl bg-slate-800/50 hover:bg-slate-800 text-slate-300 font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-slate-700/60"
+              >
+                <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
+                <span>View Rules Compendium</span>
               </button>
 
               {/* Destructive Forfeit */}
