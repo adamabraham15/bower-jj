@@ -46,12 +46,15 @@ import {
   FriendSummary,
   LeaderboardEntry,
   PlayerCollectionState,
+  OwnedCardItem,
   PackOpenResult,
   UserAccount,
 } from '../server/types';
 import {
   resolveAvatarId,
   resolveCardBackId,
+  COLLECTIBLE_CARDS,
+  CardIdentity,
   BOT_AVATAR_BY_DIFFICULTY,
   BOT_CARD_BACK_BY_DIFFICULTY,
   pickRandomBotNames,
@@ -1210,6 +1213,45 @@ export const App: React.FC = () => {
     } catch {}
   };
 
+  const handleCardCrafted = (cardId: string) => {
+    setCollectionState(prev => {
+      if (!prev) return prev;
+      const existingIdx = prev.cards.findIndex(c => c.cardId === cardId);
+      const now = Date.now();
+      const cardDef = COLLECTIBLE_CARDS.find(c => c.id === cardId);
+      let updatedCards: OwnedCardItem[];
+      if (existingIdx >= 0) {
+        updatedCards = [...prev.cards];
+        updatedCards[existingIdx] = {
+          ...updatedCards[existingIdx],
+          quantity: updatedCards[existingIdx].quantity + 1,
+          lastAcquiredAt: now,
+        };
+      } else {
+        const lastUnderscore = cardId.lastIndexOf('_');
+        const colId = cardDef?.collectionId || (lastUnderscore >= 0 ? cardId.substring(0, lastUnderscore) : 'unknown');
+        const identity = (cardDef?.identity || (lastUnderscore >= 0 ? cardId.substring(lastUnderscore + 1) : '10')) as CardIdentity;
+        const rarity = cardDef?.rarity || 'common';
+        updatedCards = [
+          ...prev.cards,
+          {
+            cardId,
+            collectionId: colId,
+            identity,
+            rarity,
+            quantity: 1,
+            firstAcquiredAt: now,
+            lastAcquiredAt: now,
+          },
+        ];
+      }
+      return {
+        ...prev,
+        cards: updatedCards,
+      };
+    });
+  };
+
   // Dedicated Live Site Traffic & Online User Tracker
   if (isTrackerView) {
     return (
@@ -1537,9 +1579,10 @@ export const App: React.FC = () => {
           setIsPackOpeningOpen(true);
         }}
         onEquipAvatar={handleUpdateAvatar}
-        onEquipCardBack={(cardBackId) => handleUpdateCosmetic('cardBack', cardBackId)}
-        onEquipTableFelt={(feltId) => handleUpdateCosmetic('tableFelt', feltId)}
+        onEquipCardBack={(cardBackId: string) => handleUpdateCosmetic('cardBack', cardBackId)}
+        onEquipTableFelt={(feltId: string) => handleUpdateCosmetic('tableFelt', feltId)}
         onUpdateWaxSeals={handleUpdateWaxSeals}
+        onCardCrafted={handleCardCrafted}
       />
 
       <PackOpeningModal
@@ -1561,8 +1604,8 @@ export const App: React.FC = () => {
           setPendingPackResult(null);
           setIsOpeningPack(false);
         }}
-        onEquipCardBack={(cardBackId) => handleUpdateCosmetic('cardBack', cardBackId)}
-        onEquipTableFelt={(feltId) => handleUpdateCosmetic('tableFelt', feltId)}
+        onEquipCardBack={(cardBackId: string) => handleUpdateCosmetic('cardBack', cardBackId)}
+        onEquipTableFelt={(feltId: string) => handleUpdateCosmetic('tableFelt', feltId)}
         onUpdateWaxSeals={handleUpdateWaxSeals}
         onOpenCollection={() => {
           setCollectionInitialTab('collections');

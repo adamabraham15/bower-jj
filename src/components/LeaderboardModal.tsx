@@ -137,8 +137,8 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   };
   const currentWeight = tierWeight[resolvedTier] || 1;
   const isIronEarned = currentWeight >= 1; // Tier 9 & 10
-  const isSilverEarned = currentWeight >= 3; // Tier J & Q
-  const isPrismaticEarned = currentWeight >= 5; // Tier K, A & JJ
+  const isSilverEarned = currentWeight >= 3; // Tier Q & K
+  const isPrismaticEarned = currentWeight >= 5; // Tier A & Supreme Bower JJ (Apex)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
@@ -197,7 +197,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
               </div>
             </div>
 
-            {/* Tier Jack / Queen */}
+            {/* Tier Queen / King */}
             <div
               className={`p-2 rounded-xl border text-center transition-all ${
                 isSilverEarned
@@ -205,14 +205,14 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                   : 'bg-slate-950/40 border-slate-800/80 opacity-60'
               }`}
             >
-              <div className="text-[10px] font-bold text-slate-300 uppercase tracking-wide">Tiers J &amp; Q</div>
+              <div className="text-[10px] font-bold text-slate-300 uppercase tracking-wide">Tiers Q &amp; K</div>
               <div className="text-xs font-black text-white mt-0.5">Gilded Silver</div>
               <div className="text-[10px] font-bold mt-1 text-cyan-300 flex items-center justify-center gap-0.5">
-                {isSilverEarned ? <><Check className="w-3 h-3" /> Secured</> : 'Reach Tier J'}
+                {isSilverEarned ? <><Check className="w-3 h-3" /> Secured</> : 'Reach Tier Q'}
               </div>
             </div>
 
-            {/* Tier King / Ace / Bower JJ */}
+            {/* Tier Ace & Supreme Bower JJ */}
             <div
               className={`p-2 rounded-xl border text-center transition-all ${
                 isPrismaticEarned
@@ -220,13 +220,13 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                   : 'bg-slate-950/40 border-slate-800/80 opacity-60'
               }`}
             >
-              <div className="text-[10px] font-bold text-amber-400 uppercase tracking-wide">Tiers K &amp; A</div>
+              <div className="text-[10px] font-bold text-amber-400 uppercase tracking-wide">Tiers A &amp; JJ (Apex)</div>
               <div className="text-xs font-black text-amber-300 mt-0.5 flex items-center justify-center gap-1">
                 <span>Prismatic Foil</span>
                 <span className="text-[10px]">✨</span>
               </div>
               <div className="text-[10px] font-bold mt-1 text-amber-300 flex items-center justify-center gap-0.5">
-                {isPrismaticEarned ? <><Check className="w-3 h-3" /> Legend Reward</> : 'Reach Tier K'}
+                {isPrismaticEarned ? <><Check className="w-3 h-3" /> Apex Secured</> : 'Reach Tier A'}
               </div>
             </div>
           </div>

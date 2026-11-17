@@ -513,7 +513,7 @@ export const CARD_BACK_CATALOG: CardBackDefinition[] = [
   {
     id: 'ranked_gilded_silver',
     name: 'Gilded Silver (Season 1)',
-    description: 'Awarded to masters reaching Rank Jack or Queen in Season 1.',
+    description: 'Awarded to masters reaching Rank Q or K in Season 1.',
     rarity: 'epic',
     imageUrl: '/assets/card-backs/classic_red.webp',
     isStarter: false,
@@ -523,7 +523,7 @@ export const CARD_BACK_CATALOG: CardBackDefinition[] = [
   {
     id: 'ranked_prismatic_foil',
     name: 'Animated Prismatic Foil (Season 1)',
-    description: 'Exclusive holographic shimmer card back for King, Ace & Bower JJ legends.',
+    description: 'Apex holographic shimmer card back for Ace & Supreme Bower JJ legends in Season 1.',
     rarity: 'legendary',
     imageUrl: '/assets/card-backs/classic_blue.webp',
     isStarter: false,
@@ -706,8 +706,19 @@ export const WAX_SEALS_CONFIG = {
     epic: 35,
     legendary: 50,
   } as Record<RarityTier, number>,
-  craftCost: 100, // 100 Wax Seals to forge any specific missing card in the Vault
+  // Hearthstone-style tiered forging cost: Legendary requires significantly more dust/seals than Common
+  craftCostByRarity: {
+    common: 40,
+    rare: 100,
+    epic: 200,
+    legendary: 350,
+  } as Record<RarityTier, number>,
+  craftCost: 100, // Legacy fallback
 };
+
+export function getCraftCost(rarity: RarityTier): number {
+  return WAX_SEALS_CONFIG.craftCostByRarity[rarity] ?? 100;
+}
 
 /**
  * Computes which non-default avatars a player qualifies for based on stats, level & completed collections.

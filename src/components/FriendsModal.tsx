@@ -297,14 +297,14 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
                             <RankBadge tier={friend.rankTier} points={friend.rankPoints} size="sm" />
                             <button
                               onClick={() => {
-                                multiplayerClient.sendPartyInvite(friend.userId, 'rivals');
+                                multiplayerClient.sendPartyInvite(friend.userId, 'custom');
                                 onInviteToParty?.(friend.userId);
                               }}
                               className="px-2.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center space-x-1 shadow-md active:scale-95 transition-transform"
-                              title="Challenge friend to a 1v1 Friendly Rivalry match (placed on opposing teams with random teammates)"
+                              title="Invite friend to your game room lobby"
                             >
                               <Gamepad2 className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline">Rival Match</span>
+                              <span className="hidden sm:inline">Invite</span>
                             </button>
                             <button
                               onClick={() => handleRemove(friend.userId)}
@@ -439,10 +439,10 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
               <div className="bg-slate-800/40 rounded-2xl p-4 border border-slate-800 space-y-2 text-xs text-gray-400">
                 <div className="flex items-center space-x-2 text-cyan-400 font-bold">
                   <Sparkles className="w-4 h-4" />
-                  <span>Friendly Rivalry (Anti-Cheat 1v1)</span>
+                  <span>Online Friends &amp; Custom Lobbies</span>
                 </div>
                 <p>
-                  Challenge your friends to Friendly Rivalry! To ensure 100% fair competitive play and prevent partnership collusion, you and your friend are placed on <strong>opposing teams</strong> with random or rank-calibrated AI partners.
+                  Invite your friends to private rooms, choose your preferred table seats and teams, customize house rules, and compete together across desktop and mobile!
                 </p>
               </div>
             </div>

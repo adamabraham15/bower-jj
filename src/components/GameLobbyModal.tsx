@@ -284,23 +284,23 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
   const onlineFriends = friends.filter(f => f.isOnline);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-slate-900 border-2 border-amber-500/70 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-        {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-3xl bg-[#0d1526] border-2 border-amber-500/70 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[96vh] sm:max-h-[92vh]">
+        {/* Header Bar */}
+        <div className="px-4 py-3 sm:px-5 sm:py-3.5 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-[#10192e] to-slate-950 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-amber-300">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-amber-300 shadow-inner">
               <Users className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-wider flex items-center space-x-2">
+              <h2 className="text-sm sm:text-base font-black text-white uppercase tracking-wider flex items-center space-x-2 leading-none">
                 <span>Game Room Lobby</span>
                 <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">
                   ● Ready
                 </span>
               </h2>
-              <p className="text-xs text-gray-400">
-                Choose your seats and game mode before launching
+              <p className="text-[11px] text-gray-400 mt-0.5 leading-none">
+                4-Player Room • Choose seats &amp; invite friends
               </p>
             </div>
           </div>
@@ -309,7 +309,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
             <AudioControlsPopover compact />
             <button
               onClick={handleClose}
-              className="w-8 h-8 rounded-full bg-slate-800 text-gray-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-full bg-slate-800 text-gray-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -338,7 +338,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                   <button
                     onClick={() => {
                       setStatusMessage(null);
-                      multiplayerClient.createRoom(undefined, initialMode);
+                      multiplayerClient.createRoom(undefined, 'custom');
                     }}
                     className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md"
                   >
@@ -369,564 +369,435 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
             )}
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+          <div className="flex-1 p-3 sm:p-4 space-y-3 overflow-y-auto">
             {/* Status Toast */}
             {statusMessage && (
-              <div className="p-2.5 rounded-xl bg-amber-500/20 border border-amber-400/50 text-amber-200 text-xs font-bold text-center animate-in fade-in">
+              <div className="p-2 rounded-xl bg-amber-500/20 border border-amber-400/50 text-amber-200 text-xs font-bold text-center animate-in fade-in">
                 {statusMessage}
               </div>
             )}
 
-            {/* Room Code & Invite Strip */}
-            <div className="p-3 bg-slate-950/80 rounded-2xl border border-slate-800 flex items-center justify-between gap-2">
-              <div>
-                <span className="text-[10px] font-bold text-gray-400 uppercase block">
-                  Room Code
+            {/* Room Code & Team Quick-Switch Bar */}
+            <div className="p-2.5 bg-slate-950/80 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-bold text-gray-400 uppercase">Room:</span>
+                <span className="text-lg sm:text-xl font-black font-mono tracking-widest text-amber-400">
+                  {currentRoom.code}
                 </span>
-                <div className="flex items-center space-x-2 mt-0.5">
-                  <span className="text-xl sm:text-2xl font-black font-mono tracking-widest text-amber-400">
-                    {currentRoom.code}
-                  </span>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(currentRoom.code);
-                      setCopiedCode(true);
-                      setTimeout(() => setCopiedCode(false), 2000);
-                    }}
-                    title="Copy Room Code"
-                    className="p-1 rounded-lg bg-slate-800 hover:bg-slate-750 text-amber-300 transition-colors"
-                  >
-                    {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-              </div>
-
-              <button
-                onClick={handleCopyLink}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-cyan-300 border border-cyan-500/30 font-bold text-xs flex items-center space-x-1.5 transition-all shadow-sm active:scale-95"
-              >
-                {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Link className="w-3.5 h-3.5" />}
-                <span>{copiedLink ? 'Link Copied!' : 'Copy Direct Link'}</span>
-              </button>
-            </div>
-
-          {/* Game Mode Selector (Host can change mode in lobby, Guest views selected mode) */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs font-bold text-gray-400">
-              <span className="uppercase tracking-wider flex items-center space-x-1.5">
-                <Shield className="w-3.5 h-3.5 text-amber-400" />
-                <span>Game Mode {isHost ? '(Host Selector)' : '(Selected by Host)'}</span>
-              </span>
-              <span className="text-[10px] text-amber-400 font-mono">
-                {currentMode === 'rivals' ? '1v1 Head-to-Head' : '4-Player Custom'}
-              </span>
-            </div>
-
-            {isHost ? (
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => handleSelectMode('rivals')}
-                  className={`p-3 rounded-2xl border text-left transition-all ${
-                    currentMode === 'rivals'
-                      ? 'bg-cyan-950/70 border-cyan-400 ring-2 ring-cyan-500/40 shadow-lg text-white'
-                      : 'bg-slate-950/60 border-slate-800 text-gray-400 hover:text-white hover:border-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2 mb-1">
-                    <Swords className={`w-4 h-4 ${currentMode === 'rivals' ? 'text-cyan-400' : 'text-gray-500'}`} />
-                    <span className="text-xs font-black uppercase tracking-wider">Friendly Rivalry</span>
-                  </div>
-                  <p className="text-[10px] opacity-80 leading-relaxed">
-                    1v1 Head-to-Head: You & your rival compete on opposing teams (Blue vs Red) with AI partners.
-                  </p>
-                </button>
-
-                <button
-                  onClick={() => handleSelectMode('custom')}
-                  className={`p-3 rounded-2xl border text-left transition-all ${
-                    currentMode === 'custom'
-                      ? 'bg-amber-950/70 border-amber-400 ring-2 ring-amber-500/40 shadow-lg text-white'
-                      : 'bg-slate-950/60 border-slate-800 text-gray-400 hover:text-white hover:border-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2 mb-1">
-                    <Users className={`w-4 h-4 ${currentMode === 'custom' ? 'text-amber-400' : 'text-gray-500'}`} />
-                    <span className="text-xs font-black uppercase tracking-wider">Custom Match</span>
-                  </div>
-                  <p className="text-[10px] opacity-80 leading-relaxed">
-                    Play with up to 4 players or bots. Freely choose teams, seats, and custom house rules.
-                  </p>
-                </button>
-              </div>
-            ) : (
-              <div className="p-3 bg-slate-950/70 rounded-2xl border border-slate-800 flex items-center justify-between">
-                <div className="flex items-center space-x-2.5">
-                  {currentMode === 'rivals' ? (
-                    <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-300">
-                      <Swords className="w-4 h-4" />
-                    </div>
-                  ) : (
-                    <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300">
-                      <Users className="w-4 h-4" />
-                    </div>
-                  )}
-                  <div>
-                    <div className="text-xs font-black text-white">
-                      {currentMode === 'rivals' ? 'Friendly Rivalry (1v1)' : 'Custom Match (4-Player)'}
-                    </div>
-                    <div className="text-[10px] text-gray-400">
-                      {currentMode === 'rivals'
-                        ? 'Rivals are seated on opposing teams (Blue vs Red) with AI partners.'
-                        : 'Choose your preferred seat on Blue or Red team.'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Quick Team Switch Bar */}
-          <div className="p-2.5 bg-slate-950/80 rounded-2xl border border-slate-800 flex items-center justify-between gap-2">
-            <div className="text-[11px] font-bold text-gray-400">
-              Your Team:{' '}
-              <span className={myPosition === 0 || myPosition === 2 ? 'text-blue-400 font-black' : myPosition === 1 || myPosition === 3 ? 'text-red-400 font-black' : 'text-gray-400'}>
-                {myPosition === 0 || myPosition === 2 ? '🔵 Blue Team' : myPosition === 1 || myPosition === 3 ? '🔴 Red Team' : 'Unassigned'}
-              </span>
-            </div>
-            <div className="flex space-x-1.5">
-              <button
-                onClick={() => handleSwitchTeam('blue')}
-                disabled={myPosition === 0 || myPosition === 2}
-                className={`px-3 py-1 rounded-xl text-xs font-black transition-all flex items-center space-x-1 ${
-                  myPosition === 0 || myPosition === 2
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 cursor-default'
-                    : 'bg-slate-800 text-blue-300 hover:bg-blue-950/60 border border-blue-500/40 active:scale-95'
-                }`}
-              >
-                <span>🔵 Join Blue</span>
-                {(myPosition === 0 || myPosition === 2) && <Check className="w-3.5 h-3.5" />}
-              </button>
-              <button
-                onClick={() => handleSwitchTeam('red')}
-                disabled={myPosition === 1 || myPosition === 3}
-                className={`px-3 py-1 rounded-xl text-xs font-black transition-all flex items-center space-x-1 ${
-                  myPosition === 1 || myPosition === 3
-                    ? 'bg-red-600 text-white shadow-md shadow-red-500/30 cursor-default'
-                    : 'bg-slate-800 text-red-300 hover:bg-red-950/60 border border-red-500/40 active:scale-95'
-                }`}
-              >
-                <span>🔴 Join Red</span>
-                {(myPosition === 1 || myPosition === 3) && <Check className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Table Seating: 4 Seats across Blue & Red teams */}
-          <div className="space-y-2">
-            <div className="flex justify-between items-center text-xs font-bold text-gray-400">
-              <span>Table Seats ({occupiedCount}/4 seated)</span>
-              <span className="text-amber-400 font-mono">
-                Goal: {currentRoom?.rules.targetScore || 10} Pts
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              {[0, 1, 2, 3].map((pos) => {
-                const slot = currentRoom?.slots[pos];
-                const isBlueTeam = pos % 2 === 0;
-                const isMe = myPosition === pos;
-                const seatRole = pos === 0
-                  ? 'South (Host / Blue)'
-                  : pos === 2
-                  ? 'North (Partner / Blue)'
-                  : pos === 1
-                  ? 'West (Opponent / Red)'
-                  : 'East (Partner / Red)';
-
-                return (
-                  <div
-                    key={pos}
-                    className={`p-2.5 rounded-xl border flex flex-col justify-between space-y-2 transition-all ${
-                      isMe
-                        ? isBlueTeam
-                          ? 'bg-blue-950/80 border-blue-400 ring-2 ring-blue-500/40 shadow-lg text-blue-100'
-                          : 'bg-red-950/80 border-red-400 ring-2 ring-red-500/40 shadow-lg text-red-100'
-                        : slot
-                        ? isBlueTeam
-                          ? 'bg-blue-950/40 border-blue-500/40 text-blue-200'
-                          : 'bg-red-950/40 border-red-500/40 text-red-200'
-                        : 'bg-slate-950/60 border-dashed border-slate-700 text-gray-500'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between min-w-0">
-                      <div className="flex items-center space-x-2 min-w-0">
-                        {slot ? (
-                          <div className="relative flex-shrink-0">
-                            <AvatarPortrait avatarId={slot.avatarIcon} size="sm" />
-                            {slot.equippedCardBack && (
-                              <img
-                                src={getCardBackDefinition(slot.equippedCardBack).imageUrl}
-                                alt={getCardBackDefinition(slot.equippedCardBack).name}
-                                title={`Deck: ${getCardBackDefinition(slot.equippedCardBack).name}`}
-                                className="absolute -bottom-1 -right-1 w-3.5 h-5 rounded-[3px] object-cover border border-white/40 shadow"
-                              />
-                            )}
-                          </div>
-                        ) : (
-                          <span className="w-9 h-9 rounded-xl bg-slate-900/70 border border-slate-800 flex items-center justify-center text-base flex-shrink-0">
-                            🪑
-                          </span>
-                        )}
-                        <div className="min-w-0">
-                          <div className="font-bold truncate text-[11px] flex items-center space-x-1">
-                            <span>{slot ? slot.username : `Empty Seat ${pos + 1}`}</span>
-                            {isMe && (
-                              <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1 rounded-md">
-                                YOU
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[9px] opacity-75">
-                            {seatRole}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Host can kick other seated players */}
-                      {isHost && slot && !isMe && (
-                        <button
-                          onClick={() => {
-                            sounds.playUiClick();
-                            multiplayerClient.kickPlayer(pos as PlayerPosition);
-                          }}
-                          title="Kick Player"
-                          className="p-1 rounded-md text-red-400 hover:bg-red-950/80 transition-colors flex-shrink-0 ml-1"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Seat Action Buttons: Sit Here or Swap */}
-                    <div className="flex justify-end pt-1">
-                      {!slot ? (
-                        <button
-                          onClick={() => handleSwitchSeat(pos as PlayerPosition)}
-                          className={`px-2.5 py-1 rounded-lg font-black text-[10px] shadow-sm flex items-center space-x-1 transition-all active:scale-95 ${
-                            isBlueTeam
-                              ? 'bg-blue-500 hover:bg-blue-400 text-white'
-                              : 'bg-red-500 hover:bg-red-400 text-white'
-                          }`}
-                        >
-                          <span>Sit Here</span>
-                        </button>
-                      ) : !isMe ? (
-                        <button
-                          onClick={() => handleSwitchSeat(pos as PlayerPosition)}
-                          className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-[10px] font-bold flex items-center space-x-1 border border-amber-500/30 transition-all active:scale-95"
-                          title="Swap seats with this position"
-                        >
-                          <ArrowLeftRight className="w-3 h-3" />
-                          <span>Swap</span>
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* House Rules Configuration */}
-          {isHost ? (
-            <div className="p-3 bg-slate-800/60 rounded-2xl border border-slate-700/80 space-y-3">
-              <div className="flex items-center space-x-1.5 text-xs font-black uppercase text-amber-400">
-                <Sliders className="w-3.5 h-3.5" />
-                <span>Host Game Rules</span>
-              </div>
-
-              {/* Target Score */}
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-300 font-bold">Winning Points:</span>
-                <div className="flex space-x-1.5">
-                  {[5, 7, 10].map((score) => (
-                    <button
-                      key={score}
-                      onClick={() => handleUpdateRule({ targetScore: score })}
-                      className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all ${
-                        (currentRoom?.rules.targetScore || 10) === score
-                          ? 'bg-amber-400 text-slate-950 font-black shadow-md'
-                          : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
-                      }`}
-                    >
-                      {score}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Stick the Dealer */}
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-300 font-bold">Stick The Dealer:</span>
-                <button
-                  onClick={() => handleUpdateRule({ stickTheDealer: !currentRoom?.rules.stickTheDealer })}
-                  className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
-                    currentRoom?.rules.stickTheDealer !== false
-                      ? 'bg-emerald-500 text-slate-950 font-black shadow-md'
-                      : 'bg-slate-700 text-gray-400 hover:text-white'
-                  }`}
-                >
-                  {currentRoom?.rules.stickTheDealer !== false ? 'Enabled' : 'Disabled'}
-                </button>
-              </div>
-
-              {/* Canadian Loner */}
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-300 font-bold">Canadian Loner (Forced Solo):</span>
                 <button
                   onClick={() => {
-                    const nextVal = currentRoom?.rules.partnerOrderUpGoesAlone === false;
-                    handleUpdateRule({ canadianLoner: nextVal, partnerOrderUpGoesAlone: nextVal });
+                    navigator.clipboard.writeText(currentRoom.code);
+                    setCopiedCode(true);
+                    setTimeout(() => setCopiedCode(false), 2000);
                   }}
-                  className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
-                    currentRoom?.rules.partnerOrderUpGoesAlone !== false
-                      ? 'bg-emerald-500 text-slate-950 font-black shadow-md'
-                      : 'bg-slate-700 text-gray-400 hover:text-white'
+                  title="Copy Room Code"
+                  className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 transition-colors cursor-pointer"
+                >
+                  {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+                <button
+                  onClick={handleCopyLink}
+                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  {copiedLink ? <Check className="w-3 h-3 text-emerald-400" /> : <Link className="w-3 h-3" />}
+                  <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
+                </button>
+              </div>
+
+              {/* Quick Team Switch */}
+              <div className="flex items-center gap-1.5 ml-auto">
+                <span className="text-[10px] font-bold text-slate-400 mr-1">Your Team:</span>
+                <button
+                  onClick={() => handleSwitchTeam('blue')}
+                  disabled={myPosition === 0 || myPosition === 2}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
+                    myPosition === 0 || myPosition === 2
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
+                      : 'bg-slate-800 text-blue-300 hover:bg-blue-950/60 border border-blue-500/40'
                   }`}
                 >
-                  {currentRoom?.rules.partnerOrderUpGoesAlone !== false ? 'Active' : 'Off'}
+                  <span>🔵 Blue</span>
+                  {(myPosition === 0 || myPosition === 2) && <Check className="w-3 h-3" />}
+                </button>
+                <button
+                  onClick={() => handleSwitchTeam('red')}
+                  disabled={myPosition === 1 || myPosition === 3}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
+                    myPosition === 1 || myPosition === 3
+                      ? 'bg-red-600 text-white shadow-md shadow-red-500/30'
+                      : 'bg-slate-800 text-red-300 hover:bg-red-950/60 border border-red-500/40'
+                  }`}
+                >
+                  <span>🔴 Red</span>
+                  {(myPosition === 1 || myPosition === 3) && <Check className="w-3 h-3" />}
                 </button>
               </div>
             </div>
-          ) : (
-            <div className="p-3 bg-slate-800/40 rounded-2xl border border-slate-700/60 space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-gray-400">
-                <div className="flex items-center space-x-1.5 text-amber-400">
-                  <Sliders className="w-3.5 h-3.5" />
-                  <span>Game Rules</span>
+
+            {/* =================================================================
+                HIGH-VISIBILITY: INVITE ONLINE FRIENDS DIRECT CARD
+            ================================================================= */}
+            <div className="p-3 bg-gradient-to-r from-cyan-950/70 via-[#0e1c2e] to-cyan-950/70 rounded-2xl border-2 border-cyan-400/70 shadow-[0_0_24px_rgba(6,182,212,0.2)] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981] animate-ping" />
+                  <span className="text-xs font-black uppercase tracking-wider text-cyan-200 flex items-center gap-1.5">
+                    <UserPlus className="w-4 h-4 text-cyan-400" />
+                    <span>Invite Online Friends</span>
+                  </span>
                 </div>
-                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Set by Host</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800">
-                  <div className="text-[10px] text-gray-400">Goal</div>
-                  <div className="font-black text-amber-300">{currentRoom?.rules.targetScore || 10} Pts</div>
-                </div>
-                <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800">
-                  <div className="text-[10px] text-gray-400">Stick Dealer</div>
-                  <div className="font-black text-emerald-400">
-                    {currentRoom?.rules.stickTheDealer !== false ? 'Enabled' : 'Disabled'}
-                  </div>
-                </div>
-                <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800">
-                  <div className="text-[10px] text-gray-400">Canadian Loner</div>
-                  <div className="font-black text-emerald-400">
-                    {currentRoom?.rules.partnerOrderUpGoesAlone !== false ? 'Active' : 'Off'}
-                  </div>
+                <div className="flex items-center gap-2 text-[10px]">
+                  <span className="font-bold text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-500/40">
+                    {onlineFriends.length} Online
+                  </span>
+                  <span className="font-bold text-cyan-300 bg-cyan-950/80 px-2 py-0.5 rounded-full border border-cyan-500/40">
+                    {4 - humanCount} Slots Open
+                  </span>
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* Online Friends Direct Invite Drawer */}
-          <div className="p-3 bg-slate-800/50 rounded-2xl border border-slate-700/60 space-y-2">
-            <div className="flex items-center justify-between text-xs font-bold text-gray-400">
-              <span className="flex items-center space-x-1">
-                <UserPlus className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Invite Online Friends</span>
-              </span>
-              <div className="flex items-center space-x-2 text-[10px]">
-                <span className={humanCount >= 4 ? 'text-amber-400 font-black' : 'text-cyan-300 font-bold'}>
-                  {4 - humanCount} {4 - humanCount === 1 ? 'Slot' : 'Slots'} Open
-                </span>
-                <span className="text-slate-600">•</span>
-                <span className="text-emerald-400">
-                  {onlineFriends.length} Online
-                </span>
-              </div>
-            </div>
+              {/* Online Friends Quick-Invite List */}
+              {onlineFriends.length > 0 ? (
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                  {onlineFriends.map((fr) => {
+                    const isSeatedInLobby = Boolean(
+                      currentRoom?.slots.some(
+                        (s) =>
+                          s &&
+                          !s.isAI &&
+                          (s.userId === fr.userId || s.username.toLowerCase() === fr.username.toLowerCase())
+                      )
+                    );
+                    const serverExp = currentRoom?.pendingInvites?.[fr.userId];
+                    const effectiveExp =
+                      currentRoom?.pendingInvites !== undefined ? serverExp : localPendingInvites[fr.userId];
+                    const remainingSec = effectiveExp ? Math.max(0, Math.ceil((effectiveExp - nowMs) / 1000)) : 0;
+                    const isPendingInvite = !isSeatedInLobby && remainingSec > 0;
+                    const isLobbyFullForHumans = !isSeatedInLobby && humanCount >= 4;
+                    const isDisabled = isSeatedInLobby || isPendingInvite || isLobbyFullForHumans;
 
-            {onlineFriends.length > 0 && (
-              <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
-                {onlineFriends.map((fr) => {
-                  const isSeatedInLobby = Boolean(
-                    currentRoom?.slots.some(
-                      (s) =>
-                        s &&
-                        !s.isAI &&
-                        (s.userId === fr.userId || s.username.toLowerCase() === fr.username.toLowerCase())
-                    )
-                  );
-                  const serverExp = currentRoom?.pendingInvites?.[fr.userId];
-                  const effectiveExp =
-                    currentRoom?.pendingInvites !== undefined ? serverExp : localPendingInvites[fr.userId];
-                  const remainingSec = effectiveExp ? Math.max(0, Math.ceil((effectiveExp - nowMs) / 1000)) : 0;
-                  const isPendingInvite = !isSeatedInLobby && remainingSec > 0;
-                  const isLobbyFullForHumans = !isSeatedInLobby && humanCount >= 4;
-                  const isDisabled = isSeatedInLobby || isPendingInvite || isLobbyFullForHumans;
-
-                  return (
-                    <div
-                      key={fr.userId}
-                      className="p-1.5 px-2 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between text-xs"
-                    >
-                      <div className="flex items-center space-x-2">
+                    return (
+                      <div
+                        key={fr.userId}
+                        className="flex-shrink-0 p-1.5 px-2.5 rounded-xl bg-slate-900/90 border border-cyan-500/30 flex items-center gap-2 shadow"
+                      >
                         <AvatarPortrait avatarId={fr.avatarIcon} size="xs" />
-                        <div>
-                          <span className="font-bold text-white text-[11px] block">{fr.username}</span>
-                          {isSeatedInLobby && (
-                            <span className="text-[9px] text-emerald-400 font-bold">Seated in Lobby</span>
-                          )}
-                          {isPendingInvite && (
-                            <span className="text-[9px] text-amber-300 font-bold">
-                              Invite expires in {remainingSec}s
+                        <div className="text-left">
+                          <span className="text-xs font-black text-white block truncate max-w-[90px]">
+                            {fr.username}
+                          </span>
+                          {isPendingInvite ? (
+                            <span className="text-[9px] text-amber-300 font-bold block leading-none">
+                              Sent ({remainingSec}s)
+                            </span>
+                          ) : (
+                            <span className="text-[9px] text-emerald-400 font-bold block leading-none">
+                              Online
                             </span>
                           )}
                         </div>
-                      </div>
 
-                      <button
-                        onClick={() => handleInviteFriend(fr)}
-                        disabled={isDisabled}
-                        className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${
-                          isSeatedInLobby
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 cursor-default'
-                            : isPendingInvite
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-400/50 cursor-default animate-pulse'
-                            : isLobbyFullForHumans
-                            ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
-                            : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-sm active:scale-95 cursor-pointer'
+                        <button
+                          onClick={() => handleInviteFriend(fr)}
+                          disabled={isDisabled}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                            isSeatedInLobby
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 cursor-default'
+                              : isPendingInvite
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-400/50 cursor-default animate-pulse'
+                              : isLobbyFullForHumans
+                              ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                              : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-md active:scale-95'
+                          }`}
+                        >
+                          {isSeatedInLobby ? 'Seated' : isPendingInvite ? 'Sent' : 'Invite'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-[11px] text-slate-300/80 bg-slate-900/60 p-2 rounded-xl border border-slate-800 flex items-center justify-between">
+                  <span>No friends online right now — share your Room Code or invite by username!</span>
+                </div>
+              )}
+
+              {/* Direct Username Challenge Input */}
+              <form onSubmit={handleInviteByUsername} className="flex gap-2">
+                <input
+                  type="text"
+                  disabled={humanCount >= 4}
+                  placeholder={humanCount >= 4 ? 'Lobby is full (4/4)' : 'Invite player by username...'}
+                  value={usernameInput}
+                  onChange={(e) => setUsernameInput(e.target.value)}
+                  className="flex-1 px-3 py-1.5 rounded-xl bg-slate-900/95 border border-slate-700 text-white text-xs focus:outline-none focus:border-cyan-400 font-mono disabled:opacity-50"
+                />
+                <button
+                  type="submit"
+                  disabled={humanCount >= 4 || !usernameInput.trim()}
+                  className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-40 text-slate-950 font-black text-xs flex items-center gap-1 shadow-md cursor-pointer transition-all active:scale-95 flex-shrink-0"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Send</span>
+                </button>
+              </form>
+            </div>
+
+            {/* =================================================================
+                2-COLUMN SECTION: SEATING (LEFT) & RULES/BOTS (RIGHT)
+            ================================================================= */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Left Column: 4 Table Seats */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center text-xs font-bold text-gray-400 px-0.5">
+                  <span className="uppercase tracking-wider">Table Seats ({occupiedCount}/4)</span>
+                  <span className="text-amber-400 font-mono text-[11px]">
+                    Goal: {currentRoom?.rules.targetScore || 10} Pts
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {[0, 1, 2, 3].map((pos) => {
+                    const slot = currentRoom?.slots[pos];
+                    const isBlueTeam = pos % 2 === 0;
+                    const isMe = myPosition === pos;
+                    const seatRole =
+                      pos === 0
+                        ? 'South (Host / Blue)'
+                        : pos === 2
+                        ? 'North (Partner / Blue)'
+                        : pos === 1
+                        ? 'West (Opponent / Red)'
+                        : 'East (Partner / Red)';
+
+                    return (
+                      <div
+                        key={pos}
+                        className={`p-2 rounded-xl border flex flex-col justify-between space-y-1.5 transition-all ${
+                          isMe
+                            ? isBlueTeam
+                              ? 'bg-blue-950/80 border-blue-400 ring-2 ring-blue-500/40 shadow-lg text-blue-100'
+                              : 'bg-red-950/80 border-red-400 ring-2 ring-red-500/40 shadow-lg text-red-100'
+                            : slot
+                            ? isBlueTeam
+                              ? 'bg-blue-950/40 border-blue-500/40 text-blue-200'
+                              : 'bg-red-950/40 border-red-500/40 text-red-200'
+                            : 'bg-slate-950/60 border-dashed border-slate-700 text-gray-500'
                         }`}
                       >
-                        {isSeatedInLobby
-                          ? 'In Lobby ✓'
-                          : isPendingInvite
-                          ? `Pending (${remainingSec}s)`
-                          : isLobbyFullForHumans
-                          ? 'Lobby Full'
-                          : 'Invite'}
+                        <div className="flex items-center justify-between min-w-0">
+                          <div className="flex items-center space-x-1.5 min-w-0">
+                            {slot ? (
+                              <div className="relative flex-shrink-0">
+                                <AvatarPortrait avatarId={slot.avatarIcon} size="xs" />
+                              </div>
+                            ) : (
+                              <span className="w-6 h-6 rounded-lg bg-slate-900/70 border border-slate-800 flex items-center justify-center text-xs flex-shrink-0">
+                                🪑
+                              </span>
+                            )}
+                            <div className="min-w-0">
+                              <div className="font-bold truncate text-[11px] flex items-center space-x-1">
+                                <span className="truncate">{slot ? slot.username : `Empty`}</span>
+                                {isMe && (
+                                  <span className="text-[8px] bg-amber-400 text-slate-950 font-black px-1 rounded">
+                                    YOU
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[9px] opacity-75 truncate">{seatRole}</div>
+                            </div>
+                          </div>
+
+                          {isHost && slot && !isMe && (
+                            <button
+                              onClick={() => {
+                                sounds.playUiClick();
+                                multiplayerClient.kickPlayer(pos as PlayerPosition);
+                              }}
+                              title="Kick Player"
+                              className="p-1 rounded-md text-red-400 hover:bg-red-950/80 transition-colors flex-shrink-0 cursor-pointer"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Seat Sit/Swap Action */}
+                        <div className="flex justify-end pt-0.5">
+                          {!slot ? (
+                            <button
+                              onClick={() => handleSwitchSeat(pos as PlayerPosition)}
+                              className={`px-2 py-0.5 rounded-lg font-black text-[10px] shadow-sm flex items-center space-x-1 transition-all active:scale-95 cursor-pointer ${
+                                isBlueTeam
+                                  ? 'bg-blue-500 hover:bg-blue-400 text-white'
+                                  : 'bg-red-500 hover:bg-red-400 text-white'
+                              }`}
+                            >
+                              <span>Sit Here</span>
+                            </button>
+                          ) : !isMe ? (
+                            <button
+                              onClick={() => handleSwitchSeat(pos as PlayerPosition)}
+                              className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-[9px] font-bold flex items-center space-x-1 border border-amber-500/30 transition-all active:scale-95 cursor-pointer"
+                              title="Swap seats"
+                            >
+                              <ArrowLeftRight className="w-2.5 h-2.5" />
+                              <span>Swap</span>
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right Column: Rules & Bot Controls */}
+              <div className="space-y-2">
+                {/* House Rules */}
+                <div className="p-2.5 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-gray-400">
+                    <span className="uppercase tracking-wider flex items-center gap-1.5 text-amber-400">
+                      <Sliders className="w-3.5 h-3.5" />
+                      <span>House Rules</span>
+                    </span>
+                    <span className="text-[10px] text-gray-500">{isHost ? 'Host Config' : 'Set by Host'}</span>
+                  </div>
+
+                  {/* Target Score */}
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-300 font-bold text-[11px]">Winning Goal:</span>
+                    <div className="flex space-x-1">
+                      {[5, 7, 10].map((score) => (
+                        <button
+                          key={score}
+                          disabled={!isHost}
+                          onClick={() => handleUpdateRule({ targetScore: score })}
+                          className={`px-2 py-0.5 rounded-lg font-bold text-[11px] transition-all ${
+                            (currentRoom?.rules.targetScore || 10) === score
+                              ? 'bg-amber-400 text-slate-950 font-black shadow-md'
+                              : 'bg-slate-800 text-gray-400 hover:bg-slate-700'
+                          }`}
+                        >
+                          {score} pts
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Stick the Dealer & Canadian Loner */}
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-800/80">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-slate-400">Stick Dealer:</span>
+                      <button
+                        disabled={!isHost}
+                        onClick={() => handleUpdateRule({ stickTheDealer: !currentRoom?.rules.stickTheDealer })}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
+                          currentRoom?.rules.stickTheDealer !== false
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                            : 'bg-slate-800 text-slate-400'
+                        }`}
+                      >
+                        {currentRoom?.rules.stickTheDealer !== false ? 'ON' : 'OFF'}
                       </button>
                     </div>
-                  );
-                })}
-              </div>
-            )}
 
-            <form onSubmit={handleInviteByUsername} className="flex space-x-2 pt-1">
-              <input
-                type="text"
-                disabled={humanCount >= 4}
-                placeholder={humanCount >= 4 ? 'Lobby is full (4/4 players)' : 'Challenge player by username...'}
-                value={usernameInput}
-                onChange={e => setUsernameInput(e.target.value)}
-                className="flex-1 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-cyan-400 font-mono disabled:opacity-50"
-              />
-              <button
-                type="submit"
-                disabled={humanCount >= 4 || !usernameInput.trim()}
-                className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white font-bold text-xs flex items-center space-x-1"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>{humanCount >= 4 ? 'Full' : 'Send'}</span>
-              </button>
-            </form>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-slate-400">Canadian Solo:</span>
+                      <button
+                        disabled={!isHost}
+                        onClick={() => {
+                          const nextVal = currentRoom?.rules.partnerOrderUpGoesAlone === false;
+                          handleUpdateRule({ canadianLoner: nextVal, partnerOrderUpGoesAlone: nextVal });
+                        }}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
+                          currentRoom?.rules.partnerOrderUpGoesAlone !== false
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                            : 'bg-slate-800 text-slate-400'
+                        }`}
+                      >
+                        {currentRoom?.rules.partnerOrderUpGoesAlone !== false ? 'ON' : 'OFF'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bot Difficulty Fill Controls (Host only) */}
+                {isHost && occupiedCount < 4 && (
+                  <div className="p-2.5 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-gray-400">
+                      <span className="uppercase tracking-wider flex items-center gap-1 text-emerald-400">
+                        <Bot className="w-3.5 h-3.5" />
+                        <span>Fill Empty Seats</span>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {(['easy', 'medium', 'hard'] as AIDifficulty[]).map((d) => (
+                        <button
+                          key={d}
+                          onClick={() => setAiFillDifficulty(d)}
+                          className={`flex-1 py-1 rounded-lg text-[10px] font-black capitalize transition-all cursor-pointer ${
+                            aiFillDifficulty === d
+                              ? 'bg-emerald-500 text-slate-950 shadow'
+                              : 'bg-slate-800 text-gray-400 hover:text-white'
+                          }`}
+                        >
+                          {d}
+                        </button>
+                      ))}
+
+                      <button
+                        onClick={() => {
+                          sounds.playUiClick();
+                          multiplayerClient.fillWithAI(aiFillDifficulty);
+                        }}
+                        className="px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-emerald-300 font-bold text-[10px] cursor-pointer"
+                      >
+                        Fill Bots
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
         )}
 
         {/* Footer Actions */}
         {currentRoom && (
-        <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-2">
-          {isHost ? (
-            <div className="space-y-2">
-              {/* Bot Difficulty & Fill */}
-              {occupiedCount < 4 && (
-                <div className="flex items-center space-x-2">
-                  <div className="flex space-x-1 flex-1">
-                    {(['easy', 'medium', 'hard'] as AIDifficulty[]).map((d) => (
-                      <button
-                        key={d}
-                        onClick={() => setAiFillDifficulty(d)}
-                        className={`flex-1 py-1 rounded-lg text-[10px] font-black capitalize transition-all ${
-                          aiFillDifficulty === d
-                            ? 'bg-emerald-500 text-slate-950'
-                            : 'bg-slate-800 text-gray-400'
-                        }`}
-                      >
-                        {d} AI
-                      </button>
-                    ))}
-                  </div>
+          <div className="p-3 bg-slate-950 border-t border-slate-800 flex items-center gap-2">
+            <button
+              onClick={handleClose}
+              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white text-xs font-bold transition-colors cursor-pointer flex-shrink-0"
+            >
+              Leave Lobby
+            </button>
 
-                  <button
-                    onClick={() => {
-                      sounds.playUiClick();
-                      multiplayerClient.fillWithAI(aiFillDifficulty);
-                    }}
-                    className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-xs font-bold text-amber-300 flex items-center space-x-1 shadow-sm"
-                  >
-                    <Bot className="w-3.5 h-3.5" />
-                    <span>Fill Bots</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Start Match Button */}
-              {currentMode === 'rivals' ? (
-                hasTwoOpposingHumans ? (
-                  <button
-                    onClick={handleStartMatch}
-                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 hover:from-emerald-400 text-slate-950 font-black text-sm uppercase tracking-wider shadow-xl shadow-emerald-500/30 flex items-center justify-center space-x-2 active:scale-95 transition-all"
-                  >
-                    <Swords className="w-4 h-4 fill-slate-950" />
-                    <span>Launch Rivalry Match!</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      sounds.playUiClick();
-                      multiplayerClient.fillWithAI();
-                      setTimeout(() => multiplayerClient.startGame(), 250);
-                    }}
-                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 text-slate-950 font-black text-sm uppercase tracking-wider shadow-xl shadow-cyan-500/30 flex items-center justify-center space-x-2 active:scale-95 transition-all"
-                  >
-                    <Bot className="w-4 h-4" />
-                    <span>Play vs Bot Rival ({occupiedCount}/4)</span>
-                  </button>
-                )
-              ) : (
-                <button
-                  onClick={handleStartMatch}
-                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 text-slate-950 font-black text-sm shadow-xl shadow-amber-500/30 flex items-center justify-center space-x-2 transition-all active:scale-95"
-                >
-                  <Sparkles className="w-4 h-4 fill-slate-950" />
-                  <span>
-                    {occupiedCount === 4
-                      ? `Start Match (4/4 Ready)`
-                      : `Start Match (Fill Remaining with ${aiFillDifficulty.toUpperCase()} Bots)`}
-                  </span>
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="w-full py-3 rounded-2xl bg-slate-800/80 border border-amber-500/30 text-amber-300 font-bold text-xs flex items-center justify-center space-x-2">
-                <Clock className="w-4 h-4 animate-spin text-amber-400" />
+            {isHost ? (
+              <button
+                onClick={handleStartMatch}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 hover:brightness-110 active:scale-95 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 cursor-pointer transition-all"
+              >
+                <Sparkles className="w-4 h-4 fill-slate-950" />
                 <span>
                   {occupiedCount === 4
-                    ? 'All 4 seats ready! Waiting for host to start match...'
-                    : `Waiting for host to start match (${occupiedCount}/4 seated)...`}
+                    ? 'Start Match (All 4 Ready!)'
+                    : `Start Match (Fill with ${aiFillDifficulty.toUpperCase()} Bots)`}
+                </span>
+              </button>
+            ) : (
+              <div className="flex-1 py-2 rounded-xl bg-slate-800/80 border border-amber-500/30 text-amber-300 font-bold text-xs flex items-center justify-center space-x-2">
+                <Clock className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                <span>
+                  {occupiedCount === 4
+                    ? 'All seats ready! Waiting for host to start...'
+                    : `Waiting for host (${occupiedCount}/4 seated)...`}
                 </span>
               </div>
-              <button
-                onClick={handleClose}
-                className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white text-xs font-bold transition-colors"
-              >
-                Leave Lobby
-              </button>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
         )}
       </div>
     </div>

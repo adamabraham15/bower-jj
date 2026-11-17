@@ -51,7 +51,7 @@ interface MainMenuProps {
   unopenedPacksCount?: number;
   onOpenCollection: (tab?: 'packs' | 'collections' | 'avatars') => void;
   onOpenPackOpener: () => void;
-  onOpenRivalryInvite: () => void;
+  onOpenRivalryInvite?: () => void;
   onOpenAchievements: () => void;
   pendingRequestsCount?: number;
   isMuted: boolean;
@@ -62,7 +62,7 @@ interface MainMenuProps {
   onOpenTracker?: () => void;
 }
 
-type QuickModeId = 'ranked_solo' | 'unranked' | 'rivalry' | 'private' | 'ai_bots';
+type QuickModeId = 'ranked_solo' | 'unranked' | 'private' | 'ai_bots';
 
 export const MainMenu: React.FC<MainMenuProps> = ({
   profile,
@@ -148,8 +148,6 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       onOpenMatchmaking('unranked');
     } else if (quickMode === 'private') {
       onOpenMatchmaking('private');
-    } else if (quickMode === 'rivalry') {
-      onOpenRivalryInvite();
     }
   };
 
@@ -159,19 +157,13 @@ export const MainMenu: React.FC<MainMenuProps> = ({
         return {
           icon: <Zap className="w-5 h-5 text-amber-400 fill-amber-400 flex-shrink-0" />,
           title: 'Ranked Solo Queue',
-          sub: '10 pts • Earn Rank LP',
+          sub: `Earn Rank LP • ${profile.rankPoints} LP`,
         };
       case 'unranked':
         return {
           icon: <Shield className="w-5 h-5 text-cyan-400 flex-shrink-0" />,
-          title: 'Casual Unranked',
-          sub: '10 pts • Practice & XP',
-        };
-      case 'rivalry':
-        return {
-          icon: <Swords className="w-5 h-5 text-cyan-300 flex-shrink-0" />,
-          title: 'Friendly Rivalry',
-          sub: 'Head-to-Head 1v1',
+          title: 'Casual 2v2',
+          sub: 'Relaxed Match • Practice & XP',
         };
       case 'private':
         return {
@@ -627,7 +619,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 </div>
                 <div>
                   <div className="text-xs sm:text-sm font-black text-white leading-tight">Ranked Solo</div>
-                  <div className="text-[10px] text-amber-300/90 font-bold mt-0.5 truncate">Earn Rank LP • 10 pts</div>
+                  <div className="text-[10px] text-amber-300/90 font-bold mt-0.5 truncate">Earn Rank LP • {profile.rankPoints} LP</div>
                 </div>
               </button>
 
@@ -653,13 +645,13 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                     <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#06b6d4] animate-ping" />
                   ) : (
                     <span className="text-[10px] font-bold text-cyan-400/80 bg-cyan-950/60 px-1.5 py-0.5 rounded-md border border-cyan-500/30">
-                      Safe
+                      Casual
                     </span>
                   )}
                 </div>
                 <div>
                   <div className="text-xs sm:text-sm font-black text-white leading-tight">Casual 2v2</div>
-                  <div className="text-[10px] text-cyan-300/90 font-bold mt-0.5 truncate">No LP Loss • 10 pts</div>
+                  <div className="text-[10px] text-cyan-300/90 font-bold mt-0.5 truncate">Relaxed Match • No LP Stake</div>
                 </div>
               </button>
 
