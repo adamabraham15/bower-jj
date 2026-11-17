@@ -17,6 +17,11 @@ import { Card } from '../../engine/types';
 import { BOT_PLAYER_NAMES, pickRandomBotNames } from '../../config/collectiblesCatalog';
 import { sounds, loadSavedAudioPreferences } from '../../audio/sound';
 import { RoomManager } from '../../../server/roomManager';
+import { GameTable } from '../GameTable';
+import { MultiplayerGameTable } from '../MultiplayerGameTable';
+import { initializeGame } from '../../engine/game';
+import { DEFAULT_RULES, Player } from '../../engine/types';
+import { SanitizedGameState } from '../../../server/types';
 
 const SAMPLE_UPCARD: Card = { id: 'hearts-K', suit: 'hearts', rank: 'K' };
 
@@ -246,5 +251,152 @@ describe('Table UI & Tutorial Helpers', () => {
     sounds.setMusicEnabled(false);
     expect(sounds.getAudioPreferences().musicEnabled).toBe(false);
     expect(loadSavedAudioPreferences().musicVolume).toBeCloseTo(0.55);
+  });
+
+  it('renders mobile scrollable tray and full-width 6 cards during single-player dealer discard', () => {
+    const players: Player[] = [
+      { id: 'u0', name: 'You', position: 0, isAI: false, avatarId: 'the_outlaw' },
+      { id: 'u1', name: 'West', position: 1, isAI: true, avatarId: 'cyber_bot' },
+      { id: 'u2', name: 'North', position: 2, isAI: true, avatarId: 'clever_fox' },
+      { id: 'u3', name: 'East', position: 3, isAI: true, avatarId: 'iron_tactician' }
+    ];
+
+    // Case 1: Standard 5-card play (cards clamped to fit mobile screen)
+    const state5 = initializeGame(players, DEFAULT_RULES, 0);
+    state5.phase = 'playing';
+    state5.currentTurn = 0;
+    state5.hands[0] = [
+      { id: 'spades-A', suit: 'spades', rank: 'A' },
+      { id: 'spades-K', suit: 'spades', rank: 'K' },
+      { id: 'hearts-Q', suit: 'hearts', rank: 'Q' },
+      { id: 'diamonds-10', suit: 'diamonds', rank: '10' },
+      { id: 'clubs-9', suit: 'clubs', rank: '9' }
+    ];
+
+    const html5 = renderToStaticMarkup(
+      React.createElement(GameTable, {
+        initialState: state5,
+        onOpenRules: () => {},
+        onOpenTutorial: () => {},
+        onOpenEmotes: () => {},
+        activeEmotes: {},
+        isMuted: false,
+        onToggleMute: () => {},
+        onExitGame: () => {}
+      })
+    );
+
+    expect(html5).toContain('calc((100vw - 36px) / 5)');
+    expect(html5).not.toContain('Swipe cards to view all 6 in full');
+    expect(html5).toContain('px-1 sm:px-4');
+
+    // Case 2: 6-card dealer discard (clamp removed, tray scrollable back and forth, mobile helper rendered)
+    const state6 = initializeGame(players, DEFAULT_RULES, 0);
+    state6.phase = 'dealer_discard';
+    state6.dealer = 0;
+    state6.hands[0] = [
+      { id: 'spades-A', suit: 'spades', rank: 'A' },
+      { id: 'spades-K', suit: 'spades', rank: 'K' },
+      { id: 'hearts-Q', suit: 'hearts', rank: 'Q' },
+      { id: 'diamonds-10', suit: 'diamonds', rank: '10' },
+      { id: 'clubs-9', suit: 'clubs', rank: '9' },
+      { id: 'spades-J', suit: 'spades', rank: 'J' }
+    ];
+
+    const html6 = renderToStaticMarkup(
+      React.createElement(GameTable, {
+        initialState: state6,
+        onOpenRules: () => {},
+        onOpenTutorial: () => {},
+        onOpenEmotes: () => {},
+        activeEmotes: {},
+        isMuted: false,
+        onToggleMute: () => {},
+        onExitGame: () => {}
+      })
+    );
+
+    expect(html6).toContain('Swipe cards to view all 6 in full');
+    expect(html6).toContain('Tap a card to discard • Swipe to view all 6');
+    expect(html6).toContain('cursor-grab active:cursor-grabbing');
+    expect(html6).toContain('px-3 sm:px-6');
+    // Clamp is omitted during dealer discard so cards display at full width
+    expect(html6).not.toContain('calc((100vw - 36px) / 5)');
+  });
+
+  it('renders mobile scrollable tray and full-width 6 cards during multiplayer dealer discard', () => {
+    const sanitized5: SanitizedGameState = {
+      roomCode: 'TEST01',
+      phase: 'playing',
+      dealer: 1,
+      currentTurn: 0,
+      trumpSuit: 'hearts',
+      scores: [2, 1],
+      tricksWon: [1, 0],
+      currentTrick: { leadPlayer: 1, cards: [] },
+      completedTricksCount: 0,
+      isAlone: false,
+      history: [],
+      handCounts: { 0: 5, 1: 5, 2: 5, 3: 5 },
+      yourPosition: 0,
+      yourHand: [
+        { id: 'spades-A', suit: 'spades', rank: 'A' },
+        { id: 'spades-K', suit: 'spades', rank: 'K' },
+        { id: 'hearts-Q', suit: 'hearts', rank: 'Q' },
+        { id: 'diamonds-10', suit: 'diamonds', rank: '10' },
+        { id: 'clubs-9', suit: 'clubs', rank: '9' }
+      ],
+      slots: [
+        { position: 0, username: 'Player 0', avatarIcon: 'the_outlaw', isAI: false, connected: true, isReady: true },
+        { position: 1, username: 'Player 1', avatarIcon: 'cyber_bot', isAI: true, connected: true, isReady: true },
+        { position: 2, username: 'Player 2', avatarIcon: 'clever_fox', isAI: true, connected: true, isReady: true },
+        { position: 3, username: 'Player 3', avatarIcon: 'iron_tactician', isAI: true, connected: true, isReady: true }
+      ]
+    };
+
+    const htmlMulti5 = renderToStaticMarkup(
+      React.createElement(MultiplayerGameTable, {
+        serverState: sanitized5,
+        onOpenRules: () => {},
+        onOpenTutorial: () => {},
+        onOpenEmotes: () => {},
+        activeEmotes: {},
+        isMuted: false,
+        onToggleMute: () => {},
+        onExitGame: () => {}
+      })
+    );
+
+    expect(htmlMulti5).toContain('calc((100vw - 36px) / 5)');
+    expect(htmlMulti5).not.toContain('Swipe cards to view all 6 in full');
+
+    const sanitized6: SanitizedGameState = {
+      ...sanitized5,
+      phase: 'dealer_discard',
+      dealer: 0,
+      yourHand: [
+        ...sanitized5.yourHand,
+        { id: 'hearts-K', suit: 'hearts', rank: 'K' }
+      ]
+    };
+
+    const htmlMulti6 = renderToStaticMarkup(
+      React.createElement(MultiplayerGameTable, {
+        serverState: sanitized6,
+        onOpenRules: () => {},
+        onOpenTutorial: () => {},
+        onOpenEmotes: () => {},
+        activeEmotes: {},
+        isMuted: false,
+        onToggleMute: () => {},
+        onExitGame: () => {}
+      })
+    );
+
+    expect(htmlMulti6).toContain('Swipe cards to view all 6 in full');
+    expect(htmlMulti6).toContain('Tap a card to discard • Swipe to view all 6');
+    expect(htmlMulti6).toContain('cursor-grab active:cursor-grabbing');
+    expect(htmlMulti6).toContain('px-3 sm:px-6');
+    expect(htmlMulti6).not.toContain('calc((100vw - 36px) / 5)');
   });
 });

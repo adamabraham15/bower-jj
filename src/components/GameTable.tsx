@@ -562,7 +562,7 @@ export const GameTable: React.FC<GameTableProps> = ({
     <div className="relative w-full h-[100dvh] bg-slate-950 text-white flex flex-col overflow-hidden select-none">
       {/* Top Header: Scoreboard & Trump Banner */}
       <header
-        className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-slate-900/95 border-b border-slate-800 flex items-center justify-between z-30 flex-shrink-0"
+        className="px-1.5 xs:px-2.5 sm:px-3 py-1.5 sm:py-2 bg-slate-900/95 border-b border-slate-800 flex items-center justify-between gap-1 z-30 flex-shrink-0"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.4rem)' }}
       >
         <div className="flex items-center space-x-1.5 sm:space-x-3">
@@ -1043,7 +1043,9 @@ export const GameTable: React.FC<GameTableProps> = ({
             onTouchMove={handleTrayTouchMove}
             onTouchEnd={handleTrayTouchEnd}
           >
-            <div className="flex items-center justify-center min-w-full w-max gap-1 xs:gap-1.5 min-[400px]:gap-2 sm:gap-3 md:gap-4 px-3 sm:px-6 pt-5 sm:pt-7 pb-1.5 sm:pb-2.5 min-h-[96px] xs:min-h-[105px] sm:min-h-[142px] md:min-h-[162px] lg:min-h-[182px]">
+            <div className={`flex items-center justify-center min-w-full w-max gap-1 xs:gap-1.5 min-[400px]:gap-2 sm:gap-3 md:gap-4 ${
+              isDealerDiscardPhase || displayHand.length > 5 ? 'px-3 sm:px-6' : 'px-1 sm:px-4'
+            } pt-5 sm:pt-7 pb-1.5 sm:pb-2.5 min-h-[96px] xs:min-h-[105px] sm:min-h-[142px] md:min-h-[162px] lg:min-h-[182px]`}>
               {displayHand.map((card, idx) => {
                 const isLegal = state.phase === 'playing'
                   ? isCardPlayLegal(card, humanHand, state.currentTrick, state.trumpSuit)
@@ -1058,7 +1060,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                       maxWidth:
                         isDealerDiscardPhase || displayHand.length > 5
                           ? undefined
-                          : 'calc((100vw - 16px) / 5)',
+                          : 'calc((100vw - 36px) / 5)',
                     }}
                   >
                     <CardView

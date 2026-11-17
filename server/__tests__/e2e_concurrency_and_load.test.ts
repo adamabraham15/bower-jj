@@ -134,15 +134,16 @@ function createClient(port: number): Promise<ClientHandle> {
 async function authenticateClient(
   handle: ClientHandle,
   username: string,
-  avatar: string = '🤠'
-): Promise<UserAccount> {
-  handle.send({ type: 'AUTH', username, avatarIcon: avatar });
+  avatar: string = '🤠',
+  sessionToken?: string
+): Promise<{ user: UserAccount; sessionToken: string }> {
+  handle.send({ type: 'AUTH', username, avatarIcon: avatar, sessionToken });
   const authMsg = await handle.waitFor<Extract<ServerMessage, { type: 'AUTH_SUCCESS' }>>(
     m => m.type === 'AUTH_SUCCESS' && (m as any).user?.username === username
   );
   handle.userId = authMsg.user.id;
   handle.username = authMsg.user.username;
-  return authMsg.user;
+  return { user: authMsg.user, sessionToken: (authMsg as any).sessionToken };
 }
 
 describe('Stage 4.3: End-to-End Multi-Player Concurrency Verification & Load Testing', () => {
@@ -456,9 +457,11 @@ describe('Stage 4.3: End-to-End Multi-Player Concurrency Verification & Load Tes
   // =========================================================================
   it('handles mid-game client disconnection, alerts remaining players, and restores hand on reconnection', async () => {
     const clients: ClientHandle[] = [];
+    let p2SessionToken: string | undefined;
     for (let i = 0; i < 4; i++) {
       const c = await createClient(serverPort);
-      await authenticateClient(c, `Recon_Player_${i + 1}`, '🎩');
+      const auth = await authenticateClient(c, `Recon_Player_${i + 1}`, '🎩');
+      if (i === 1) p2SessionToken = auth.sessionToken;
       clients.push(c);
     }
 
@@ -501,7 +504,7 @@ describe('Stage 4.3: End-to-End Multi-Player Concurrency Verification & Load Tes
 
       // SIMULATE RECONNECTION: Player 2 reconnects on fresh socket
       const reconnectedP2 = await createClient(serverPort);
-      await authenticateClient(reconnectedP2, 'Recon_Player_2', '🎩');
+      await authenticateClient(reconnectedP2, 'Recon_Player_2', '🎩', p2SessionToken);
 
       // Player 2 receives restored GAME_SYNC with their identical hand!
       const restoredSync = await reconnectedP2.waitFor<Extract<ServerMessage, { type: 'GAME_SYNC' }>>(

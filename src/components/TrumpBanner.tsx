@@ -26,7 +26,7 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
 
   return (
     <div
-      className="flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-3 py-1 rounded-full bg-slate-950 border border-amber-400 shadow-md max-w-[46vw] sm:max-w-none"
+      className="flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-3 py-1 rounded-full bg-slate-950 border border-amber-400 shadow-md max-w-[38vw] xs:max-w-[40vw] sm:max-w-none"
       title={
         callerName
           ? `Trump: ${trumpSuit.toUpperCase()} — Called by ${callerName}${teamLabel ? ` (Team ${teamLabel})` : ''}`
