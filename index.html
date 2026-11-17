@@ -15,7 +15,7 @@
       (function() {
         try {
           var h = window.location.hostname.toLowerCase();
-          if (h === 'bower-jj.vercel.app') {
+          if (h.indexOf('vercel.app') !== -1 || h === 'www.bowerjj.com') {
             window.location.replace('https://bowerjj.com' + window.location.pathname + window.location.search + window.location.hash);
           }
         } catch (e) {}
