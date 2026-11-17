@@ -209,7 +209,7 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
     if (!currentRoom) return;
     const origin = typeof window !== 'undefined' && window.location.origin
       ? window.location.origin
-      : 'https://bower-jj.vercel.app';
+      : 'https://bowerjj.com';
     const link = `${origin}/?join=${currentRoom.code}`;
     navigator.clipboard.writeText(link);
     setCopiedLink(true);

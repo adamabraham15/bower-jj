@@ -242,7 +242,7 @@ class AuthService {
         return origin.replace(/\/$/, '');
       }
     }
-    return 'https://bower-jj.vercel.app';
+    return 'https://bowerjj.com';
   }
 
   /**

@@ -32,7 +32,7 @@ export function parseAuthRedirectUrl(href: string): ParsedAuthRedirect {
   if (!href) return { kind: 'none' };
 
   try {
-    const parsed = new URL(href, 'https://bower-jj.vercel.app');
+    const parsed = new URL(href, 'https://bowerjj.com');
     const searchParams = new URLSearchParams(parsed.search);
     const rawHash = parsed.hash.replace(/^#\/?/, '');
     const hashQuery = rawHash.includes('?') ? rawHash.substring(rawHash.indexOf('?') + 1) : rawHash;
