@@ -34,9 +34,13 @@ import { AvatarPortrait } from './AvatarPortrait';
 import { AudioControlsPopover } from './AudioControlsPopover';
 import { CardView } from './CardView';
 import { CARD_COLLECTIONS, PACK_ARTWORK_URL, RARITY_META } from '../config/collectiblesCatalog';
+import { SanitizedGameState } from '../../server/types';
 
 interface MainMenuProps {
   profile: PlayerProfileData;
+  activeRankedMatch?: SanitizedGameState | null;
+  onRejoinMatch?: () => void;
+  onForfeitActiveMatch?: () => void;
   onStartAIMatch: (difficulty: AIDifficulty, rules: EuchreHouseRules) => void;
   onOpenMatchmaking: (type: QueueType) => void;
   onOpenTutorial: () => void;
@@ -62,6 +66,9 @@ type QuickModeId = 'ranked_solo' | 'unranked' | 'rivalry' | 'private' | 'ai_bots
 
 export const MainMenu: React.FC<MainMenuProps> = ({
   profile,
+  activeRankedMatch,
+  onRejoinMatch,
+  onForfeitActiveMatch,
   onStartAIMatch,
   onOpenMatchmaking,
   onOpenTutorial,
@@ -484,6 +491,78 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Active Ranked Match Banner (Allows instant rejoining of an in-progress match) */}
+          {activeRankedMatch && activeRankedMatch.phase !== 'game_over' && (() => {
+            const myTeam = activeRankedMatch.yourPosition % 2;
+            const oppTeam = (activeRankedMatch.yourPosition + 1) % 2;
+            const myScore = activeRankedMatch.scores[myTeam] || 0;
+            const oppScore = activeRankedMatch.scores[oppTeam] || 0;
+            const targetScore = activeRankedMatch.rules?.targetScore ?? 10;
+            const modeLabel =
+              activeRankedMatch.queueMode === 'rivals'
+                ? 'Ranked Rivals'
+                : activeRankedMatch.queueMode === 'casual'
+                ? 'Casual 2v2'
+                : activeRankedMatch.queueMode === 'custom'
+                ? `Custom Room (${activeRankedMatch.roomCode || 'Lobby'})`
+                : 'Ranked 2v2';
+
+            return (
+              <div className="w-full my-2 rounded-2xl bg-gradient-to-r from-amber-950/80 via-[#131f33] to-emerald-950/80 border-2 border-amber-400/80 p-3 sm:p-4 shadow-[0_0_25px_rgba(245,158,11,0.25)] relative overflow-hidden">
+                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-400 via-emerald-400 to-amber-500 animate-pulse" />
+                
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center flex-shrink-0 text-amber-300 relative shadow-inner">
+                      <Zap className="w-5 h-5 fill-amber-400 text-amber-400 animate-bounce" />
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full animate-ping" />
+                    </div>
+                    <div className="min-w-0 text-left">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/25 border border-emerald-400/50 text-[10px] font-black text-emerald-300 uppercase tracking-wider">
+                          Match In Progress
+                        </span>
+                        <span className="text-xs font-bold text-amber-300">{modeLabel}</span>
+                      </div>
+                      <div className="text-sm font-black text-white mt-0.5">
+                        Your Team: <span className="text-emerald-400">{myScore}</span> — Opponents: <span className="text-rose-400">{oppScore}</span>
+                        <span className="text-slate-400 text-xs font-medium ml-1.5">/ {targetScore} pts</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-shrink-0">
+                    {onForfeitActiveMatch && (
+                      <button
+                        onClick={() => {
+                          sounds.playUiClick();
+                          if (window.confirm('Are you sure you want to forfeit and abandon this match?')) {
+                            onForfeitActiveMatch();
+                          }
+                        }}
+                        className="px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-rose-950/60 border border-slate-700 hover:border-rose-500/50 text-xs font-bold text-slate-300 hover:text-rose-300 transition-all cursor-pointer"
+                      >
+                        Forfeit
+                      </button>
+                    )}
+                    {onRejoinMatch && (
+                      <button
+                        onClick={() => {
+                          sounds.playUiClick();
+                          onRejoinMatch();
+                        }}
+                        className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 hover:brightness-110 active:scale-95 text-white font-black text-xs sm:text-sm tracking-wide shadow-lg shadow-emerald-500/30 border-t border-emerald-300/40 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <span>REJOIN MATCH</span>
+                        <span className="text-base font-black">➔</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* =================================================================
               UNIFIED GAME MODE SELECTOR + GIANT 3D "START GAME" CTA

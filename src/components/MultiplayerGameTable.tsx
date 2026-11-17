@@ -40,6 +40,8 @@ import {
   Shield,
   Wifi,
   WifiOff,
+  Zap,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface MultiplayerGameTableProps {
@@ -59,7 +61,7 @@ interface MultiplayerGameTableProps {
   isMuted: boolean;
   onToggleMute: () => void;
   onPlayAgain?: () => void;
-  onExitGame: () => void;
+  onExitGame: (forfeit?: boolean) => void;
 }
 
 export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
@@ -79,6 +81,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
   const [inspectedPlayer, setInspectedPlayer] = useState<PublicPlayerData | null>(null);
   const [mutedUsernames, setMutedUsernames] = useState<Set<string>>(new Set());
   const [autoDealCountdown, setAutoDealCountdown] = useState<number>(6);
+  const [showExitConfirmModal, setShowExitConfirmModal] = useState<boolean>(false);
 
   useEffect(() => {
     const unsubscribe = multiplayerClient.setCallbacks({
@@ -347,7 +350,11 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
           <button
             onClick={() => {
               sounds.playUiClick();
-              onExitGame();
+              if (serverState.phase === 'game_over') {
+                onExitGame(false);
+              } else {
+                setShowExitConfirmModal(true);
+              }
             }}
             className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-gray-300"
           >
@@ -735,10 +742,10 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 onPlayAgain();
               } else {
                 multiplayerClient.leaveQueue();
-                onExitGame();
+                onExitGame(false);
               }
             }}
-            onExit={onExitGame}
+            onExit={() => onExitGame(false)}
           />
         )}
       </main>
@@ -833,6 +840,65 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
           });
         }}
       />
+
+      {/* Exit Confirmation Modal (Guards against accidental forfeits) */}
+      {showExitConfirmModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-gradient-to-b from-[#162032] to-[#0c1322] border-2 border-amber-500/40 rounded-3xl p-5 sm:p-6 shadow-[0_15px_50px_rgba(0,0,0,0.8)] text-center relative overflow-hidden">
+            {/* Top gold glow bar */}
+            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600" />
+            
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300 mb-3 shadow-inner">
+              <Zap className="w-6 h-6 fill-amber-400 text-amber-400" />
+            </div>
+
+            <h3 className="text-lg font-black text-white tracking-tight">
+              Ranked Match In Progress
+            </h3>
+            
+            <p className="mt-2 text-xs text-slate-300 leading-relaxed">
+              Leaving will minimize your game. You can return to the main menu without forfeiting and <span className="text-amber-300 font-bold">rejoin at any time</span>!
+            </p>
+
+            <div className="mt-5 space-y-2">
+              {/* Primary Resume Button */}
+              <button
+                onClick={() => {
+                  sounds.playUiClick();
+                  setShowExitConfirmModal(false);
+                }}
+                className="w-full py-3 rounded-xl bg-gradient-to-b from-emerald-400 to-emerald-600 hover:brightness-105 active:scale-95 text-white font-black text-sm tracking-wide shadow-lg shadow-emerald-500/25 border-t border-emerald-300/40 transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>Stay in Game (Resume)</span>
+              </button>
+
+              {/* Keep Match Active & Go to Menu */}
+              <button
+                onClick={() => {
+                  sounds.playUiClick();
+                  setShowExitConfirmModal(false);
+                  onExitGame(false);
+                }}
+                className="w-full py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 border border-slate-600 hover:border-amber-400/60 text-amber-300 font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <span>Return to Menu (Keep Match Active)</span>
+              </button>
+
+              {/* Destructive Forfeit */}
+              <button
+                onClick={() => {
+                  sounds.playUiClick();
+                  setShowExitConfirmModal(false);
+                  onExitGame(true);
+                }}
+                className="w-full py-2 text-[11px] font-semibold text-rose-400 hover:text-rose-300 transition-colors cursor-pointer"
+              >
+                Forfeit & Abandon Match
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

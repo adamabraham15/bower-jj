@@ -131,6 +131,14 @@ export const GameTable: React.FC<GameTableProps> = ({
   const [inspectedPlayer, setInspectedPlayer] = useState<PublicPlayerData | null>(null);
   const [matchReported, setMatchReported] = useState(false);
 
+  // Synchronize internal state whenever a brand new game instance is initialized
+  useEffect(() => {
+    setState(initialState);
+    setAloneToggle(false);
+    setIsProcessingAI(false);
+    setMatchReported(false);
+  }, [initialState]);
+
   // Ensure "Go Alone!" checkbox resets between hands or outside bidding phases
   useEffect(() => {
     if (state.phase !== 'bidding_round_1' && state.phase !== 'bidding_round_2') {

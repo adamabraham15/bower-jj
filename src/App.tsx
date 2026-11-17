@@ -200,6 +200,11 @@ export const App: React.FC = () => {
   });
 
   const [currentView, setCurrentView] = useState<'menu' | 'ai_game' | 'multiplayer_game'>('menu');
+  const currentViewRef = useRef(currentView);
+  useEffect(() => {
+    currentViewRef.current = currentView;
+  }, [currentView]);
+
   const [activeGameState, setActiveGameState] = useState<EuchreGameState | null>(null);
   const [multiplayerState, setMultiplayerState] = useState<SanitizedGameState | null>(null);
 
@@ -241,15 +246,24 @@ export const App: React.FC = () => {
     });
   }, [profile.playerId, profile.username, profile.rankTier]);
 
+  // Dynamic presence tracking across all game modes, queues, and views
   useEffect(() => {
+    if (isTrackerView) {
+      presenceTracker.updateState({ activity: 'Viewing Live Tracker' });
+      return;
+    }
     if (currentView === 'menu') {
-      presenceTracker.updateState({ activity: 'Main Menu' });
+      if (multiplayerState && multiplayerState.phase !== 'game_over') {
+        presenceTracker.updateState({ activity: 'Main Menu (Match in Progress)' });
+      } else {
+        presenceTracker.updateState({ activity: 'Main Menu' });
+      }
     } else if (currentView === 'ai_game') {
       presenceTracker.updateState({ activity: 'Playing vs Bots' });
     } else if (currentView === 'multiplayer_game') {
       presenceTracker.updateState({ activity: 'In 2v2 Ranked Match' });
     }
-  }, [currentView]);
+  }, [currentView, isTrackerView, multiplayerState]);
 
   // Modals
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
@@ -695,9 +709,18 @@ export const App: React.FC = () => {
       onGameSync: (serverGameState) => {
         if (serverGameState.phase !== 'game_over') {
           setLastMatchRankUpdate(null);
+        } else {
+          try {
+            sessionStorage.removeItem('bower_match_minimized');
+          } catch {}
         }
         setMultiplayerState(serverGameState);
-        setCurrentView('multiplayer_game');
+
+        // Keep player on menu if they explicitly minimized, otherwise bring them to game table
+        const wasMinimized = typeof window !== 'undefined' && sessionStorage.getItem('bower_match_minimized') === 'true';
+        if (!wasMinimized || currentViewRef.current === 'multiplayer_game') {
+          setCurrentView('multiplayer_game');
+        }
         setIsLobbyOpen(false);
         setMatchmakingQueue(null);
 
@@ -939,6 +962,7 @@ export const App: React.FC = () => {
 
   // Launch Local AI Match
   const handleStartAIMatch = (difficulty: AIDifficulty, rules: EuchreHouseRules) => {
+    setActiveGameState(null);
     const botAvatars = BOT_AVATAR_BY_DIFFICULTY[difficulty];
     const botCardBack = BOT_CARD_BACK_BY_DIFFICULTY[difficulty];
     const [botNameWest, botNamePartner, botNameEast] = pickRandomBotNames(3, [profile.username]);
@@ -984,6 +1008,7 @@ export const App: React.FC = () => {
     const initialGame = initializeGame(players, rules, pickRandomDealer());
     setActiveGameState(initialGame);
     setCurrentView('ai_game');
+    presenceTracker.updateState({ activity: 'Playing vs Bots' });
   };
 
   // Handle AI Match Completion (Offline stats & progression)
@@ -1181,7 +1206,17 @@ export const App: React.FC = () => {
 
   // Dedicated Live Site Traffic & Online User Tracker
   if (isTrackerView) {
-    return <LiveSiteTracker />;
+    return (
+      <LiveSiteTracker
+        onBackToGame={() => {
+          setIsTrackerView(false);
+          try {
+            window.history.pushState({}, '', '/');
+          } catch {}
+          presenceTracker.updateState({ activity: 'Main Menu' });
+        }}
+      />
+    );
   }
 
   return (
@@ -1249,6 +1284,7 @@ export const App: React.FC = () => {
       {/* Main Views */}
       {currentView === 'ai_game' && activeGameState ? (
         <GameTable
+          key={`ai_game_${activeGameState.dealer}_${activeGameState.players.map((p) => p.name).join('_')}`}
           initialState={activeGameState}
           profile={profile}
           onOpenRules={() => setIsRulesOpen(true)}
@@ -1259,7 +1295,9 @@ export const App: React.FC = () => {
           onToggleMute={handleToggleMute}
           onExitGame={() => {
             if (authUser?.id) syncAuthoritativeProfile(authUser.id);
+            setActiveGameState(null);
             setCurrentView('menu');
+            presenceTracker.updateState({ activity: 'Main Menu' });
           }}
           onMatchComplete={handleAIMatchComplete}
         />
@@ -1300,19 +1338,52 @@ export const App: React.FC = () => {
               syncAuthoritativeProfile(authUser.id);
             }
           }}
-          onExitGame={() => {
-            multiplayerClient.leaveRoom();
-            multiplayerClient.leaveQueue();
-            setMultiplayerState(null);
-            setCurrentView('menu');
-            if (authUser?.id) {
-              syncAuthoritativeProfile(authUser.id);
+          onExitGame={(forfeit = false) => {
+            if (forfeit) {
+              try {
+                sessionStorage.removeItem('bower_match_minimized');
+              } catch {}
+              multiplayerClient.leaveRoom();
+              multiplayerClient.leaveQueue();
+              setMultiplayerState(null);
+              setCurrentView('menu');
+              presenceTracker.updateState({ activity: 'Main Menu' });
+              if (authUser?.id) {
+                syncAuthoritativeProfile(authUser.id);
+              }
+            } else {
+              try {
+                sessionStorage.setItem('bower_match_minimized', 'true');
+              } catch {}
+              setCurrentView('menu');
+              presenceTracker.updateState({ activity: 'Main Menu (Match in Progress)' });
             }
           }}
         />
       ) : (
         <MainMenu
           profile={profile}
+          activeRankedMatch={multiplayerState}
+          onRejoinMatch={() => {
+            try {
+              sessionStorage.removeItem('bower_match_minimized');
+            } catch {}
+            setCurrentView('multiplayer_game');
+            presenceTracker.updateState({ activity: 'In 2v2 Ranked Match' });
+          }}
+          onForfeitActiveMatch={() => {
+            try {
+              sessionStorage.removeItem('bower_match_minimized');
+            } catch {}
+            multiplayerClient.leaveRoom();
+            multiplayerClient.leaveQueue();
+            setMultiplayerState(null);
+            setCurrentView('menu');
+            presenceTracker.updateState({ activity: 'Main Menu' });
+            if (authUser?.id) {
+              syncAuthoritativeProfile(authUser.id);
+            }
+          }}
           onStartAIMatch={handleStartAIMatch}
           onOpenMatchmaking={handleOpenMatchmaking}
           onOpenTutorial={() => {

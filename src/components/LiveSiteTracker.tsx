@@ -157,6 +157,10 @@ export const LiveSiteTracker: React.FC<LiveSiteTrackerProps> = ({ onBackToGame }
   }, []);
 
   useEffect(() => {
+    presenceTracker.updateState({ activity: 'Viewing Live Tracker' });
+  }, []);
+
+  useEffect(() => {
     if (!isAuthorized) return;
     fetchMetrics();
 
@@ -192,13 +196,16 @@ export const LiveSiteTracker: React.FC<LiveSiteTrackerProps> = ({ onBackToGame }
     };
   }, [fetchMetrics, isAuthorized]);
 
-  // Merge Realtime WebSocket presence + active DB heartbeat rows
+  // Merge Realtime WebSocket presence + active DB heartbeat rows (favoring the newest timestamp)
   const mergedSessionsMap = new Map<string, LivePresenceRecord>();
   dbPresence.forEach((row) => {
     mergedSessionsMap.set(row.session_id, row);
   });
   Object.values(realtimeMap).forEach((rtRow) => {
-    mergedSessionsMap.set(rtRow.session_id, rtRow);
+    const existing = mergedSessionsMap.get(rtRow.session_id);
+    if (!existing || new Date(rtRow.last_seen_at).getTime() >= new Date(existing.last_seen_at).getTime()) {
+      mergedSessionsMap.set(rtRow.session_id, rtRow);
+    }
   });
 
   const activeSessions = Array.from(mergedSessionsMap.values()).sort(
