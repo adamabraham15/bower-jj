@@ -42,7 +42,7 @@ interface MainMenuProps {
   onRejoinMatch?: () => void;
   onForfeitActiveMatch?: () => void;
   onStartAIMatch: (difficulty: AIDifficulty, rules: EuchreHouseRules) => void;
-  onOpenMatchmaking: (type: QueueType) => void;
+  onOpenMatchmaking: (type: QueueType, autoFillBots?: boolean) => void;
   onOpenTutorial: () => void;
   onOpenRules: () => void;
   onOpenProfile: () => void;
@@ -95,9 +95,6 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   const [quickMode, setQuickMode] = useState<QuickModeId>('ranked_solo');
   const [isQuickSelectorOpen, setIsQuickSelectorOpen] = useState<boolean>(false);
 
-  // Inline expanded drawer for Play Bots customization
-  const [isBotsDrawerOpen, setIsBotsDrawerOpen] = useState<boolean>(false);
-
   // Quick Learn Dialog (Tutorial vs Rules)
   const [isLearnDialogOpen, setIsLearnDialogOpen] = useState<boolean>(false);
 
@@ -138,16 +135,13 @@ export const MainMenu: React.FC<MainMenuProps> = ({
     if (quickMode === 'ranked_solo') {
       onOpenMatchmaking('ranked_solo');
     } else if (quickMode === 'ai_bots') {
-      sounds.playVictoryFanfare();
-      onStartAIMatch(selectedDifficulty, {
-        ...DEFAULT_RULES,
-        targetScore,
-        stickTheDealer,
-      });
+      // Directly open the game room lobby filled with bots
+      onOpenMatchmaking('private', true);
     } else if (quickMode === 'unranked') {
       onOpenMatchmaking('unranked');
     } else if (quickMode === 'private') {
-      onOpenMatchmaking('private');
+      // Directly open the game room lobby for playing with friends
+      onOpenMatchmaking('private', false);
     }
   };
 
@@ -167,15 +161,15 @@ export const MainMenu: React.FC<MainMenuProps> = ({
         };
       case 'private':
         return {
-          icon: <Users className="w-5 h-5 text-amber-300 flex-shrink-0" />,
-          title: 'Private Lobby',
-          sub: 'Custom Room Code',
+          icon: <Users className="w-5 h-5 text-sky-400 flex-shrink-0" />,
+          title: 'Play a Friend',
+          sub: 'Custom Room Lobby • Invite Friends',
         };
       case 'ai_bots':
         return {
           icon: <Bot className="w-5 h-5 text-emerald-400 flex-shrink-0" />,
-          title: `Play Bots (${selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)})`,
-          sub: `${targetScore} pts • Instant Offline AI`,
+          title: 'Play Bots',
+          sub: 'Practice Room Lobby • Filled with Bots',
         };
     }
   };
@@ -211,7 +205,6 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             <button
               onClick={() => {
                 sounds.playUiClick();
-                setIsBotsDrawerOpen(false);
                 setIsQuickSelectorOpen(false);
               }}
               className="w-full px-4 py-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-black text-sm flex items-center gap-3.5 shadow-sm cursor-pointer transition-all"
@@ -597,7 +590,6 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 onClick={() => {
                   sounds.playUiClick();
                   setQuickMode('ranked_solo');
-                  setIsBotsDrawerOpen(false);
                 }}
                 className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden group ${
                   quickMode === 'ranked_solo'
@@ -629,7 +621,6 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 onClick={() => {
                   sounds.playUiClick();
                   setQuickMode('unranked');
-                  setIsBotsDrawerOpen(false);
                 }}
                 className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden group ${
                   quickMode === 'unranked'
@@ -661,7 +652,6 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 onClick={() => {
                   sounds.playUiClick();
                   setQuickMode('private');
-                  setIsBotsDrawerOpen(false);
                 }}
                 className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden group ${
                   quickMode === 'private'
@@ -677,23 +667,22 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                     <span className="w-2.5 h-2.5 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8] animate-ping" />
                   ) : (
                     <span className="text-[10px] font-bold text-sky-400/80 bg-sky-950/60 px-1.5 py-0.5 rounded-md border border-sky-500/30">
-                      Code
+                      Lobby
                     </span>
                   )}
                 </div>
                 <div>
                   <div className="text-xs sm:text-sm font-black text-white leading-tight">Play a Friend</div>
-                  <div className="text-[10px] text-sky-300/90 font-bold mt-0.5 truncate">Private Room Code</div>
+                  <div className="text-[10px] text-sky-300/90 font-bold mt-0.5 truncate">Custom Room Lobby</div>
                 </div>
               </button>
 
-              {/* Card 4: Play Bots (Always 100% visible and interactive!) */}
+              {/* Card 4: Play Bots */}
               <button
                 type="button"
                 onClick={() => {
                   sounds.playUiClick();
                   setQuickMode('ai_bots');
-                  setIsBotsDrawerOpen(true);
                 }}
                 className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden group ${
                   quickMode === 'ai_bots'
@@ -709,104 +698,18 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981] animate-ping" />
                   ) : (
                     <span className="text-[10px] font-bold text-emerald-400/80 bg-emerald-950/60 px-1.5 py-0.5 rounded-md border border-emerald-500/30">
-                      AI
+                      Bots
                     </span>
                   )}
                 </div>
                 <div>
                   <div className="text-xs sm:text-sm font-black text-white leading-tight">Play Bots</div>
                   <div className="text-[10px] text-emerald-300/90 font-bold mt-0.5 truncate">
-                    Instant offline AI practice • {selectedDifficulty.toUpperCase()}
+                    Practice Lobby • Instant offline AI practice
                   </div>
                 </div>
               </button>
             </div>
-
-            {/* Dynamic Configuration Panel for the Selected Game Mode */}
-            {quickMode === 'ai_bots' && (
-              <div className="p-3 sm:p-3.5 rounded-2xl bg-[#0f1726] border border-emerald-500/40 space-y-2.5 animate-in fade-in duration-150">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center justify-between sm:justify-start gap-2">
-                    <span className="text-[11px] font-black text-emerald-400 uppercase tracking-wide">
-                      Bot Difficulty:
-                    </span>
-                    <div className="flex gap-1.5">
-                      {(['easy', 'medium', 'hard'] as AIDifficulty[]).map((d) => (
-                        <button
-                          key={d}
-                          type="button"
-                          onClick={() => {
-                            sounds.playUiClick();
-                            setSelectedDifficulty(d);
-                          }}
-                          className={`px-3 py-1 rounded-xl text-xs font-black capitalize transition-all cursor-pointer ${
-                            selectedDifficulty === d
-                              ? 'bg-emerald-500 text-slate-950 shadow-md scale-105'
-                              : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                          }`}
-                        >
-                          {d}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between sm:justify-end gap-2">
-                    <span className="text-[11px] font-black text-emerald-400 uppercase tracking-wide">
-                      Target:
-                    </span>
-                    <div className="flex gap-1.5">
-                      {[5, 7, 10].map((pts) => (
-                        <button
-                          key={pts}
-                          type="button"
-                          onClick={() => {
-                            sounds.playUiClick();
-                            setTargetScore(pts);
-                          }}
-                          className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                            targetScore === pts
-                              ? 'bg-amber-400 text-slate-950 shadow-md scale-105'
-                              : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                          }`}
-                        >
-                          {pts} pts
-                        </button>
-                      ))}
-                    </div>
-
-                    <label className="flex items-center gap-1 text-xs text-slate-300 font-bold cursor-pointer ml-1 select-none">
-                      <input
-                        type="checkbox"
-                        checked={stickTheDealer}
-                        onChange={(e) => setStickTheDealer(e.target.checked)}
-                        className="rounded text-emerald-500 focus:ring-0 accent-emerald-500"
-                      />
-                      <span>Stick</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {quickMode === 'private' && (
-              <div className="p-3 sm:p-3.5 rounded-2xl bg-[#0f1726] border border-sky-500/40 flex items-center justify-between gap-2 animate-in fade-in duration-150">
-                <div className="text-left">
-                  <div className="text-xs font-black text-sky-300">Private Room Match</div>
-                  <div className="text-[11px] text-slate-400">Host a room with a custom code or join a friend's room</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    sounds.playUiClick();
-                    onOpenMatchmaking('private');
-                  }}
-                  className="px-3.5 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs transition-colors cursor-pointer"
-                >
-                  Enter Room
-                </button>
-              </div>
-            )}
 
             {/* Giant 3D Green "Start Game" CTA Button */}
             <button
@@ -819,11 +722,11 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 <span>Start Game</span>
                 <span className="text-xs sm:text-sm font-semibold opacity-90">
                   • {quickMode === 'ai_bots'
-                    ? `Bots (${selectedDifficulty.toUpperCase()})`
+                    ? 'Play Bots'
                     : quickMode === 'ranked_solo'
                     ? 'Ranked Solo'
                     : quickMode === 'private'
-                    ? 'Private Room'
+                    ? 'Play a Friend'
                     : 'Casual 2v2'}
                 </span>
               </span>
@@ -997,7 +900,6 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             onClick={() => {
               sounds.playUiClick();
               setIsQuickSelectorOpen(false);
-              setIsBotsDrawerOpen(false);
             }}
             className="relative py-2.5 flex flex-col items-center justify-center text-emerald-400 cursor-pointer"
           >

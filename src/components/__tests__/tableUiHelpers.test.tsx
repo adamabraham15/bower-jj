@@ -20,6 +20,7 @@ import { RoomManager } from '../../../server/roomManager';
 import { GameTable } from '../GameTable';
 import { MultiplayerGameTable } from '../MultiplayerGameTable';
 import { MainMenu } from '../MainMenu';
+import { GameLobbyModal } from '../GameLobbyModal';
 import { initializeGame } from '../../engine/game';
 import { DEFAULT_RULES, Player } from '../../engine/types';
 import { SanitizedGameState } from '../../../server/types';
@@ -444,8 +445,34 @@ describe('Table UI & Tutorial Helpers', () => {
 
     expect(htmlMenu).toContain('Select Game Mode');
     expect(htmlMenu).toContain('Start Game');
+    expect(htmlMenu).toContain('Play a Friend');
     expect(htmlMenu).toContain('Play Bots');
+    expect(htmlMenu).toContain('Custom Room Lobby');
     expect(htmlMenu).toContain('Instant offline AI practice');
+    expect(htmlMenu).not.toContain('Private Room Match');
+    expect(htmlMenu).not.toContain('Bot Difficulty:');
+    expect(htmlMenu).not.toContain('Enter Room');
     expect(htmlMenu).not.toContain('absolute top-full left-0 right-0 z-40 mt-1.5');
+  });
+
+  it('renders GameLobbyModal consolidated without room code function for single screen fit', () => {
+    const htmlLobby = renderToStaticMarkup(
+      React.createElement(GameLobbyModal, {
+        isOpen: true,
+        onClose: () => {},
+        userRank: 'BOWER_JJ',
+        userPoints: 1200,
+        initialMode: 'custom',
+        autoFillBots: true,
+        onMatchFound: () => {},
+      })
+    );
+
+    // Header and structure are present
+    expect(htmlLobby).toContain('Game Room Lobby');
+    // Room code display and copy functions are completely removed
+    expect(htmlLobby).not.toContain('title="Copy Room Code"');
+    expect(htmlLobby).not.toContain('Copy Link');
+    expect(htmlLobby).not.toContain('Room:');
   });
 });

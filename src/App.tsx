@@ -303,6 +303,7 @@ export const App: React.FC = () => {
   const [matchmakingQueue, setMatchmakingQueue] = useState<QueueType | null>(null);
   const [isLobbyOpen, setIsLobbyOpen] = useState(false);
   const [lobbyInitialMode, setLobbyInitialMode] = useState<LobbyGameMode>('custom');
+  const [lobbyAutoFillBots, setLobbyAutoFillBots] = useState<boolean>(false);
   const [isEmoteWheelOpen, setIsEmoteWheelOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(() => sounds.getMuted());
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -922,9 +923,10 @@ export const App: React.FC = () => {
     setIsAuthOpen(false);
   };
 
-  const handleOpenMatchmaking = (queue: QueueType) => {
+  const handleOpenMatchmaking = (queue: QueueType, autoFillBots = false) => {
     if (queue === 'private') {
       setLobbyInitialMode('custom');
+      setLobbyAutoFillBots(Boolean(autoFillBots));
       setIsLobbyOpen(true);
       return;
     }
@@ -1616,13 +1618,19 @@ export const App: React.FC = () => {
 
       <GameLobbyModal
         isOpen={isLobbyOpen}
-        onClose={() => setIsLobbyOpen(false)}
+        onClose={() => {
+          setIsLobbyOpen(false);
+          setLobbyAutoFillBots(false);
+        }}
         friends={friendsList}
         userRank={profile.rankTier}
         userPoints={profile.rankPoints}
         initialMode={lobbyInitialMode}
+        autoFillBots={lobbyAutoFillBots}
+        onStartAIMatch={handleStartAIMatch}
         onMatchFound={() => {
           setIsLobbyOpen(false);
+          setLobbyAutoFillBots(false);
         }}
       />
 

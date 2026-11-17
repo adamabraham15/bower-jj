@@ -1,36 +1,31 @@
 /**
  * BOWER JJ — Unified Authoritative Game Lobby
  * A single, seamless lobby where players join, select or swap seats (Blue or Red),
- * configure house rules, toggle game modes (Rivalry vs Custom Match), invite friends,
- * and launch matches.
+ * configure house rules, invite friends by username or online status,
+ * fill with bots, and launch matches — consolidated to fit onto one screen.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
-  Swords,
   Users,
-  Copy,
-  Check,
-  Link,
   Bot,
   Sliders,
   UserPlus,
   Trash2,
   Clock,
   ArrowLeftRight,
-  Shield,
   Send,
   Sparkles,
+  Check,
 } from 'lucide-react';
 import { Room, FriendSummary, PlayerSlot } from '../../server/types';
-import { RankBadge, RankTier } from './RankBadge';
-import { AIDifficulty, PlayerPosition } from '../engine/types';
+import { RankTier } from './RankBadge';
+import { AIDifficulty, PlayerPosition, DEFAULT_RULES, EuchreHouseRules } from '../engine/types';
 import { multiplayerClient } from '../services/multiplayerClient';
 import { sounds } from '../audio/sound';
 import { AvatarPortrait } from './AvatarPortrait';
 import { AudioControlsPopover } from './AudioControlsPopover';
-import { getCardBackDefinition } from '../config/collectiblesCatalog';
 
 export type LobbyGameMode = 'rivals' | 'custom';
 
@@ -41,6 +36,8 @@ interface GameLobbyModalProps {
   userRank: RankTier;
   userPoints: number;
   initialMode?: LobbyGameMode;
+  autoFillBots?: boolean;
+  onStartAIMatch?: (difficulty: AIDifficulty, rules: EuchreHouseRules) => void;
   onMatchFound: () => void;
 }
 
@@ -48,22 +45,20 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
   isOpen,
   onClose,
   friends = [],
-  userRank,
-  userPoints,
   initialMode = 'custom',
+  autoFillBots = false,
+  onStartAIMatch,
   onMatchFound,
 }) => {
   const [currentRoom, setCurrentRoom] = useState<Room | null>(multiplayerClient.getCurrentRoom());
-  const [copiedCode, setCopiedCode] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
   const [localPendingInvites, setLocalPendingInvites] = useState<Record<string, number>>({});
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
   const [usernameInput, setUsernameInput] = useState('');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [aiFillDifficulty, setAiFillDifficulty] = useState<AIDifficulty>('medium');
-  const [isFriendsOpen, setIsFriendsOpen] = useState(false);
   const onMatchFoundRef = useRef(onMatchFound);
   onMatchFoundRef.current = onMatchFound;
+  const autoFilledRef = useRef(false);
 
   // Live 1-second ticker so invite expiration countdowns update & auto-clear without manual refresh
   useEffect(() => {
@@ -93,6 +88,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
       setCurrentRoom(null);
       setStatusMessage(null);
       setLocalPendingInvites({});
+      autoFilledRef.current = false;
       return;
     }
 
@@ -103,12 +99,16 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
       multiplayerClient.fetchFriends();
     }, 8000);
 
-    // Check if an active lobby room already exists (e.g. joined via code, invite, or link)
+    // Check if an active lobby room already exists
     const activeRoom = multiplayerClient.getCurrentRoom();
     if (activeRoom && activeRoom.status === 'lobby') {
       setCurrentRoom(activeRoom);
       if (activeRoom.pendingInvites) {
         setLocalPendingInvites({ ...activeRoom.pendingInvites });
+      }
+      if (autoFillBots && !autoFilledRef.current && activeRoom.slots.filter(s => s !== null).length < 4) {
+        autoFilledRef.current = true;
+        multiplayerClient.fillWithAI(aiFillDifficulty);
       }
     } else {
       setCurrentRoom(null);
@@ -121,6 +121,12 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
     const unsubscribe = multiplayerClient.setCallbacks({
       onRoom: (room) => {
         setCurrentRoom(room);
+        // Auto-fill empty seats with bots when opened in bot mode
+        if (autoFillBots && !autoFilledRef.current && room.slots.filter(s => s !== null).length < 4) {
+          autoFilledRef.current = true;
+          multiplayerClient.fillWithAI(aiFillDifficulty);
+        }
+
         // Synchronize pending invite state with authoritative server room state & current seated players
         const seatedIds = new Set(
           room.slots.filter((s): s is PlayerSlot => Boolean(s && !s.isAI && s.userId)).map((s) => s.userId!)
@@ -171,7 +177,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
       window.removeEventListener('beforeunload', handleBeforeUnload);
       unsubscribe();
     };
-  }, [isOpen, initialMode]);
+  }, [isOpen, initialMode, autoFillBots, aiFillDifficulty]);
 
   if (!isOpen) return null;
 
@@ -196,27 +202,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
   const humanSlots = occupiedSlots.filter(s => !s?.isAI);
   const humanCount = humanSlots.length;
 
-  const blueSlot0 = currentRoom?.slots[0];
-  const redSlot1 = currentRoom?.slots[1];
-  const blueSlot2 = currentRoom?.slots[2];
-  const redSlot3 = currentRoom?.slots[3];
-
-  const hasHumanOnBlue = Boolean((blueSlot0 && !blueSlot0.isAI) || (blueSlot2 && !blueSlot2.isAI));
-  const hasHumanOnRed = Boolean((redSlot1 && !redSlot1.isAI) || (redSlot3 && !redSlot3.isAI));
-  const hasTwoOpposingHumans = hasHumanOnBlue && hasHumanOnRed;
-
   const currentMode: LobbyGameMode = (currentRoom?.queueMode === 'rivals') ? 'rivals' : 'custom';
-
-  const handleCopyLink = () => {
-    if (!currentRoom) return;
-    const origin = typeof window !== 'undefined' && window.location.origin
-      ? window.location.origin
-      : 'https://bower-jj.vercel.app';
-    const link = `${origin}/?join=${currentRoom.code}`;
-    navigator.clipboard.writeText(link);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
-  };
 
   const handleSwitchTeam = (targetTeam: 'blue' | 'red') => {
     sounds.playUiClick();
@@ -236,12 +222,6 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
   const handleSwitchSeat = (targetPos: PlayerPosition) => {
     sounds.playUiClick();
     multiplayerClient.switchSeat(targetPos);
-  };
-
-  const handleSelectMode = (mode: LobbyGameMode) => {
-    if (!isHost) return;
-    sounds.playUiClick();
-    multiplayerClient.updateRoomMode(mode);
   };
 
   const handleUpdateRule = (patch: any) => {
@@ -270,7 +250,18 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
 
   const handleStartMatch = () => {
     sounds.playVictoryFanfare();
-    multiplayerClient.startGame();
+    if (multiplayerClient.isConnected() && currentRoom) {
+      multiplayerClient.startGame();
+    } else if (onStartAIMatch) {
+      const fallbackRules: EuchreHouseRules = {
+        ...DEFAULT_RULES,
+        targetScore: currentRoom?.rules.targetScore || 10,
+        stickTheDealer: currentRoom?.rules.stickTheDealer !== false,
+        partnerOrderUpGoesAlone: currentRoom?.rules.partnerOrderUpGoesAlone !== false,
+      };
+      onStartAIMatch(aiFillDifficulty, fallbackRules);
+      onClose();
+    }
   };
 
   const handleClose = () => {
@@ -285,22 +276,22 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-3xl bg-[#0d1526] border-2 border-amber-500/70 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[96vh] sm:max-h-[92vh]">
+      <div className="relative w-full max-w-2xl lg:max-w-3xl bg-[#0d1526] border-2 border-amber-500/70 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[96vh] sm:max-h-[92vh]">
         {/* Header Bar */}
-        <div className="px-4 py-3 sm:px-5 sm:py-3.5 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-[#10192e] to-slate-950 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-amber-300 shadow-inner">
-              <Users className="w-5 h-5" />
+        <div className="px-3.5 py-2 sm:px-4 sm:py-2.5 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-[#10192e] to-slate-950 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-amber-300 shadow-inner">
+              <Users className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm sm:text-base font-black text-white uppercase tracking-wider flex items-center space-x-2 leading-none">
+              <h2 className="text-xs sm:text-sm font-black text-white uppercase tracking-wider flex items-center space-x-2 leading-none">
                 <span>Game Room Lobby</span>
                 <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">
                   ● Ready
                 </span>
               </h2>
-              <p className="text-[11px] text-gray-400 mt-0.5 leading-none">
-                4-Player Room • Choose seats &amp; invite friends
+              <p className="text-[10px] text-gray-400 mt-0.5 leading-none">
+                4-Player Room • Choose seats, bots &amp; invite friends
               </p>
             </div>
           </div>
@@ -309,7 +300,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
             <AudioControlsPopover compact />
             <button
               onClick={handleClose}
-              className="w-8 h-8 rounded-full bg-slate-800 text-gray-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors cursor-pointer"
+              className="w-7 h-7 rounded-full bg-slate-800 text-gray-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -318,50 +309,62 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
 
         {/* Content Body */}
         {!currentRoom ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4 my-auto min-h-[320px]">
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-3 my-auto min-h-[260px]">
             {statusMessage ? (
               <>
-                <div className="w-14 h-14 rounded-2xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
-                  <X className="w-7 h-7" />
+                <div className="w-12 h-12 rounded-2xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
+                  <X className="w-6 h-6" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-base font-black text-white">Unable to Join Room</h3>
+                  <h3 className="text-sm font-black text-white">Unable to Join Room</h3>
                   <p className="text-xs text-red-300 max-w-xs">{statusMessage}</p>
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button
                     onClick={handleClose}
-                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
+                    className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
                   >
                     Return to Menu
                   </button>
+                  {autoFillBots && onStartAIMatch && (
+                    <button
+                      onClick={() => {
+                        sounds.playVictoryFanfare();
+                        onStartAIMatch(aiFillDifficulty, DEFAULT_RULES);
+                        handleClose();
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-md"
+                    >
+                      Play Offline vs Bots
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       setStatusMessage(null);
                       multiplayerClient.createRoom(undefined, 'custom');
                     }}
-                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md"
+                    className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md"
                   >
-                    Create New Room
+                    Retry Online
                   </button>
                 </div>
               </>
             ) : (
               <>
-                <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-amber-300 animate-pulse">
-                  <Users className="w-7 h-7" />
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-amber-300 animate-pulse">
+                  <Users className="w-6 h-6" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-base font-black text-white">
-                    {multiplayerClient.getPendingJoinCode()
-                      ? `Joining Room ${multiplayerClient.getPendingJoinCode()}...`
-                      : 'Connecting to Game Lobby...'}
+                  <h3 className="text-sm font-black text-white">
+                    {autoFillBots ? 'Setting up Practice Room...' : 'Connecting to Game Lobby...'}
                   </h3>
-                  <p className="text-xs text-gray-400">Synchronizing seats and match rules with host...</p>
+                  <p className="text-xs text-gray-400">
+                    {autoFillBots ? 'Seating bots and preparing table...' : 'Synchronizing seats with lobby...'}
+                  </p>
                 </div>
                 <button
                   onClick={handleClose}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-gray-300 text-xs font-bold transition-colors"
+                  className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-gray-300 text-xs font-bold transition-colors"
                 >
                   Cancel
                 </button>
@@ -369,84 +372,27 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
             )}
           </div>
         ) : (
-          <div className="flex-1 p-3 sm:p-4 space-y-3 overflow-y-auto">
+          <div className="flex-1 p-2 sm:p-3 space-y-2 overflow-y-auto">
             {/* Status Toast */}
             {statusMessage && (
-              <div className="p-2 rounded-xl bg-amber-500/20 border border-amber-400/50 text-amber-200 text-xs font-bold text-center animate-in fade-in">
+              <div className="p-1.5 rounded-xl bg-amber-500/20 border border-amber-400/50 text-amber-200 text-xs font-bold text-center animate-in fade-in">
                 {statusMessage}
               </div>
             )}
 
-            {/* Room Code & Team Quick-Switch Bar */}
-            <div className="p-2.5 bg-slate-950/80 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-2.5">
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] font-bold text-gray-400 uppercase">Room:</span>
-                <span className="text-lg sm:text-xl font-black font-mono tracking-widest text-amber-400">
-                  {currentRoom.code}
-                </span>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(currentRoom.code);
-                    setCopiedCode(true);
-                    setTimeout(() => setCopiedCode(false), 2000);
-                  }}
-                  title="Copy Room Code"
-                  className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 transition-colors cursor-pointer"
-                >
-                  {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                </button>
-                <button
-                  onClick={handleCopyLink}
-                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
-                >
-                  {copiedLink ? <Check className="w-3 h-3 text-emerald-400" /> : <Link className="w-3 h-3" />}
-                  <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
-                </button>
-              </div>
-
-              {/* Quick Team Switch */}
-              <div className="flex items-center gap-1.5 ml-auto">
-                <span className="text-[10px] font-bold text-slate-400 mr-1">Your Team:</span>
-                <button
-                  onClick={() => handleSwitchTeam('blue')}
-                  disabled={myPosition === 0 || myPosition === 2}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
-                    myPosition === 0 || myPosition === 2
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
-                      : 'bg-slate-800 text-blue-300 hover:bg-blue-950/60 border border-blue-500/40'
-                  }`}
-                >
-                  <span>🔵 Blue</span>
-                  {(myPosition === 0 || myPosition === 2) && <Check className="w-3 h-3" />}
-                </button>
-                <button
-                  onClick={() => handleSwitchTeam('red')}
-                  disabled={myPosition === 1 || myPosition === 3}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
-                    myPosition === 1 || myPosition === 3
-                      ? 'bg-red-600 text-white shadow-md shadow-red-500/30'
-                      : 'bg-slate-800 text-red-300 hover:bg-red-950/60 border border-red-500/40'
-                  }`}
-                >
-                  <span>🔴 Red</span>
-                  {(myPosition === 1 || myPosition === 3) && <Check className="w-3 h-3" />}
-                </button>
-              </div>
-            </div>
-
             {/* =================================================================
                 HIGH-VISIBILITY: INVITE ONLINE FRIENDS DIRECT CARD
             ================================================================= */}
-            <div className="p-3 bg-gradient-to-r from-cyan-950/70 via-[#0e1c2e] to-cyan-950/70 rounded-2xl border-2 border-cyan-400/70 shadow-[0_0_24px_rgba(6,182,212,0.2)] space-y-2.5">
+            <div className="p-2 sm:p-2.5 bg-gradient-to-r from-cyan-950/70 via-[#0e1c2e] to-cyan-950/70 rounded-2xl border-2 border-cyan-400/70 shadow-[0_0_24px_rgba(6,182,212,0.15)] space-y-1.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981] animate-ping" />
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981] animate-ping" />
                   <span className="text-xs font-black uppercase tracking-wider text-cyan-200 flex items-center gap-1.5">
-                    <UserPlus className="w-4 h-4 text-cyan-400" />
+                    <UserPlus className="w-3.5 h-3.5 text-cyan-400" />
                     <span>Invite Online Friends</span>
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-[10px]">
+                <div className="flex items-center gap-1.5 text-[10px]">
                   <span className="font-bold text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-500/40">
                     {onlineFriends.length} Online
                   </span>
@@ -458,7 +404,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
 
               {/* Online Friends Quick-Invite List */}
               {onlineFriends.length > 0 ? (
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-thin">
                   {onlineFriends.map((fr) => {
                     const isSeatedInLobby = Boolean(
                       currentRoom?.slots.some(
@@ -479,19 +425,19 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                     return (
                       <div
                         key={fr.userId}
-                        className="flex-shrink-0 p-1.5 px-2.5 rounded-xl bg-slate-900/90 border border-cyan-500/30 flex items-center gap-2 shadow"
+                        className="flex-shrink-0 p-1 px-2 rounded-xl bg-slate-900/90 border border-cyan-500/30 flex items-center gap-1.5 shadow"
                       >
                         <AvatarPortrait avatarId={fr.avatarIcon} size="xs" />
                         <div className="text-left">
-                          <span className="text-xs font-black text-white block truncate max-w-[90px]">
+                          <span className="text-[11px] font-black text-white block truncate max-w-[85px]">
                             {fr.username}
                           </span>
                           {isPendingInvite ? (
-                            <span className="text-[9px] text-amber-300 font-bold block leading-none">
+                            <span className="text-[8px] text-amber-300 font-bold block leading-none">
                               Sent ({remainingSec}s)
                             </span>
                           ) : (
-                            <span className="text-[9px] text-emerald-400 font-bold block leading-none">
+                            <span className="text-[8px] text-emerald-400 font-bold block leading-none">
                               Online
                             </span>
                           )}
@@ -500,7 +446,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                         <button
                           onClick={() => handleInviteFriend(fr)}
                           disabled={isDisabled}
-                          className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                          className={`px-2 py-0.5 rounded-lg text-[9px] font-black transition-all cursor-pointer ${
                             isSeatedInLobby
                               ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 cursor-default'
                               : isPendingInvite
@@ -517,27 +463,27 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                   })}
                 </div>
               ) : (
-                <div className="text-[11px] text-slate-300/80 bg-slate-900/60 p-2 rounded-xl border border-slate-800 flex items-center justify-between">
-                  <span>No friends online right now — share your Room Code or invite by username!</span>
+                <div className="text-[10px] text-slate-300/80 bg-slate-900/60 px-2 py-1 rounded-xl border border-slate-800 flex items-center justify-between">
+                  <span>No friends online right now — send an invite by username below or fill with bots!</span>
                 </div>
               )}
 
               {/* Direct Username Challenge Input */}
-              <form onSubmit={handleInviteByUsername} className="flex gap-2">
+              <form onSubmit={handleInviteByUsername} className="flex gap-1.5">
                 <input
                   type="text"
                   disabled={humanCount >= 4}
                   placeholder={humanCount >= 4 ? 'Lobby is full (4/4)' : 'Invite player by username...'}
                   value={usernameInput}
                   onChange={(e) => setUsernameInput(e.target.value)}
-                  className="flex-1 px-3 py-1.5 rounded-xl bg-slate-900/95 border border-slate-700 text-white text-xs focus:outline-none focus:border-cyan-400 font-mono disabled:opacity-50"
+                  className="flex-1 px-2.5 py-1 rounded-xl bg-slate-900/95 border border-slate-700 text-white text-[11px] focus:outline-none focus:border-cyan-400 font-mono disabled:opacity-50"
                 />
                 <button
                   type="submit"
                   disabled={humanCount >= 4 || !usernameInput.trim()}
-                  className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-40 text-slate-950 font-black text-xs flex items-center gap-1 shadow-md cursor-pointer transition-all active:scale-95 flex-shrink-0"
+                  className="px-3 py-1 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-40 text-slate-950 font-black text-xs flex items-center gap-1 shadow-md cursor-pointer transition-all active:scale-95 flex-shrink-0"
                 >
-                  <Send className="w-3.5 h-3.5" />
+                  <Send className="w-3 h-3" />
                   <span>Send</span>
                 </button>
               </form>
@@ -546,17 +492,43 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
             {/* =================================================================
                 2-COLUMN SECTION: SEATING (LEFT) & RULES/BOTS (RIGHT)
             ================================================================= */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-2.5">
               {/* Left Column: 4 Table Seats */}
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <div className="flex justify-between items-center text-xs font-bold text-gray-400 px-0.5">
                   <span className="uppercase tracking-wider">Table Seats ({occupiedCount}/4)</span>
-                  <span className="text-amber-400 font-mono text-[11px]">
-                    Goal: {currentRoom?.rules.targetScore || 10} Pts
-                  </span>
+
+                  {/* Ergonomic Quick Team Switch right above seats */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-slate-400 font-semibold mr-0.5">Team:</span>
+                    <button
+                      onClick={() => handleSwitchTeam('blue')}
+                      disabled={myPosition === 0 || myPosition === 2}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                        myPosition === 0 || myPosition === 2
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'bg-slate-800 text-blue-300 hover:bg-blue-950/60 border border-blue-500/40'
+                      }`}
+                    >
+                      <span>🔵 Blue</span>
+                      {(myPosition === 0 || myPosition === 2) && <Check className="w-2.5 h-2.5" />}
+                    </button>
+                    <button
+                      onClick={() => handleSwitchTeam('red')}
+                      disabled={myPosition === 1 || myPosition === 3}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                        myPosition === 1 || myPosition === 3
+                          ? 'bg-red-600 text-white shadow-sm'
+                          : 'bg-slate-800 text-red-300 hover:bg-red-950/60 border border-red-500/40'
+                      }`}
+                    >
+                      <span>🔴 Red</span>
+                      {(myPosition === 1 || myPosition === 3) && <Check className="w-2.5 h-2.5" />}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="grid grid-cols-2 gap-1.5 text-xs">
                   {[0, 1, 2, 3].map((pos) => {
                     const slot = currentRoom?.slots[pos];
                     const isBlueTeam = pos % 2 === 0;
@@ -573,11 +545,11 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                     return (
                       <div
                         key={pos}
-                        className={`p-2 rounded-xl border flex flex-col justify-between space-y-1.5 transition-all ${
+                        className={`p-1.5 rounded-xl border flex flex-col justify-between space-y-1 transition-all ${
                           isMe
                             ? isBlueTeam
-                              ? 'bg-blue-950/80 border-blue-400 ring-2 ring-blue-500/40 shadow-lg text-blue-100'
-                              : 'bg-red-950/80 border-red-400 ring-2 ring-red-500/40 shadow-lg text-red-100'
+                              ? 'bg-blue-950/80 border-blue-400 ring-2 ring-blue-500/40 shadow text-blue-100'
+                              : 'bg-red-950/80 border-red-400 ring-2 ring-red-500/40 shadow text-red-100'
                             : slot
                             ? isBlueTeam
                               ? 'bg-blue-950/40 border-blue-500/40 text-blue-200'
@@ -592,7 +564,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                                 <AvatarPortrait avatarId={slot.avatarIcon} size="xs" />
                               </div>
                             ) : (
-                              <span className="w-6 h-6 rounded-lg bg-slate-900/70 border border-slate-800 flex items-center justify-center text-xs flex-shrink-0">
+                              <span className="w-5 h-5 rounded-lg bg-slate-900/70 border border-slate-800 flex items-center justify-center text-[10px] flex-shrink-0">
                                 🪑
                               </span>
                             )}
@@ -628,7 +600,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                           {!slot ? (
                             <button
                               onClick={() => handleSwitchSeat(pos as PlayerPosition)}
-                              className={`px-2 py-0.5 rounded-lg font-black text-[10px] shadow-sm flex items-center space-x-1 transition-all active:scale-95 cursor-pointer ${
+                              className={`px-2 py-0.5 rounded-lg font-black text-[9px] shadow-sm flex items-center space-x-1 transition-all active:scale-95 cursor-pointer ${
                                 isBlueTeam
                                   ? 'bg-blue-500 hover:bg-blue-400 text-white'
                                   : 'bg-red-500 hover:bg-red-400 text-white'
@@ -639,10 +611,10 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                           ) : !isMe ? (
                             <button
                               onClick={() => handleSwitchSeat(pos as PlayerPosition)}
-                              className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-[9px] font-bold flex items-center space-x-1 border border-amber-500/30 transition-all active:scale-95 cursor-pointer"
+                              className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-[8px] font-bold flex items-center space-x-1 border border-amber-500/30 transition-all active:scale-95 cursor-pointer"
                               title="Swap seats"
                             >
-                              <ArrowLeftRight className="w-2.5 h-2.5" />
+                              <ArrowLeftRight className="w-2 h-2" />
                               <span>Swap</span>
                             </button>
                           ) : null}
@@ -654,27 +626,27 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
               </div>
 
               {/* Right Column: Rules & Bot Controls */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {/* House Rules */}
-                <div className="p-2.5 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-2">
+                <div className="p-2 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-1.5">
                   <div className="flex items-center justify-between text-xs font-bold text-gray-400">
-                    <span className="uppercase tracking-wider flex items-center gap-1.5 text-amber-400">
-                      <Sliders className="w-3.5 h-3.5" />
+                    <span className="uppercase tracking-wider flex items-center gap-1.5 text-amber-400 text-[11px]">
+                      <Sliders className="w-3 h-3" />
                       <span>House Rules</span>
                     </span>
-                    <span className="text-[10px] text-gray-500">{isHost ? 'Host Config' : 'Set by Host'}</span>
+                    <span className="text-[9px] text-gray-500">{isHost ? 'Host Config' : 'Set by Host'}</span>
                   </div>
 
                   {/* Target Score */}
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-300 font-bold text-[11px]">Winning Goal:</span>
+                    <span className="text-gray-300 font-bold text-[10px]">Winning Goal:</span>
                     <div className="flex space-x-1">
                       {[5, 7, 10].map((score) => (
                         <button
                           key={score}
                           disabled={!isHost}
                           onClick={() => handleUpdateRule({ targetScore: score })}
-                          className={`px-2 py-0.5 rounded-lg font-bold text-[11px] transition-all ${
+                          className={`px-2 py-0.5 rounded-lg font-bold text-[10px] transition-all ${
                             (currentRoom?.rules.targetScore || 10) === score
                               ? 'bg-amber-400 text-slate-950 font-black shadow-md'
                               : 'bg-slate-800 text-gray-400 hover:bg-slate-700'
@@ -693,7 +665,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                       <button
                         disabled={!isHost}
                         onClick={() => handleUpdateRule({ stickTheDealer: !currentRoom?.rules.stickTheDealer })}
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
+                        className={`px-2 py-0.5 rounded-md text-[9px] font-black ${
                           currentRoom?.rules.stickTheDealer !== false
                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                             : 'bg-slate-800 text-slate-400'
@@ -711,7 +683,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                           const nextVal = currentRoom?.rules.partnerOrderUpGoesAlone === false;
                           handleUpdateRule({ canadianLoner: nextVal, partnerOrderUpGoesAlone: nextVal });
                         }}
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
+                        className={`px-2 py-0.5 rounded-md text-[9px] font-black ${
                           currentRoom?.rules.partnerOrderUpGoesAlone !== false
                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                             : 'bg-slate-800 text-slate-400'
@@ -724,12 +696,12 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                 </div>
 
                 {/* Bot Difficulty Fill Controls (Host only) */}
-                {isHost && occupiedCount < 4 && (
-                  <div className="p-2.5 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-2">
+                {isHost && (
+                  <div className="p-2 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-1.5">
                     <div className="flex items-center justify-between text-xs font-bold text-gray-400">
-                      <span className="uppercase tracking-wider flex items-center gap-1 text-emerald-400">
-                        <Bot className="w-3.5 h-3.5" />
-                        <span>Fill Empty Seats</span>
+                      <span className="uppercase tracking-wider flex items-center gap-1 text-emerald-400 text-[11px]">
+                        <Bot className="w-3 h-3" />
+                        <span>Fill Empty Seats with Bots</span>
                       </span>
                     </div>
 
@@ -737,8 +709,14 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                       {(['easy', 'medium', 'hard'] as AIDifficulty[]).map((d) => (
                         <button
                           key={d}
-                          onClick={() => setAiFillDifficulty(d)}
-                          className={`flex-1 py-1 rounded-lg text-[10px] font-black capitalize transition-all cursor-pointer ${
+                          onClick={() => {
+                            sounds.playUiClick();
+                            setAiFillDifficulty(d);
+                            if (isHost) {
+                              multiplayerClient.fillWithAI(d);
+                            }
+                          }}
+                          className={`flex-1 py-1 rounded-lg text-[9px] font-black capitalize transition-all cursor-pointer ${
                             aiFillDifficulty === d
                               ? 'bg-emerald-500 text-slate-950 shadow'
                               : 'bg-slate-800 text-gray-400 hover:text-white'
@@ -753,7 +731,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                           sounds.playUiClick();
                           multiplayerClient.fillWithAI(aiFillDifficulty);
                         }}
-                        className="px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-emerald-300 font-bold text-[10px] cursor-pointer"
+                        className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-emerald-300 font-bold text-[9px] cursor-pointer"
                       >
                         Fill Bots
                       </button>
@@ -767,10 +745,10 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
 
         {/* Footer Actions */}
         {currentRoom && (
-          <div className="p-3 bg-slate-950 border-t border-slate-800 flex items-center gap-2">
+          <div className="p-2.5 sm:p-3 bg-slate-950 border-t border-slate-800 flex items-center gap-2 flex-shrink-0">
             <button
               onClick={handleClose}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white text-xs font-bold transition-colors cursor-pointer flex-shrink-0"
+              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white text-xs font-bold transition-colors cursor-pointer flex-shrink-0"
             >
               Leave Lobby
             </button>
@@ -778,9 +756,9 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
             {isHost ? (
               <button
                 onClick={handleStartMatch}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 hover:brightness-110 active:scale-95 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-b from-[#34d378] via-[#22c55e] to-[#15803d] hover:brightness-105 active:scale-95 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-[0_3px_0_#146435,0_8px_20px_rgba(39,174,96,0.35)] flex items-center justify-center gap-2 cursor-pointer transition-all"
               >
-                <Sparkles className="w-4 h-4 fill-slate-950" />
+                <Sparkles className="w-4 h-4 fill-white" />
                 <span>
                   {occupiedCount === 4
                     ? 'Start Match (All 4 Ready!)'
