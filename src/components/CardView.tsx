@@ -79,29 +79,29 @@ const SIZE_CONFIG = {
 };
 
 // Crisp Vector SVG Suit Icons (Authentic Casino Shapes, Deep Black Spades, Dark Green Clubs, Crimson Red Hearts/Diamonds)
-export const SuitIcon: React.FC<{ suit: Suit; className?: string }> = ({ suit, className = 'w-4 h-4' }) => {
+export const SuitIcon: React.FC<{ suit: Suit; className?: string; overrideColor?: string }> = ({ suit, className = 'w-4 h-4', overrideColor }) => {
   switch (suit) {
     case 'hearts':
       return (
-        <svg viewBox="0 0 24 24" className={`${className} fill-red-600 drop-shadow-sm flex-shrink-0`} style={{ fill: '#dc2626' }}>
+        <svg viewBox="0 0 24 24" className={`${className} fill-red-600 drop-shadow-sm flex-shrink-0`} style={{ fill: overrideColor || '#dc2626' }}>
           <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
         </svg>
       );
     case 'diamonds':
       return (
-        <svg viewBox="0 0 24 24" className={`${className} fill-red-600 drop-shadow-sm flex-shrink-0`} style={{ fill: '#dc2626' }}>
+        <svg viewBox="0 0 24 24" className={`${className} fill-red-600 drop-shadow-sm flex-shrink-0`} style={{ fill: overrideColor || '#dc2626' }}>
           <path d="M12 2.5L4.5 12 12 21.5 19.5 12z" />
         </svg>
       );
     case 'spades':
       return (
-        <svg viewBox="0 0 24 24" className={`${className} fill-black drop-shadow-sm flex-shrink-0`} style={{ fill: '#0f172a' }}>
+        <svg viewBox="0 0 24 24" className={`${className} drop-shadow-sm flex-shrink-0`} style={{ fill: overrideColor || '#0f172a' }}>
           <path d="M12 2.5C8.8 6.8 5 10.8 5 14.2a4.2 4.2 0 0 0 7 3.1l-.8 3.7h1.6l-.8-3.7a4.2 4.2 0 0 0 7-3.1c0-3.4-3.8-7.4-7-11.7z" />
         </svg>
       );
     case 'clubs':
       return (
-        <svg viewBox="0 0 24 24" className={`${className} fill-[#15803d] drop-shadow-sm flex-shrink-0`} style={{ fill: '#15803d' }}>
+        <svg viewBox="0 0 24 24" className={`${className} fill-[#15803d] drop-shadow-sm flex-shrink-0`} style={{ fill: overrideColor || '#15803d' }}>
           {/* Authentic Standard Casino Trefoil Club in Dark Greenish */}
           <circle cx="12" cy="7.2" r="3.7" />
           <circle cx="7.4" cy="13.2" r="3.7" />

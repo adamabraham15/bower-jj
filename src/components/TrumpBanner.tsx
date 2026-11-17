@@ -38,7 +38,11 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
       <span className="hidden md:inline text-xs text-amber-400 uppercase font-black tracking-wider">
         TRUMP:
       </span>
-      <SuitIcon suit={trumpSuit} className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+      <SuitIcon
+        suit={trumpSuit}
+        className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0"
+        overrideColor={trumpSuit === 'spades' ? '#e2e8f0' : undefined}
+      />
       <span
         className={`text-xs sm:text-sm font-black uppercase tracking-wider flex-shrink-0 ${
           isRedSuit ? 'text-red-400' : trumpSuit === 'clubs' ? 'text-emerald-400' : 'text-slate-100'
