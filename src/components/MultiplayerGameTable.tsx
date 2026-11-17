@@ -732,50 +732,67 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
         )}
 
         {/* Post-Match Progression & Accolades Screen */}
-        {serverState.phase === 'game_over' && (
-          <PostMatchModal
-            isOpen={true}
-            isVictory={isVictory}
-            finalScore={serverState.scores}
-            tricksWon={serverState.matchStats?.teamTricksWon?.[yourTeam] ?? serverState.tricksWon[yourTeam]}
-            marches={serverState.matchStats?.teamMarches?.[yourTeam] ?? 0}
-            euchres={serverState.matchStats?.teamEuchres?.[yourTeam] ?? 0}
-            loners={serverState.matchStats?.playerLoners?.[yourPos] ?? 0}
-            lpDelta={
-              !serverState.isMatchmade ||
-              serverState.queueMode === 'custom' ||
-              serverState.queueMode === 'casual' ||
-              serverState.queueMode === 'rivals'
-                ? 0
-                : (lastRankUpdate?.lpChange ?? (isVictory ? 24 : -16))
-            }
-            oldTier={lastRankUpdate?.oldTier || (profile?.rankTier as any) || serverState.slots[yourPos]?.rankTier || '9'}
-            newTier={lastRankUpdate?.newTier || (profile?.rankTier as any) || serverState.slots[yourPos]?.rankTier || '9'}
-            currentPoints={lastRankUpdate?.newPoints ?? profile?.rankPoints ?? 0}
-            xpEarned={isVictory ? 350 : 120}
-            playerLevel={profile?.level ?? 1}
-            playerXp={(profile?.xp ?? 350) % 1000}
-            nextLevelXp={1000}
-            players={serverState.slots.map(s => ({
-              id: s.userId || `slot_${s.position}`,
-              name: s.username,
-              avatarIcon: s.avatarIcon,
-              isAI: s.isAI,
-              position: s.position,
-              rankTier: s.rankTier,
-            }))}
-            yourPosition={serverState.yourPosition}
-            onPlayAgain={() => {
-              if (onPlayAgain) {
-                onPlayAgain();
-              } else {
-                multiplayerClient.leaveQueue();
-                onExitGame(false);
-              }
-            }}
-            onExit={() => onExitGame(false)}
-          />
-        )}
+        {serverState.phase === 'game_over' && (() => {
+          const isRankedMatch =
+            serverState.queueMode === 'solo' ||
+            serverState.queueMode === 'duo' ||
+            (Boolean(serverState.isMatchmade || multiplayerClient.getCurrentRoom()?.isMatchmade) &&
+              serverState.queueMode !== 'casual' &&
+              serverState.queueMode !== 'custom' &&
+              serverState.queueMode !== 'rivals');
+
+          const matchTypeLabel = isRankedMatch
+            ? 'Ranked Solo Queue'
+            : serverState.queueMode === 'casual'
+            ? 'Casual Unranked (No Rank Risk)'
+            : serverState.queueMode === 'rivals'
+            ? 'Friendly Rivalry (No Rank Risk)'
+            : 'Private Custom Room (No Rank Risk)';
+
+          const effectiveLpDelta = isRankedMatch
+            ? (lastRankUpdate?.lpChange ?? (isVictory ? 24 : -16))
+            : 0;
+
+          return (
+            <PostMatchModal
+              isOpen={true}
+              isVictory={isVictory}
+              finalScore={serverState.scores}
+              tricksWon={serverState.matchStats?.teamTricksWon?.[yourTeam] ?? serverState.tricksWon[yourTeam]}
+              marches={serverState.matchStats?.teamMarches?.[yourTeam] ?? 0}
+              euchres={serverState.matchStats?.teamEuchres?.[yourTeam] ?? 0}
+              loners={serverState.matchStats?.playerLoners?.[yourPos] ?? 0}
+              lpDelta={effectiveLpDelta}
+              isRanked={isRankedMatch}
+              matchTypeLabel={matchTypeLabel}
+              oldTier={lastRankUpdate?.oldTier || (profile?.rankTier as any) || serverState.slots[yourPos]?.rankTier || '9'}
+              newTier={lastRankUpdate?.newTier || (profile?.rankTier as any) || serverState.slots[yourPos]?.rankTier || '9'}
+              currentPoints={lastRankUpdate?.newPoints ?? profile?.rankPoints ?? 0}
+              xpEarned={isVictory ? 350 : 120}
+              playerLevel={profile?.level ?? 1}
+              playerXp={(profile?.xp ?? 350) % 1000}
+              nextLevelXp={1000}
+              players={serverState.slots.map(s => ({
+                id: s.userId || `slot_${s.position}`,
+                name: s.username,
+                avatarIcon: s.avatarIcon,
+                isAI: s.isAI,
+                position: s.position,
+                rankTier: s.rankTier,
+              }))}
+              yourPosition={serverState.yourPosition}
+              onPlayAgain={() => {
+                if (onPlayAgain) {
+                  onPlayAgain();
+                } else {
+                  multiplayerClient.leaveQueue();
+                  onExitGame(false);
+                }
+              }}
+              onExit={() => onExitGame(false)}
+            />
+          );
+        })()}
       </main>
 
       {/* Bottom Player Hand Tray with Safe Area Inset for Home Indicator (Hidden when match is completed to avoid screen clutter) */}

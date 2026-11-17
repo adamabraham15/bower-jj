@@ -1191,10 +1191,11 @@ export class RoomManager {
 
         db.recordMatchmakingComposition(4, avgWait);
 
-        const room = this.createRoom(hostId, DEFAULT_RULES);
-        room.isMatchmade = true;
         const isAllCasual = matchedUserIds.every(uid => this.connections.get(uid)?.inQueue === 'casual');
-        room.queueMode = isAllCasual ? 'casual' : 'solo';
+        const qMode = isAllCasual ? 'casual' : 'solo';
+        const room = this.createRoom(hostId, DEFAULT_RULES, qMode);
+        room.isMatchmade = true;
+        room.queueMode = qMode;
 
         for (let i = 1; i < 4; i++) {
           const uid = matchedUserIds[i];
@@ -1244,10 +1245,11 @@ export class RoomManager {
 
       db.recordMatchmakingComposition(humanCount, avgWait);
 
-      const room = this.createRoom(hostId, DEFAULT_RULES);
-      room.isMatchmade = true;
       const isAllCasual = matchedUserIds.every(uid => this.connections.get(uid)?.inQueue === 'casual');
-      room.queueMode = isAllCasual ? 'casual' : 'solo';
+      const qMode = isAllCasual ? 'casual' : 'solo';
+      const room = this.createRoom(hostId, DEFAULT_RULES, qMode);
+      room.isMatchmade = true;
+      room.queueMode = qMode;
 
       // Distribute humans across opposing teams (Seat 0 Team Blue, Seat 1 Team Red)
       for (let i = 1; i < humanCount; i++) {
@@ -1295,9 +1297,10 @@ export class RoomManager {
 
       db.recordMatchmakingComposition(1, wait);
 
-      const room = this.createRoom(hostId, DEFAULT_RULES);
+      const qMode = conn?.inQueue === 'casual' ? 'casual' : 'solo';
+      const room = this.createRoom(hostId, DEFAULT_RULES, qMode);
       room.isMatchmade = true;
-      room.queueMode = conn?.inQueue || 'solo';
+      room.queueMode = qMode;
 
       this.fillWithAI(hostId, undefined, targetTier);
       this.startGame(hostId);
