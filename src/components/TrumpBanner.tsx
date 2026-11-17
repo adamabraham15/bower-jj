@@ -28,14 +28,14 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
 
   return (
     <div
-      className="flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-slate-950/95 border-2 border-amber-400/90 shadow-[0_0_15px_rgba(245,158,11,0.3)] min-w-0 flex-shrink-0"
+      className="flex items-center space-x-1 sm:space-x-1.5 px-1.5 xs:px-2.5 sm:px-3.5 py-0.5 sm:py-1.5 rounded-full bg-slate-950/95 border-2 border-amber-400/90 shadow-[0_0_15px_rgba(245,158,11,0.3)] min-w-0 flex-shrink max-w-full overflow-hidden"
       title={
         callerName
           ? `Trump: ${trumpSuit.toUpperCase()} — Called by ${callerName}${teamLabel ? ` (${teamLabel})` : ''}`
           : `Trump: ${trumpSuit.toUpperCase()}`
       }
     >
-      <span className="hidden md:inline text-xs text-amber-400 uppercase font-black tracking-wider">
+      <span className="hidden md:inline text-xs text-amber-400 uppercase font-black tracking-wider flex-shrink-0">
         TRUMP:
       </span>
       <SuitIcon
@@ -44,7 +44,7 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
         overrideColor={trumpSuit === 'spades' ? '#e2e8f0' : undefined}
       />
       <span
-        className={`text-xs sm:text-sm font-black uppercase tracking-wider flex-shrink-0 ${
+        className={`hidden xs:inline text-xs sm:text-sm font-black uppercase tracking-wider flex-shrink-0 ${
           isRedSuit ? 'text-red-400' : trumpSuit === 'clubs' ? 'text-emerald-400' : 'text-slate-100'
         }`}
       >
@@ -53,7 +53,7 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
 
       {callerName && (
         <span
-          className={`flex items-center space-x-1 text-[10px] sm:text-xs font-black px-1.5 sm:px-2.5 py-0.5 rounded-full border shadow-sm min-w-0 flex-shrink ${
+          className={`flex items-center space-x-1 text-[10px] sm:text-xs font-black px-1.5 sm:px-2 py-0.5 rounded-full border shadow-sm min-w-0 flex-shrink max-w-[100px] xs:max-w-[140px] sm:max-w-[220px] overflow-hidden ${
             callerTeam === undefined
               ? 'bg-slate-800 border-slate-700 text-gray-200'
               : isTeam
@@ -69,13 +69,13 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
             />
           )}
           <span className="text-[10px] sm:text-xs text-slate-400 font-bold hidden sm:inline flex-shrink-0">by</span>
-          <span className="truncate max-w-[95px] sm:max-w-[150px]">{callerName}</span>
-          {teamLabel && <span className="hidden sm:inline text-[10px] sm:text-xs text-slate-400 font-semibold flex-shrink-0">({teamLabel})</span>}
+          <span className="truncate max-w-[45px] xs:max-w-[70px] sm:max-w-[110px] md:max-w-[160px]">{callerName}</span>
+          {teamLabel && <span className="hidden md:inline text-[10px] sm:text-xs text-slate-400 font-semibold flex-shrink-0">({teamLabel})</span>}
         </span>
       )}
 
       {isAlone && (
-        <span className="text-[9px] sm:text-[10px] bg-red-600 text-white font-black px-2 py-0.5 rounded-full flex-shrink-0 shadow-sm animate-pulse tracking-wide">
+        <span className="text-[8px] sm:text-[9px] bg-red-600 text-white font-black px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0 shadow-sm animate-pulse tracking-wide">
           ALONE
         </span>
       )}

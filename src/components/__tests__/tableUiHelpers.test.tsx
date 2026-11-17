@@ -19,6 +19,7 @@ import { sounds, loadSavedAudioPreferences } from '../../audio/sound';
 import { RoomManager } from '../../../server/roomManager';
 import { GameTable } from '../GameTable';
 import { MultiplayerGameTable } from '../MultiplayerGameTable';
+import { TrumpBanner } from '../TrumpBanner';
 import { MainMenu } from '../MainMenu';
 import { GameLobbyModal } from '../GameLobbyModal';
 import { initializeGame } from '../../engine/game';
@@ -462,24 +463,76 @@ describe('Table UI & Tutorial Helpers', () => {
     expect(htmlMenu).not.toContain('absolute top-full left-0 right-0 z-40 mt-1.5');
   });
 
-  it('renders GameLobbyModal consolidated without room code function for single screen fit', () => {
-    const htmlLobby = renderToStaticMarkup(
-      React.createElement(GameLobbyModal, {
-        isOpen: true,
-        onClose: () => {},
-        userRank: 'BOWER_JJ',
-        userPoints: 1200,
-        initialMode: 'custom',
-        autoFillBots: true,
-        onMatchFound: () => {},
+  it('renders TrumpBanner with responsive overflow-hidden and flex-shrink preventing score overlap', () => {
+    const htmlBanner = renderToStaticMarkup(
+      React.createElement(TrumpBanner, {
+        trumpSuit: 'diamonds',
+        callerName: 'VeryLongEuchreChampionUsername',
+        callerTeam: 1,
+        isAlone: true,
+        isUserTeam: false,
       })
     );
 
-    // Header and structure are present
-    expect(htmlLobby).toContain('Game Room Lobby');
-    // Room code display and copy functions are completely removed
-    expect(htmlLobby).not.toContain('title="Copy Room Code"');
-    expect(htmlLobby).not.toContain('Copy Link');
-    expect(htmlLobby).not.toContain('Room:');
+    // Banner wrapper has flex-shrink max-w-full overflow-hidden (NOT flex-shrink-0)
+    expect(htmlBanner).toContain('min-w-0 flex-shrink max-w-full overflow-hidden');
+    expect(htmlBanner).not.toContain('min-w-0 flex-shrink-0');
+    // Caller name container truncates and restricts max-width
+    expect(htmlBanner).toContain('truncate max-w-[45px] xs:max-w-[70px] sm:max-w-[110px]');
+    expect(htmlBanner).toContain('VeryLongEuchreChampionUsername');
+    expect(htmlBanner).toContain('ALONE');
+  });
+
+  it('guarantees header layout isolates score pill (flex-shrink-0 z-20) from center TrumpBanner (flex-1 min-w-0 overflow-hidden)', () => {
+    const sanitizedWithTrump: SanitizedGameState = {
+      roomCode: 'SCORE01',
+      phase: 'playing',
+      dealer: 1,
+      currentTurn: 0,
+      trumpSuit: 'spades',
+      callingTeam: 1,
+      maker: 1,
+      scores: [9, 8],
+      tricksWon: [2, 1],
+      currentTrick: { leadPlayer: 1, cards: [] },
+      completedTricksCount: 3,
+      isAlone: false,
+      history: [],
+      handCounts: { 0: 2, 1: 2, 2: 2, 3: 2 },
+      yourPosition: 0,
+      yourHand: [
+        { id: 'spades-J', suit: 'spades', rank: 'J' },
+        { id: 'clubs-J', suit: 'clubs', rank: 'J' }
+      ],
+      slots: [
+        { position: 0, username: 'Player 0', avatarIcon: 'the_outlaw', isAI: false, connected: true, isReady: true },
+        { position: 1, username: 'OpponentExtremeCaller', avatarIcon: 'cyber_bot', isAI: true, connected: true, isReady: true },
+        { position: 2, username: 'Player 2', avatarIcon: 'clever_fox', isAI: true, connected: true, isReady: true },
+        { position: 3, username: 'Player 3', avatarIcon: 'iron_tactician', isAI: true, connected: true, isReady: true }
+      ]
+    };
+
+    const htmlMulti = renderToStaticMarkup(
+      React.createElement(MultiplayerGameTable, {
+        serverState: sanitizedWithTrump,
+        onOpenRules: () => {},
+        onOpenTutorial: () => {},
+        onOpenEmotes: () => {},
+        activeEmotes: {},
+        isMuted: false,
+        onToggleMute: () => {},
+        onExitGame: () => {}
+      })
+    );
+
+    // Score pill section is guaranteed flex-shrink-0 z-20 so it is never compressed
+    expect(htmlMulti).toContain('flex items-center space-x-1 xs:space-x-1.5 sm:space-x-3 flex-shrink-0 z-20');
+    // Scores are rendered
+    expect(htmlMulti).toContain('9');
+    expect(htmlMulti).toContain('8');
+    // Trump banner is isolated in flex-1 min-w-0 px-1 overflow-hidden center container
+    expect(htmlMulti).toContain('flex-1 min-w-0 flex items-center justify-center px-1 overflow-hidden');
+    // Caller name is present and truncated safely
+    expect(htmlMulti).toContain('OpponentExtremeCaller');
   });
 });

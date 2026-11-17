@@ -536,7 +536,8 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
           paddingRight: 'calc(env(safe-area-inset-right, 0px) + 0.35rem)',
         }}
       >
-        <div className="flex items-center space-x-1 xs:space-x-1.5 sm:space-x-3 min-w-0 flex-shrink">
+        {/* Left Section: Exit & Team Scores (flex-shrink-0 ensures it NEVER gets compressed or covered) */}
+        <div className="flex items-center space-x-1 xs:space-x-1.5 sm:space-x-3 flex-shrink-0 z-20">
           <button
             onClick={() => {
               sounds.playUiClick();
@@ -546,7 +547,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 setShowExitConfirmModal(true);
               }
             }}
-            className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-gray-300 flex-shrink-0"
+            className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-gray-300 flex-shrink-0 shadow-sm"
           >
             ← Exit
           </button>
@@ -592,16 +593,18 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
           })()}
         </div>
 
-        {/* Trump Banner (Header) */}
-        {serverState.trumpSuit && (
-          <TrumpBanner
-            trumpSuit={serverState.trumpSuit}
-            callerName={callerName}
-            callerTeam={callerTeam}
-            isAlone={serverState.isAlone}
-            isUserTeam={callerTeam === getPlayerTeam(serverState.yourPosition)}
-          />
-        )}
+        {/* Center Section: Trump Banner (Flexes and centers, strictly bounded to prevent pushing into scores or audio) */}
+        <div className="flex-1 min-w-0 flex items-center justify-center px-1 overflow-hidden">
+          {serverState.trumpSuit && (
+            <TrumpBanner
+              trumpSuit={serverState.trumpSuit}
+              callerName={callerName}
+              callerTeam={callerTeam}
+              isAlone={serverState.isAlone}
+              isUserTeam={callerTeam === getPlayerTeam(serverState.yourPosition)}
+            />
+          )}
+        </div>
 
         {/* Top Header Sound Controls (Emotes moved to bottom hand bar, question mark removed) */}
         <div className="flex items-center flex-shrink-0 z-20">
