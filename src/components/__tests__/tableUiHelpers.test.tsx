@@ -101,7 +101,7 @@ describe('Table UI & Tutorial Helpers', () => {
     expect(leftDeckHtml).toContain('top-full');
 
     const dealerBadgeHtml = renderToStaticMarkup(<DealerAvatarBadge />);
-    expect(dealerBadgeHtml).toContain('left-1/2');
+    expect(dealerBadgeHtml).toContain('-right-2');
     expect(dealerBadgeHtml).toContain('DEALER');
 
     const leadHtml = renderToStaticMarkup(<LeadSuitBadge leadSuit="hearts" showFollowHint />);

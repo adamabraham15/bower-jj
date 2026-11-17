@@ -20,10 +20,10 @@ export function isActiveDecisionPhase(phase: GamePhase): boolean {
 /**
  * Prominent pill badge placed cleanly above the current dealer's table avatar.
  */
-export const DealerAvatarBadge: React.FC = () => (
+export const DealerAvatarBadge: React.FC<{ className?: string }> = ({ className }) => (
   <div
     title="Current Dealer"
-    className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-20 px-1.5 py-0.5 rounded-full bg-amber-400 border-2 border-slate-900 text-slate-950 font-black text-[8px] sm:text-[9px] leading-none tracking-wider shadow-lg shadow-amber-500/30 uppercase whitespace-nowrap"
+    className={`absolute -top-1.5 -right-2 z-20 px-1.5 py-0.5 rounded-full bg-amber-400 border-2 border-slate-900 text-slate-950 font-black text-[8px] sm:text-[9px] leading-none tracking-wider shadow-lg shadow-amber-500/30 uppercase whitespace-nowrap ${className || ''}`}
   >
     DEALER
   </div>
@@ -281,7 +281,7 @@ export const LeadSuitBadge: React.FC<LeadSuitBadgeProps> = ({
   leadSuit,
   showFollowHint = false,
 }) => (
-  <div className="absolute top-1.5 left-1/2 -translate-x-1/2 z-30 flex items-center space-x-1.5 bg-slate-900/95 border border-slate-600/80 px-3 py-1 rounded-full shadow-lg whitespace-nowrap">
+  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-30 flex items-center space-x-1.5 bg-slate-900/95 border border-slate-600/80 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-lg whitespace-nowrap scale-90 sm:scale-100">
     <span className="text-[10px] text-gray-400 font-bold uppercase">Lead:</span>
     <SuitIcon suit={leadSuit} className="w-3.5 h-3.5" />
     <span

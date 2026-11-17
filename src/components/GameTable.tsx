@@ -836,7 +836,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                   pc.player === 0
                     ? 'bottom-4 sm:bottom-5 left-1/2 -translate-x-1/2'
                     : pc.player === 2
-                    ? 'top-4 sm:top-5 left-1/2 -translate-x-1/2'
+                    ? 'top-6 sm:top-7 left-1/2 -translate-x-1/2'
                     : pc.player === 1
                     ? 'left-12 sm:left-14 top-1/2 -translate-y-1/2'
                     : 'right-12 sm:right-14 top-1/2 -translate-y-1/2';

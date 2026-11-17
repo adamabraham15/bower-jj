@@ -693,7 +693,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 const positionStyle = {
                   bottom: 'bottom-4 sm:bottom-5 left-1/2 -translate-x-1/2',
                   left: 'left-12 sm:left-14 top-1/2 -translate-y-1/2',
-                  top: 'top-4 sm:top-5 left-1/2 -translate-x-1/2',
+                  top: 'top-6 sm:top-7 left-1/2 -translate-x-1/2',
                   right: 'right-12 sm:right-14 top-1/2 -translate-y-1/2',
                 }[relPos];
 
