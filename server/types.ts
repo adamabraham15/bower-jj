@@ -79,6 +79,8 @@ export interface PlayerCollectionState {
   cards: OwnedCardItem[];
   unlockedCardBacks: string[];
   unlockedAvatars: string[];
+  unlockedFelts?: string[];
+  waxSeals?: number;
   recentDrops: PackHistoryEntry[];
   dropRates: {
     common: number;
@@ -94,6 +96,9 @@ export interface PackOpenResult {
   cards: DrawnCardResult[];
   newlyUnlockedCardBacks: string[];
   newlyUnlockedAvatars: string[];
+  newlyUnlockedFelts?: string[];
+  waxSealsAwarded?: number;
+  totalWaxSeals?: number;
   remainingUnopenedPacks: number;
   collectionState: PlayerCollectionState;
 }
@@ -101,6 +106,7 @@ export interface PackOpenResult {
 export interface CosmeticLoadout {
   hat?: string;
   cardBack?: string;
+  tableFelt?: string;
   banner?: string;
   title?: string;
 }

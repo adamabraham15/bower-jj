@@ -500,6 +500,36 @@ export const CARD_BACK_CATALOG: CardBackDefinition[] = [
     unlockedByDefault: true,
     accentHex: '#ef4444',
   },
+  {
+    id: 'ranked_iron_rim',
+    name: 'Iron Rim (Season 1)',
+    description: 'Awarded to competitors reaching Rank 9 or 10 in Season 1.',
+    rarity: 'rare',
+    imageUrl: '/assets/card-backs/classic_blue.webp',
+    isStarter: false,
+    unlockedByDefault: false,
+    accentHex: '#94a3b8',
+  },
+  {
+    id: 'ranked_gilded_silver',
+    name: 'Gilded Silver (Season 1)',
+    description: 'Awarded to masters reaching Rank Jack or Queen in Season 1.',
+    rarity: 'epic',
+    imageUrl: '/assets/card-backs/classic_red.webp',
+    isStarter: false,
+    unlockedByDefault: false,
+    accentHex: '#e2e8f0',
+  },
+  {
+    id: 'ranked_prismatic_foil',
+    name: 'Animated Prismatic Foil (Season 1)',
+    description: 'Exclusive holographic shimmer card back for King, Ace & Bower JJ legends.',
+    rarity: 'legendary',
+    imageUrl: '/assets/card-backs/classic_blue.webp',
+    isStarter: false,
+    unlockedByDefault: false,
+    accentHex: '#fbbf24',
+  },
   ...CARD_COLLECTIONS.map((col) => ({
     id: col.cardBackId,
     name: col.name,
@@ -563,6 +593,121 @@ export function getCollectionDefinition(id: string): CardCollectionDefinition | 
 export function getCollectibleCardDefinition(id: string): CollectibleCardDefinition | undefined {
   return CARD_BY_ID.get(id);
 }
+
+export interface TableFeltDefinition {
+  id: string;
+  name: string;
+  theme: string;
+  description: string;
+  rarity: RarityTier;
+  bgGradient: string;
+  feltColor: string;
+  feltBorder: string;
+  vignette: string;
+  accentHex: string;
+  previewColor: string;
+  unlockedByDefault: boolean;
+  collectionId?: string;
+}
+
+export const TABLE_FELTS: TableFeltDefinition[] = [
+  {
+    id: 'midnight_navy',
+    name: 'Midnight Navy',
+    theme: 'Classic Casino Baize',
+    description: 'Deep midnight blue casino worsted baize with subtle starlight weave.',
+    rarity: 'common',
+    bgGradient: 'radial-gradient(ellipse at 50% 50%, #172740 0%, #0d1628 55%, #070c17 100%)',
+    feltColor: '#101c30',
+    feltBorder: '#1e3a5f',
+    vignette: 'rgba(7, 12, 23, 0.75)',
+    accentHex: '#38bdf8',
+    previewColor: '#101c30',
+    unlockedByDefault: true,
+  },
+  {
+    id: 'emerald_baize',
+    name: 'Emerald Baize',
+    theme: 'Monte Carlo Green',
+    description: 'Traditional Monte Carlo worsted wool green felt with polished gold accents.',
+    rarity: 'common',
+    bgGradient: 'radial-gradient(ellipse at 50% 50%, #0e3d27 0%, #072517 55%, #03120b 100%)',
+    feltColor: '#0a2b1c',
+    feltBorder: '#15803d',
+    vignette: 'rgba(3, 18, 11, 0.8)',
+    accentHex: '#22c55e',
+    previewColor: '#0a2b1c',
+    unlockedByDefault: true,
+  },
+  {
+    id: 'saloon_wood',
+    name: 'Saloon Wood',
+    theme: 'Frontier Mahogany & Felt',
+    description: 'Aged mahogany and oak saloon gaming table with warm ember lantern glow.',
+    rarity: 'rare',
+    bgGradient: 'radial-gradient(ellipse at 50% 50%, #452615 0%, #29150b 55%, #140904 100%)',
+    feltColor: '#2b170c',
+    feltBorder: '#854d0e',
+    vignette: 'rgba(20, 9, 4, 0.85)',
+    accentHex: '#f59e0b',
+    previewColor: '#2b170c',
+    unlockedByDefault: false,
+    collectionId: 'wild_west',
+  },
+  {
+    id: 'royal_crimson',
+    name: 'Royal Crimson Velvet',
+    theme: 'Imperial Velvet & Gold',
+    description: 'Sumptuous casino crimson velvet with imperial gold filigree accents.',
+    rarity: 'rare',
+    bgGradient: 'radial-gradient(ellipse at 50% 50%, #520f1a 0%, #33080e 55%, #170306 100%)',
+    feltColor: '#360a11',
+    feltBorder: '#be123c',
+    vignette: 'rgba(23, 3, 6, 0.85)',
+    accentHex: '#f43f5e',
+    previewColor: '#360a11',
+    unlockedByDefault: false,
+    collectionId: 'inferno',
+  },
+  {
+    id: 'cyber_grid',
+    name: 'Cyber Grid',
+    theme: 'Holo-Obsidian Neon',
+    description: 'Deep obsidian neon arena with reactive cyan and magenta vector gridlines.',
+    rarity: 'epic',
+    bgGradient: 'radial-gradient(ellipse at 50% 50%, #0e2236 0%, #081522 55%, #030a10 100%)',
+    feltColor: '#08121c',
+    feltBorder: '#06b6d4',
+    vignette: 'rgba(3, 10, 16, 0.9)',
+    accentHex: '#06b6d4',
+    previewColor: '#08121c',
+    unlockedByDefault: false,
+    collectionId: 'cybernetic',
+  },
+];
+
+export const DEFAULT_FELT_ID = 'midnight_navy';
+
+export function resolveTableFeltId(raw?: string | null): string {
+  if (!raw) return DEFAULT_FELT_ID;
+  const match = TABLE_FELTS.find((f) => f.id === raw.trim());
+  return match ? match.id : DEFAULT_FELT_ID;
+}
+
+export function getTableFeltDefinition(raw?: string | null): TableFeltDefinition {
+  const id = resolveTableFeltId(raw);
+  return TABLE_FELTS.find((f) => f.id === id) || TABLE_FELTS[0];
+}
+
+export const WAX_SEALS_CONFIG = {
+  duplicateSeals: {
+    common: 10,
+    rare: 25,
+    epic: 35,
+    legendary: 50,
+  } as Record<RarityTier, number>,
+  craftCost: 100, // 100 Wax Seals to forge any specific missing card in the Vault
+};
 
 /**
  * Computes which non-default avatars a player qualifies for based on stats, level & completed collections.

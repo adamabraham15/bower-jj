@@ -4,8 +4,8 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { X, Trophy, Medal, Flame, Shield, ArrowUpRight, Crown, Star } from 'lucide-react';
-import { LeaderboardEntry } from '../../server/types';
+import { X, Trophy, Medal, Flame, Shield, ArrowUpRight, Crown, Star, Sparkles, Clock, Check } from 'lucide-react';
+import { LeaderboardEntry, RankTier } from '../../server/types';
 import { RankBadge } from './RankBadge';
 import { AvatarPortrait } from './AvatarPortrait';
 import { multiplayerClient } from '../services/multiplayerClient';
@@ -18,6 +18,7 @@ interface LeaderboardModalProps {
   yourRank?: number;
   currentUsername: string;
   currentUserId?: string;
+  currentRankTier?: RankTier;
 }
 
 export const TopRankBadge: React.FC<{ position: number }> = ({ position }) => {
@@ -89,6 +90,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   yourRank,
   currentUsername,
   currentUserId,
+  currentRankTier,
 }) => {
   const [localEntries, setLocalEntries] = useState<LeaderboardEntry[]>(entries);
   const [isLoading, setIsLoading] = useState<boolean>(entries.length === 0);
@@ -118,6 +120,26 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 
   if (!isOpen) return null;
 
+  // Resolve user's current tier for rewards preview
+  const myEntry = localEntries.find(
+    (e) =>
+      (Boolean(currentUsername) && e.username.toLowerCase() === currentUsername.toLowerCase()) ||
+      (Boolean(currentUserId) && e.userId === currentUserId)
+  );
+  const resolvedTier = currentRankTier || myEntry?.rankTier || '9';
+  const tierWeight: Record<RankTier, number> = {
+    '9': 1,
+    '10': 2,
+    'Q': 3,
+    'K': 4,
+    'A': 5,
+    'BOWER_JJ': 6,
+  };
+  const currentWeight = tierWeight[resolvedTier] || 1;
+  const isIronEarned = currentWeight >= 1; // Tier 9 & 10
+  const isSilverEarned = currentWeight >= 3; // Tier J & Q
+  const isPrismaticEarned = currentWeight >= 5; // Tier K, A & JJ
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div className="relative w-full max-w-2xl bg-slate-900 border-2 border-amber-500/70 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -142,6 +164,72 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
           >
             <X className="w-4 h-4" />
           </button>
+        </div>
+
+        {/* Rewards Preview: Ranked Season Milestone Card Backs */}
+        <div className="bg-gradient-to-r from-[#172033] via-[#0f1726] to-[#172033] border-b border-slate-800 px-3.5 py-3 sm:px-5">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-black text-white uppercase tracking-wider">
+                Season 1 Milestone Card Backs
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/10 border border-amber-400/30 text-[11px] font-bold text-amber-300">
+              <Clock className="w-3.5 h-3.5 text-amber-400" />
+              <span>28 Days Left</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {/* Tier 9 / 10 */}
+            <div
+              className={`p-2 rounded-xl border text-center transition-all ${
+                isIronEarned
+                  ? 'bg-slate-800/90 border-slate-400 shadow-md ring-1 ring-slate-400/30'
+                  : 'bg-slate-950/40 border-slate-800/80 opacity-60'
+              }`}
+            >
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Tiers 9 &amp; 10</div>
+              <div className="text-xs font-black text-slate-200 mt-0.5">Iron Rim</div>
+              <div className="text-[10px] font-bold mt-1 text-emerald-400 flex items-center justify-center gap-0.5">
+                {isIronEarned ? <><Check className="w-3 h-3" /> Secured</> : 'Reach Tier 9'}
+              </div>
+            </div>
+
+            {/* Tier Jack / Queen */}
+            <div
+              className={`p-2 rounded-xl border text-center transition-all ${
+                isSilverEarned
+                  ? 'bg-slate-800/90 border-slate-200 shadow-md ring-1 ring-slate-200/40'
+                  : 'bg-slate-950/40 border-slate-800/80 opacity-60'
+              }`}
+            >
+              <div className="text-[10px] font-bold text-slate-300 uppercase tracking-wide">Tiers J &amp; Q</div>
+              <div className="text-xs font-black text-white mt-0.5">Gilded Silver</div>
+              <div className="text-[10px] font-bold mt-1 text-cyan-300 flex items-center justify-center gap-0.5">
+                {isSilverEarned ? <><Check className="w-3 h-3" /> Secured</> : 'Reach Tier J'}
+              </div>
+            </div>
+
+            {/* Tier King / Ace / Bower JJ */}
+            <div
+              className={`p-2 rounded-xl border text-center transition-all ${
+                isPrismaticEarned
+                  ? 'bg-gradient-to-b from-amber-500/20 to-yellow-600/20 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)] ring-1 ring-amber-400'
+                  : 'bg-slate-950/40 border-slate-800/80 opacity-60'
+              }`}
+            >
+              <div className="text-[10px] font-bold text-amber-400 uppercase tracking-wide">Tiers K &amp; A</div>
+              <div className="text-xs font-black text-amber-300 mt-0.5 flex items-center justify-center gap-1">
+                <span>Prismatic Foil</span>
+                <span className="text-[10px]">✨</span>
+              </div>
+              <div className="text-[10px] font-bold mt-1 text-amber-300 flex items-center justify-center gap-0.5">
+                {isPrismaticEarned ? <><Check className="w-3 h-3" /> Legend Reward</> : 'Reach Tier K'}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Column Headers */}

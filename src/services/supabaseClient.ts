@@ -464,7 +464,7 @@ class AuthService {
    */
   public async updateUserCosmetic(
     userId: string,
-    category: 'hat' | 'cardBack' | 'banner' | 'title',
+    category: 'hat' | 'cardBack' | 'banner' | 'title' | 'tableFelt',
     itemId: string
   ): Promise<boolean> {
     if (!supabase || !userId || !itemId) return false;
@@ -475,6 +475,7 @@ class AuthService {
       cardBack: 'equipped_card_back',
       banner: 'equipped_banner',
       title: 'equipped_title',
+      tableFelt: 'equipped_felt',
     };
     const col = colMap[category];
     if (!col) return false;

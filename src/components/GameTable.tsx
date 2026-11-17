@@ -64,6 +64,7 @@ import {
   BOT_CARD_BACK_BY_DIFFICULTY,
   resolveAvatarId,
   resolveCardBackId,
+  getTableFeltDefinition,
 } from '../config/collectiblesCatalog';
 import { sounds } from '../audio/sound';
 import confetti from 'canvas-confetti';
@@ -78,6 +79,7 @@ import {
   Sparkles,
   Award,
   ArrowUpDown,
+  Clock,
 } from 'lucide-react';
 
 interface GameTableProps {
@@ -89,10 +91,12 @@ interface GameTableProps {
     xp?: number;
     nextLevelXp?: number;
     avatarIcon?: string;
+    tableFelt?: string;
     equippedCosmetics?: {
       cardBack?: string;
       banner?: string;
       title?: string;
+      tableFelt?: string;
     };
   };
   onOpenRules: () => void;
@@ -132,6 +136,8 @@ export const GameTable: React.FC<GameTableProps> = ({
   const [isProcessingAI, setIsProcessingAI] = useState(false);
   const [inspectedPlayer, setInspectedPlayer] = useState<PublicPlayerData | null>(null);
   const [matchReported, setMatchReported] = useState(false);
+  const [turnSecondsLeft, setTurnSecondsLeft] = useState<number>(15);
+  const turnStartTimeRef = useRef<number>(Date.now());
   const [autoSortBySuit, setAutoSortBySuit] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('bower_jj_auto_sort_by_suit');
@@ -360,6 +366,66 @@ export const GameTable: React.FC<GameTableProps> = ({
     setState(next);
   };
 
+  // 15-Second Radial Turn Countdown Timer
+  useEffect(() => {
+    if (isActiveDecisionPhase(state.phase)) {
+      setTurnSecondsLeft(15);
+      turnStartTimeRef.current = Date.now();
+    }
+  }, [state.currentTurn, state.phase, state.currentTrick.cards.length]);
+
+  useEffect(() => {
+    if (!isActiveDecisionPhase(state.phase) || state.phase === 'game_over' || state.phase === 'trick_resolving') {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const elapsed = (Date.now() - turnStartTimeRef.current) / 1000;
+      const remaining = Math.max(0, 15 - elapsed);
+      setTurnSecondsLeft(remaining);
+
+      // Auto-play when 15 seconds expire on human player's turn
+      if (remaining <= 0) {
+        clearInterval(interval);
+        if (state.currentTurn === 0) {
+          if (state.phase === 'playing') {
+            const hand = state.hands[0] || [];
+            const plays = getLegalPlays(hand, state.currentTrick, state.trumpSuit);
+            if (plays.length > 0) {
+              handleHumanCardPlay(plays[0]);
+            }
+          } else if (state.phase === 'bidding_round_1') {
+            handleHumanRound1Bid('pass');
+          } else if (state.phase === 'bidding_round_2') {
+            const mustCall = state.rules.stickTheDealer && state.dealer === 0;
+            if (mustCall) {
+              const legalSuit = ALL_SUITS.find((s) => s !== state.upCard?.suit) || 'hearts';
+              handleHumanRound2Bid('call_trump', legalSuit);
+            } else {
+              handleHumanRound2Bid('pass');
+            }
+          } else if (state.phase === 'dealer_discard' && state.dealer === 0) {
+            const hand = state.hands[0] || [];
+            if (hand.length > 0) {
+              handleHumanDiscard(hand[0]);
+            }
+          }
+        }
+      }
+    }, 120);
+
+    return () => clearInterval(interval);
+  }, [
+    state.currentTurn,
+    state.phase,
+    state.hands,
+    state.trumpSuit,
+    state.currentTrick.leadSuit,
+    state.rules.stickTheDealer,
+    state.dealer,
+    state.upCard,
+  ]);
+
   // Helper to render player pod
   const renderPlayerPod = (pos: PlayerPosition, positionStyle: string) => {
     const player = state.players[pos];
@@ -445,11 +511,55 @@ export const GameTable: React.FC<GameTableProps> = ({
               >
                 {/* Avatar Container */}
                 <div
-                  className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 transition-all duration-300 flex items-center justify-center
+                  className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 transition-all duration-300 flex items-center justify-center relative
                     ${isTeamBlue ? 'bg-gradient-to-tr from-blue-600 to-cyan-400' : 'bg-gradient-to-tr from-red-600 to-amber-500'}
-                    ${isCurrentTurn ? 'ring-4 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : isDealer ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/30' : 'opacity-90'}
+                    ${isCurrentTurn ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : isDealer ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/30' : 'opacity-90'}
                     ${isBenched ? 'grayscale opacity-50' : ''}`}
                 >
+                  {/* 15-Second Radial Turn Countdown Progress Ring */}
+                  {isCurrentTurn && (
+                    <div className="absolute -inset-1 sm:-inset-1.5 pointer-events-none z-20 flex items-center justify-center">
+                      <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
+                        <circle
+                          cx="32"
+                          cy="32"
+                          r="27"
+                          className="stroke-slate-900/60"
+                          strokeWidth="3.5"
+                          fill="none"
+                        />
+                        <circle
+                          cx="32"
+                          cy="32"
+                          r="27"
+                          className={`transition-all duration-150 ${
+                            turnSecondsLeft <= 2
+                              ? 'stroke-red-500 animate-pulse'
+                              : turnSecondsLeft <= 5
+                              ? 'stroke-amber-400'
+                              : 'stroke-emerald-400'
+                          }`}
+                          strokeWidth="3.5"
+                          strokeDasharray={169.65}
+                          strokeDashoffset={169.65 * (1 - Math.max(0, turnSecondsLeft) / 15)}
+                          strokeLinecap="round"
+                          fill="none"
+                        />
+                      </svg>
+                      <div
+                        className={`absolute -top-2.5 px-1.5 py-0.2 rounded-full text-[9px] font-mono font-black shadow-md ${
+                          turnSecondsLeft <= 2
+                            ? 'bg-red-500 text-white animate-bounce'
+                            : turnSecondsLeft <= 5
+                            ? 'bg-amber-400 text-slate-950'
+                            : 'bg-emerald-500 text-slate-950'
+                        }`}
+                      >
+                        {Math.ceil(turnSecondsLeft)}s
+                      </div>
+                    </div>
+                  )}
+
                   <div className="w-full h-full bg-slate-900 rounded-[14px] flex flex-col items-center justify-center overflow-hidden">
                     <AvatarPortrait
                       avatarId={resolvedAvatar}
@@ -557,6 +667,7 @@ export const GameTable: React.FC<GameTableProps> = ({
   const callerTeam = state.callingTeam ?? (state.callingPlayer !== undefined ? getPlayerTeam(state.callingPlayer) : undefined);
   const dealerPlayer = state.players[state.dealer];
   const dealerAvatar = resolveAvatarId(state.dealer === 0 ? (profile?.avatarIcon || dealerPlayer?.avatarId) : dealerPlayer?.avatarId);
+  const equippedFelt = getTableFeltDefinition(profile?.equippedCosmetics?.tableFelt || profile?.tableFelt);
 
   return (
     <div className="relative w-full h-[100dvh] bg-slate-950 text-white flex flex-col overflow-hidden select-none">
@@ -640,19 +751,39 @@ export const GameTable: React.FC<GameTableProps> = ({
         yourTeam={0}
       />
 
-      {/* Main Playing Felt Area (Modern Royal Midnight Casino Table) */}
-      <main className="relative flex-1 min-h-0 bg-gradient-to-b from-[#080e1a] via-[#0c1424] to-[#060a12] flex items-center justify-center p-2 sm:p-6 overflow-hidden">
+      {/* Main Playing Felt Area (Dynamic Custom Felt or Midnight Casino) */}
+      <main
+        className="relative flex-1 min-h-0 flex items-center justify-center p-2 sm:p-6 overflow-hidden"
+        style={{ background: equippedFelt.bgGradient }}
+      >
         {/* Modern Ambient Felt Vignette & Concentric Track Rings */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_rgba(245,158,11,0.07)_0%,_rgba(12,20,36,0.5)_50%,_transparent_80%)] pointer-events-none" />
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `radial-gradient(circle at 50% 50%, ${equippedFelt.accentHex}15 0%, ${equippedFelt.feltColor}85 50%, ${equippedFelt.vignette} 80%)`,
+          }}
+        />
         
         {/* Subtle Modern Luxury Geometric Table Seal */}
         <div className="absolute flex flex-col items-center justify-center pointer-events-none select-none">
-          <div className="w-72 h-72 sm:w-96 sm:h-96 rounded-full border border-amber-400/[0.08] flex flex-col items-center justify-center p-6">
-            <div className="w-full h-full rounded-full border border-dashed border-amber-400/[0.05] flex flex-col items-center justify-center">
-              <span className="text-2xl sm:text-4xl font-black tracking-[0.35em] text-amber-200/[0.08] uppercase font-sans">
+          <div
+            className="w-72 h-72 sm:w-96 sm:h-96 rounded-full border flex flex-col items-center justify-center p-6"
+            style={{ borderColor: `${equippedFelt.accentHex}18` }}
+          >
+            <div
+              className="w-full h-full rounded-full border border-dashed flex flex-col items-center justify-center"
+              style={{ borderColor: `${equippedFelt.accentHex}10` }}
+            >
+              <span
+                className="text-2xl sm:text-4xl font-black tracking-[0.35em] uppercase font-sans"
+                style={{ color: `${equippedFelt.accentHex}18` }}
+              >
                 BOWER JJ
               </span>
-              <div className="flex items-center gap-2 mt-1.5 text-amber-400/[0.08] text-xs">
+              <div
+                className="flex items-center gap-2 mt-1.5 text-xs"
+                style={{ color: `${equippedFelt.accentHex}18` }}
+              >
                 <span>♠</span>
                 <span>♥</span>
                 <span>♣</span>
@@ -664,16 +795,23 @@ export const GameTable: React.FC<GameTableProps> = ({
 
         {/* Player Pods on Table Felt:
             - Partner North at top
-            - Opponent West at left
-            - Opponent East at right
-            - You South at bottom, placed right above the dark blue footer border, cleared away from West's dealer deck */}
+            - Opponent West at left (pushed close to edge to eliminate avatar-trick overlap)
+            - Opponent East at right (pushed close to edge to eliminate avatar-trick overlap)
+            - You South at bottom */}
         {renderPlayerPod(2, 'top-1.5 sm:top-3 left-1/2 -translate-x-1/2')} {/* Partner (North) */}
-        {renderPlayerPod(1, 'left-2 sm:left-6 top-1/2 -translate-y-1/2')} {/* Opponent 1 (West) */}
-        {renderPlayerPod(3, 'right-2 sm:right-6 top-1/2 -translate-y-1/2')} {/* Opponent 2 (East) */}
+        {renderPlayerPod(1, 'left-1 sm:left-3 top-1/2 -translate-y-1/2')} {/* Opponent 1 (West) */}
+        {renderPlayerPod(3, 'right-1 sm:right-3 top-1/2 -translate-y-1/2')} {/* Opponent 2 (East) */}
         {renderPlayerPod(0, 'bottom-1.5 sm:bottom-2.5 left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-28 md:left-32 lg:left-36')} {/* You (South) */}
 
         {/* Center Trick Arena & Table Hub */}
-        <div className="relative w-72 h-72 sm:w-84 sm:h-84 rounded-full border-2 border-amber-400/25 bg-[#070d18]/65 shadow-[0_0_50px_rgba(0,0,0,0.8),inset_0_0_30px_rgba(245,158,11,0.04)] backdrop-blur-xs flex items-center justify-center">
+        <div
+          className="relative w-72 h-72 sm:w-84 sm:h-84 rounded-full border-2 backdrop-blur-xs flex items-center justify-center"
+          style={{
+            borderColor: `${equippedFelt.feltBorder}85`,
+            backgroundColor: `${equippedFelt.feltColor}90`,
+            boxShadow: `0 0 50px rgba(0,0,0,0.8), inset 0 0 35px ${equippedFelt.accentHex}12`,
+          }}
+        >
           {/* Bidding Round 1 & Round 2 Kitty Display */}
           <CenterKittyDisplay
             phase={state.phase}
@@ -686,22 +824,22 @@ export const GameTable: React.FC<GameTableProps> = ({
             <LeadSuitBadge leadSuit={leadSuit} showFollowHint />
           )}
 
-          {/* Played Cards in Trick Arena (Clearly Positioned and Visible!) */}
+          {/* Played Cards in Trick Arena (Clamped spread so East/West cards stay completely clear of avatars!) */}
           {(state.phase === 'playing' || isTrickResolving) && (
             <div className="relative w-full h-full flex items-center justify-center">
               {trickCards.map(pc => {
                 const player = state.players[pc.player];
                 const isWinningCard = isTrickResolving && state.currentTrick.winningCard?.id === pc.card.id;
 
-                // Position each card towards the player who threw it
+                // Position each card inside the center felt circle without encroaching on avatars
                 const positionStyle =
                   pc.player === 0
-                    ? 'bottom-3 left-1/2 -translate-x-1/2'
+                    ? 'bottom-4 sm:bottom-5 left-1/2 -translate-x-1/2'
                     : pc.player === 2
-                    ? 'top-9 left-1/2 -translate-x-1/2'
+                    ? 'top-4 sm:top-5 left-1/2 -translate-x-1/2'
                     : pc.player === 1
-                    ? 'left-4 top-1/2 -translate-y-1/2'
-                    : 'right-4 top-1/2 -translate-y-1/2';
+                    ? 'left-12 sm:left-14 top-1/2 -translate-y-1/2'
+                    : 'right-12 sm:right-14 top-1/2 -translate-y-1/2';
 
                 return (
                   <div

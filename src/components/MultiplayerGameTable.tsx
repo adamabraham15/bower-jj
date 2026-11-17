@@ -27,7 +27,7 @@ import { PostMatchModal } from './PostMatchModal';
 import { PublicProfileModal, PublicPlayerData } from './PublicProfileModal';
 import { PlayerProfileData } from './ProfileModal';
 import { AvatarPortrait } from './AvatarPortrait';
-import { resolveAvatarId, resolveCardBackId } from '../config/collectiblesCatalog';
+import { resolveAvatarId, resolveCardBackId, getTableFeltDefinition } from '../config/collectiblesCatalog';
 import { sounds } from '../audio/sound';
 import { multiplayerClient } from '../services/multiplayerClient';
 import confetti from 'canvas-confetti';
@@ -83,6 +83,8 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
   const [mutedUsernames, setMutedUsernames] = useState<Set<string>>(new Set());
   const [autoDealCountdown, setAutoDealCountdown] = useState<number>(6);
   const [showExitConfirmModal, setShowExitConfirmModal] = useState<boolean>(false);
+  const [turnSecondsLeft, setTurnSecondsLeft] = useState<number>(15);
+  const turnStartTimeRef = useRef<number>(Date.now());
   const [autoSortBySuit, setAutoSortBySuit] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('bower_jj_auto_sort_by_suit');
@@ -143,6 +145,61 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
       setAloneToggle(false);
     }
   }, [serverState.phase, serverState.dealer]);
+
+  // 15-Second Radial Turn Countdown Timer
+  useEffect(() => {
+    if (isActiveDecisionPhase(serverState.phase)) {
+      setTurnSecondsLeft(15);
+      turnStartTimeRef.current = Date.now();
+    }
+  }, [serverState.currentTurn, serverState.phase, serverState.currentTrick?.cards?.length]);
+
+  useEffect(() => {
+    if (!isActiveDecisionPhase(serverState.phase) || serverState.phase === 'game_over' || serverState.phase === 'trick_resolving') {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const elapsed = (Date.now() - turnStartTimeRef.current) / 1000;
+      const remaining = Math.max(0, 15 - elapsed);
+      setTurnSecondsLeft(remaining);
+
+      // Auto-play when 15 seconds expire on your turn in multiplayer
+      if (remaining <= 0) {
+        clearInterval(interval);
+        if (serverState.currentTurn === serverState.yourPosition) {
+          if (serverState.phase === 'playing') {
+            const hand = serverState.yourHand || [];
+            const plays = hand.filter((c) =>
+              isCardPlayLegal(c, hand, serverState.currentTrick, serverState.trumpSuit)
+            );
+            if (plays.length > 0) {
+              multiplayerClient.playCard(plays[0].id);
+            }
+          } else if (serverState.phase === 'bidding_round_1') {
+            multiplayerClient.bid('pass', undefined, false);
+          } else if (serverState.phase === 'bidding_round_2') {
+            multiplayerClient.bid('pass', undefined, false);
+          } else if (serverState.phase === 'dealer_discard' && serverState.dealer === serverState.yourPosition) {
+            const hand = serverState.yourHand || [];
+            if (hand.length > 0) {
+              multiplayerClient.discard(hand[0].id);
+            }
+          }
+        }
+      }
+    }, 120);
+
+    return () => clearInterval(interval);
+  }, [
+    serverState.currentTurn,
+    serverState.phase,
+    serverState.yourHand,
+    serverState.trumpSuit,
+    serverState.currentTrick?.leadSuit,
+    serverState.yourPosition,
+    serverState.dealer,
+  ]);
 
   // Hand tray horizontal scroll and drag-to-pan handlers (allows moving cards back and forth on mobile)
   const handScrollRef = useRef<HTMLDivElement>(null);
@@ -255,9 +312,9 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
 
     const positionStyle = customStyle || {
       bottom: 'bottom-1.5 sm:bottom-2.5 left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-28 md:left-32 lg:left-36',
-      left: 'left-2 sm:left-6 top-1/2 -translate-y-1/2',
+      left: 'left-1 sm:left-3 top-1/2 -translate-y-1/2',
       top: 'top-1.5 sm:top-3 left-1/2 -translate-x-1/2',
-      right: 'right-2 sm:right-6 top-1/2 -translate-y-1/2',
+      right: 'right-1 sm:right-3 top-1/2 -translate-y-1/2',
     }[relPos];
 
     const isMutedPlayer = slot ? mutedUsernames.has(slot.username) : false;
@@ -326,11 +383,55 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 className="relative cursor-pointer hover:scale-105 active:scale-95 transition-transform"
               >
                 <div
-                  className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 transition-all duration-300 flex items-center justify-center
+                  className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 transition-all duration-300 flex items-center justify-center relative
                     ${isBlueTeam ? 'bg-gradient-to-tr from-blue-600 to-cyan-400' : 'bg-gradient-to-tr from-red-600 to-amber-500'}
-                    ${isCurrentTurn ? 'ring-4 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : isPlayerDealer ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/30' : 'opacity-90'}
+                    ${isCurrentTurn ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : isPlayerDealer ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/30' : 'opacity-90'}
                     ${isSlotBenched ? 'grayscale opacity-50' : ''}`}
                 >
+                  {/* 15-Second Radial Turn Countdown Progress Ring */}
+                  {isCurrentTurn && (
+                    <div className="absolute -inset-1 sm:-inset-1.5 pointer-events-none z-20 flex items-center justify-center">
+                      <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
+                        <circle
+                          cx="32"
+                          cy="32"
+                          r="27"
+                          className="stroke-slate-900/60"
+                          strokeWidth="3.5"
+                          fill="none"
+                        />
+                        <circle
+                          cx="32"
+                          cy="32"
+                          r="27"
+                          className={`transition-all duration-150 ${
+                            turnSecondsLeft <= 2
+                              ? 'stroke-red-500 animate-pulse'
+                              : turnSecondsLeft <= 5
+                              ? 'stroke-amber-400'
+                              : 'stroke-emerald-400'
+                          }`}
+                          strokeWidth="3.5"
+                          strokeDasharray={169.65}
+                          strokeDashoffset={169.65 * (1 - Math.max(0, turnSecondsLeft) / 15)}
+                          strokeLinecap="round"
+                          fill="none"
+                        />
+                      </svg>
+                      <div
+                        className={`absolute -top-2.5 px-1.5 py-0.2 rounded-full text-[9px] font-mono font-black shadow-md ${
+                          turnSecondsLeft <= 2
+                            ? 'bg-red-500 text-white animate-bounce'
+                            : turnSecondsLeft <= 5
+                            ? 'bg-amber-400 text-slate-950'
+                            : 'bg-emerald-500 text-slate-950'
+                        }`}
+                      >
+                        {Math.ceil(turnSecondsLeft)}s
+                      </div>
+                    </div>
+                  )}
+
                   <div className="w-full h-full bg-slate-900 rounded-[14px] flex flex-col items-center justify-center overflow-hidden">
                     {slot ? (
                       <AvatarPortrait
@@ -423,6 +524,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
     ? (serverState.callingPlayer === yourPos ? 'You' : callerSlot?.username || `Seat ${serverState.callingPlayer}`)
     : undefined;
   const callerTeam = serverState.callingTeam ?? (serverState.callingPlayer !== undefined ? getPlayerTeam(serverState.callingPlayer) : undefined);
+  const equippedFelt = getTableFeltDefinition(profile?.equippedCosmetics?.tableFelt || profile?.tableFelt);
 
   return (
     <div className="relative w-full h-[100dvh] bg-slate-950 text-white flex flex-col overflow-hidden select-none">
@@ -510,19 +612,39 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
         yourTeam={getPlayerTeam(yourPos)}
       />
 
-      {/* Main Felt Arena (Modern Royal Midnight Casino Table) */}
-      <main className="relative flex-1 min-h-0 bg-gradient-to-b from-[#080e1a] via-[#0c1424] to-[#060a12] flex items-center justify-center p-2 sm:p-6 overflow-hidden">
+      {/* Main Felt Arena (Dynamic Custom Felt or Midnight Casino) */}
+      <main
+        className="relative flex-1 min-h-0 flex items-center justify-center p-2 sm:p-6 overflow-hidden"
+        style={{ background: equippedFelt.bgGradient }}
+      >
         {/* Modern Ambient Felt Vignette */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_rgba(245,158,11,0.07)_0%,_rgba(12,20,36,0.5)_50%,_transparent_80%)] pointer-events-none" />
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `radial-gradient(circle at 50% 50%, ${equippedFelt.accentHex}15 0%, ${equippedFelt.feltColor}85 50%, ${equippedFelt.vignette} 80%)`,
+          }}
+        />
 
         {/* Subtle Modern Luxury Geometric Table Seal */}
         <div className="absolute flex flex-col items-center justify-center pointer-events-none select-none">
-          <div className="w-72 h-72 sm:w-96 sm:h-96 rounded-full border border-amber-400/[0.08] flex flex-col items-center justify-center p-6">
-            <div className="w-full h-full rounded-full border border-dashed border-amber-400/[0.05] flex flex-col items-center justify-center">
-              <span className="text-2xl sm:text-4xl font-black tracking-[0.35em] text-amber-200/[0.08] uppercase font-sans">
+          <div
+            className="w-72 h-72 sm:w-96 sm:h-96 rounded-full border flex flex-col items-center justify-center p-6"
+            style={{ borderColor: `${equippedFelt.accentHex}18` }}
+          >
+            <div
+              className="w-full h-full rounded-full border border-dashed flex flex-col items-center justify-center"
+              style={{ borderColor: `${equippedFelt.accentHex}10` }}
+            >
+              <span
+                className="text-2xl sm:text-4xl font-black tracking-[0.35em] uppercase font-sans"
+                style={{ color: `${equippedFelt.accentHex}18` }}
+              >
                 BOWER JJ
               </span>
-              <div className="flex items-center gap-2 mt-1.5 text-amber-400/[0.08] text-xs">
+              <div
+                className="flex items-center gap-2 mt-1.5 text-xs"
+                style={{ color: `${equippedFelt.accentHex}18` }}
+              >
                 <span>♠</span>
                 <span>♥</span>
                 <span>♣</span>
@@ -540,7 +662,14 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
         ))}
 
         {/* Center Trick Arena */}
-        <div className="relative w-72 h-72 sm:w-84 sm:h-84 rounded-full border-2 border-amber-400/25 bg-[#070d18]/65 shadow-[0_0_50px_rgba(0,0,0,0.8),inset_0_0_30px_rgba(245,158,11,0.04)] backdrop-blur-xs flex items-center justify-center">
+        <div
+          className="relative w-72 h-72 sm:w-84 sm:h-84 rounded-full border-2 backdrop-blur-xs flex items-center justify-center"
+          style={{
+            borderColor: `${equippedFelt.feltBorder}85`,
+            backgroundColor: `${equippedFelt.feltColor}90`,
+            boxShadow: `0 0 50px rgba(0,0,0,0.8), inset 0 0 35px ${equippedFelt.accentHex}12`,
+          }}
+        >
           {/* Turned-up Card (Round 1) / Turned-down Card (Round 2) */}
           <CenterKittyDisplay
             phase={serverState.phase}
@@ -553,7 +682,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             <LeadSuitBadge leadSuit={leadSuit} />
           )}
 
-          {/* Played Cards in Trick Arena */}
+          {/* Played Cards in Trick Arena (Clamped spread so East/West cards stay completely clear of avatars!) */}
           {(serverState.phase === 'playing' || isTrickResolving) && (
             <div className="relative w-full h-full flex items-center justify-center">
               {trickCards.map(pc => {
@@ -562,10 +691,10 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 const isWinningCard = isTrickResolving && serverState.currentTrick.winningCard?.id === pc.card.id;
 
                 const positionStyle = {
-                  bottom: 'bottom-3 left-1/2 -translate-x-1/2',
-                  left: 'left-4 top-1/2 -translate-y-1/2',
-                  top: 'top-9 left-1/2 -translate-x-1/2',
-                  right: 'right-4 top-1/2 -translate-y-1/2',
+                  bottom: 'bottom-4 sm:bottom-5 left-1/2 -translate-x-1/2',
+                  left: 'left-12 sm:left-14 top-1/2 -translate-y-1/2',
+                  top: 'top-4 sm:top-5 left-1/2 -translate-x-1/2',
+                  right: 'right-12 sm:right-14 top-1/2 -translate-y-1/2',
                 }[relPos];
 
                 return (

@@ -60,9 +60,12 @@ export interface PlayerProfileData {
   bestStreak: number;
   favTrumpSuit: string;
   favMode?: string;
+  waxSeals?: number;
+  tableFelt?: string;
   equippedCosmetics?: {
     hat?: string;
     cardBack?: string;
+    tableFelt?: string;
     banner?: string;
     title?: string;
   };

@@ -359,16 +359,16 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       </aside>
 
       {/* =====================================================================
-          CENTRAL PLAY ARENA (Single-Screen Mobile App Format — No Scrolling)
+          CENTRAL PLAY ARENA (Expanded Desktop & Mobile Adaptive Grid)
       ===================================================================== */}
       <main
-        className="relative z-10 flex-1 flex flex-col justify-between items-center h-full px-3.5 sm:px-6 py-2 sm:py-4 overflow-y-auto lg:overflow-hidden"
+        className="relative z-10 flex-1 flex flex-col items-center h-full px-3 sm:px-6 py-2 sm:py-4 overflow-y-auto pb-28 sm:pb-8"
         style={{
           paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.35rem)',
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 4.75rem)',
         }}
       >
-        <div className="w-full max-w-[430px] lg:max-w-[470px] lg:bg-[#111726]/95 lg:border lg:border-slate-800/90 lg:rounded-3xl lg:shadow-[0_24px_80px_rgba(0,0,0,0.75)] lg:p-5 flex flex-col justify-between flex-1 my-auto">
+        <div className="w-full max-w-lg lg:max-w-3xl xl:max-w-4xl lg:bg-[#111726]/95 lg:border lg:border-slate-800/90 lg:rounded-3xl lg:shadow-[0_24px_80px_rgba(0,0,0,0.75)] p-3.5 sm:p-5 lg:p-6 flex flex-col justify-between flex-1 my-auto">
           {/* Top Header Bar: BOWER JJ Emblem Logo & Controls (Play removed) */}
           <div>
             <header className="flex items-center justify-between py-1">
@@ -471,17 +471,17 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             </div>
 
             {/* =================================================================
-                HERO TWIN-BOWER EMBLEM + RANK LP PILL (Enlarged for Accessibility)
+                HERO TWIN-BOWER EMBLEM + RANK LP PILL
             ================================================================= */}
             <div className="relative flex flex-col items-center justify-center py-1 sm:py-2">
               <div className="pointer-events-none absolute w-56 h-28 rounded-full bg-gradient-to-r from-emerald-500/25 via-amber-400/20 to-emerald-500/25 blur-2xl" />
 
-              {/* Static 3-Card Bower Fan Artwork (Rock-solid, non-clickable image) */}
+              {/* Static 3-Card Bower Fan Artwork */}
               <div className="relative flex items-center justify-center select-none pointer-events-none mb-1">
                 <img
                   src="/assets/bower_3card_fan.svg?v=clean"
                   alt="Bower JJ 3-Card Bower Fan"
-                  className="w-64 sm:w-72 h-auto max-h-28 sm:max-h-32 object-contain select-none pointer-events-none drop-shadow-[0_12px_24px_rgba(0,0,0,0.5)]"
+                  className="w-56 sm:w-64 h-auto max-h-24 sm:max-h-28 object-contain select-none pointer-events-none drop-shadow-[0_12px_24px_rgba(0,0,0,0.5)]"
                 />
               </div>
 
@@ -505,7 +505,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             </div>
           </div>
 
-          {/* Active Ranked Match Banner (Allows instant rejoining of an in-progress match) */}
+          {/* Active Ranked Match Banner */}
           {activeRankedMatch && activeRankedMatch.phase !== 'game_over' && (() => {
             const myTeam = activeRankedMatch.yourPosition % 2;
             const oppTeam = (activeRankedMatch.yourPosition + 1) % 2;
@@ -578,334 +578,178 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           })()}
 
           {/* =================================================================
-              UNIFIED GAME MODE SELECTOR + GIANT 3D "START GAME" CTA
+              CARD-BASED GAME MODE SELECTOR (4 Direct Cards across Mobile & Desktop)
           ================================================================= */}
-          <div className="my-1.5 space-y-1.5 w-full">
-            {/* The Slide-Down "Select Game Mode" Pill (Larger & Tactile) */}
-            <div className="relative">
+          <div className="my-2 space-y-2.5 w-full">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Select Game Mode</span>
+              </span>
+              <span className="text-[11px] text-slate-400 font-semibold">
+                {quickMode === 'ai_bots'
+                  ? 'Instant Practice'
+                  : quickMode === 'ranked_solo'
+                  ? 'Competitive 2v2'
+                  : quickMode === 'private'
+                  ? 'Custom Lobby'
+                  : 'Casual Play'}
+              </span>
+            </div>
+
+            {/* The 4-Card Grid: Ranked, Casual, Play a Friend, Play Bots */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+              {/* Card 1: Ranked Solo Queue */}
               <button
+                type="button"
                 onClick={() => {
                   sounds.playUiClick();
-                  setIsQuickSelectorOpen((prev) => !prev);
+                  setQuickMode('ranked_solo');
                   setIsBotsDrawerOpen(false);
                 }}
-                className="w-full py-3 sm:py-3.5 px-3.5 sm:px-4 rounded-2xl bg-[#151e2f] hover:bg-[#1b263b] border-2 border-slate-700/80 hover:border-amber-400/60 flex items-center justify-between shadow-md transition-all cursor-pointer group"
+                className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden group ${
+                  quickMode === 'ranked_solo'
+                    ? 'bg-amber-500/15 border-amber-400 ring-2 ring-amber-400/80 shadow-[0_0_24px_rgba(245,158,11,0.25)]'
+                    : 'bg-[#151e2f] border-slate-700/80 hover:border-amber-400/50 hover:bg-[#1a253a]'
+                }`}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-500/15 border border-amber-400/35 flex items-center justify-center flex-shrink-0 shadow-inner">
-                    {activeModeMeta.icon}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shadow-inner group-hover:scale-105 transition-transform">
+                    <Zap className="w-5 h-5 fill-amber-400" />
                   </div>
-                  <div className="text-left min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-amber-300">
-                        Select Game Mode
-                      </span>
-                      <span className="text-slate-500 text-[10px]">•</span>
-                      <span className="text-[10px] sm:text-xs text-slate-300 font-semibold truncate">
-                        {activeModeMeta.sub}
-                      </span>
-                    </div>
-                    <div className="text-sm sm:text-base font-black text-white leading-tight truncate">
-                      {activeModeMeta.title}
-                    </div>
-                  </div>
+                  {quickMode === 'ranked_solo' ? (
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b] animate-ping" />
+                  ) : (
+                    <span className="text-[10px] font-bold text-amber-400/80 bg-amber-950/60 px-1.5 py-0.5 rounded-md border border-amber-500/30">
+                      LP
+                    </span>
+                  )}
                 </div>
-                <div className="flex items-center gap-1 pl-2 flex-shrink-0">
-                  <ChevronDown
-                    className={`w-5 h-5 text-amber-400 transition-transform duration-200 ${
-                      isQuickSelectorOpen ? 'rotate-180 text-amber-300 scale-110' : 'group-hover:translate-y-0.5'
-                    }`}
-                  />
+                <div>
+                  <div className="text-xs sm:text-sm font-black text-white leading-tight">Ranked Solo</div>
+                  <div className="text-[10px] text-amber-300/90 font-bold mt-0.5 truncate">Earn Rank LP • 10 pts</div>
                 </div>
               </button>
 
-              {/* =================================================================
-                  GAME MODE SELECTOR MODAL / BOTTOM SHEET (Never occludes main buttons)
-              ================================================================= */}
-              {isQuickSelectorOpen && (
-                <div
-                  onClick={() => {
-                    sounds.playUiClick();
-                    setIsQuickSelectorOpen(false);
-                  }}
-                  className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150"
-                >
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-full sm:max-w-md bg-[#131b2b] border-t sm:border border-slate-700/80 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[80vh] overflow-hidden animate-in slide-in-from-bottom duration-200"
-                    style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}
-                  >
-                    {/* Mobile Drag Indicator */}
-                    <div className="w-12 h-1.5 bg-slate-700/80 rounded-full mx-auto mt-2.5 sm:hidden flex-shrink-0" />
-
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 flex-shrink-0">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shadow-inner">
-                          <Zap className="w-4 h-4 fill-amber-400" />
-                        </div>
-                        <div>
-                          <h3 className="font-black text-sm text-white uppercase tracking-wider">Choose Game Mode</h3>
-                          <p className="text-[11px] text-slate-400 font-medium">Select how you want to play</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          sounds.playUiClick();
-                          setIsQuickSelectorOpen(false);
-                        }}
-                        className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
-                        aria-label="Close mode selector"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    {/* Scrollable Mode List */}
-                    <div className="p-3.5 sm:p-4 overflow-y-auto space-y-2 flex-1 overscroll-contain">
-                      <div className="grid grid-cols-1 gap-1.5">
-                        {(
-                          [
-                            {
-                              id: 'ranked_solo',
-                              label: 'Ranked Solo Queue',
-                              desc: 'Competitive MMR • 10 pts • Earn Rank LP',
-                              icon: <Zap className="w-5 h-5 text-amber-400 fill-amber-400" />,
-                            },
-                            {
-                              id: 'unranked',
-                              label: 'Casual Play (Unranked)',
-                              desc: 'Zero rank loss • Practice & Earn XP',
-                              icon: <Shield className="w-5 h-5 text-cyan-400" />,
-                            },
-                            {
-                              id: 'rivalry',
-                              label: 'Friendly Rivalry',
-                              desc: 'Challenge a friend head-to-head',
-                              icon: <Swords className="w-5 h-5 text-cyan-300" />,
-                            },
-                            {
-                              id: 'private',
-                              label: 'Private Room Lobby',
-                              desc: 'Play with friends using room code',
-                              icon: <Users className="w-5 h-5 text-amber-300" />,
-                            },
-                            {
-                              id: 'ai_bots',
-                              label: 'Play Bots (Instant AI)',
-                              desc: `${selectedDifficulty.toUpperCase()} • ${targetScore} pts • Offline & Ready`,
-                              icon: <Bot className="w-5 h-5 text-emerald-400" />,
-                            },
-                          ] as const
-                        ).map((opt) => (
-                          <button
-                            key={opt.id}
-                            onClick={() => {
-                              sounds.playUiClick();
-                              setQuickMode(opt.id);
-                              if (opt.id !== 'ai_bots') {
-                                setIsQuickSelectorOpen(false);
-                              }
-                            }}
-                            className={`w-full px-3.5 py-3 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer ${
-                              quickMode === opt.id
-                                ? 'bg-emerald-500/15 border-emerald-400/70 text-white shadow-sm'
-                                : 'bg-[#182235] border-slate-800 text-slate-300 hover:bg-[#1e2a40]'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-slate-900/60 border border-slate-700/60 flex items-center justify-center flex-shrink-0">
-                                {opt.icon}
-                              </div>
-                              <div>
-                                <div className="text-sm font-black text-white">{opt.label}</div>
-                                <div className="text-[11px] text-slate-400 font-medium">{opt.desc}</div>
-                              </div>
-                            </div>
-                            {quickMode === opt.id && <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Bot Settings Panel (smoothly embedded inside the scrollable drawer) */}
-                      {quickMode === 'ai_bots' && (
-                        <div className="mt-2.5 p-3.5 rounded-2xl bg-[#0f1624] border border-emerald-500/40 space-y-3 animate-in fade-in duration-150">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-black text-emerald-400 uppercase tracking-wide">
-                              Bot Difficulty
-                            </span>
-                            <div className="flex gap-1.5">
-                              {(['easy', 'medium', 'hard'] as AIDifficulty[]).map((d) => (
-                                <button
-                                  key={d}
-                                  onClick={() => {
-                                    sounds.playUiClick();
-                                    setSelectedDifficulty(d);
-                                  }}
-                                  className={`px-3 py-1.5 rounded-xl text-xs font-black capitalize transition-all cursor-pointer ${
-                                    selectedDifficulty === d
-                                      ? 'bg-emerald-500 text-slate-950 shadow-md'
-                                      : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'
-                                  }`}
-                                >
-                                  {d}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-black text-emerald-400 uppercase tracking-wide">
-                              Target Points
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <div className="flex gap-1.5">
-                                {[5, 7, 10].map((pts) => (
-                                  <button
-                                    key={pts}
-                                    onClick={() => {
-                                      sounds.playUiClick();
-                                      setTargetScore(pts);
-                                    }}
-                                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                                      targetScore === pts
-                                        ? 'bg-amber-400 text-slate-950 shadow-md'
-                                        : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'
-                                    }`}
-                                  >
-                                    {pts} pts
-                                  </button>
-                                ))}
-                              </div>
-
-                              <label className="flex items-center gap-1.5 text-xs text-slate-300 font-bold cursor-pointer ml-1 select-none">
-                                <input
-                                  type="checkbox"
-                                  checked={stickTheDealer}
-                                  onChange={(e) => setStickTheDealer(e.target.checked)}
-                                  className="rounded text-emerald-500 focus:ring-0 accent-emerald-500"
-                                />
-                                <span>Stick</span>
-                              </label>
-                            </div>
-                          </div>
-
-                          <div className="pt-1 grid grid-cols-2 gap-2">
-                            <button
-                              onClick={() => {
-                                sounds.playUiClick();
-                                setIsQuickSelectorOpen(false);
-                              }}
-                              className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs cursor-pointer text-center transition-colors"
-                            >
-                              Confirm Mode
-                            </button>
-                            <button
-                              onClick={() => {
-                                sounds.playVictoryFanfare();
-                                setIsQuickSelectorOpen(false);
-                                onStartAIMatch(selectedDifficulty, {
-                                  ...DEFAULT_RULES,
-                                  targetScore,
-                                  stickTheDealer,
-                                });
-                              }}
-                              className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:brightness-110 text-slate-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all"
-                            >
-                              <Play className="w-3.5 h-3.5 fill-slate-950" />
-                              <span>Launch Now</span>
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Tactile 3D Green "Start Game" Primary CTA Button */}
-            <button
-              onClick={handleStartSelectedGame}
-              className="w-full py-3.5 sm:py-4 rounded-2xl bg-gradient-to-b from-[#34d378] via-[#22c55e] to-[#15803d] hover:brightness-105 active:translate-y-0.5 text-white font-black text-lg sm:text-xl tracking-tight shadow-[0_4px_0_#146435,0_10px_25px_rgba(39,174,96,0.35)] border-t border-emerald-300/40 transition-all cursor-pointer flex items-center justify-center gap-2.5"
-            >
-              <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-white" />
-              <span>Start Game</span>
-            </button>
-          </div>
-
-          {/* =================================================================
-              COMPACT ACTION BUTTONS (Enlarged Imagery for Accessibility)
-          ================================================================= */}
-          <div className="space-y-2 mt-0.5 w-full">
-            {/* ROW 1: PLAY A FRIEND (Private Lobby) */}
-            <div className="rounded-2xl bg-[#161f30] border border-slate-700/75 overflow-hidden shadow-sm transition-all hover:border-sky-400/50">
+              {/* Card 2: Casual Match */}
               <button
+                type="button"
                 onClick={() => {
                   sounds.playUiClick();
-                  onOpenMatchmaking('private');
+                  setQuickMode('unranked');
+                  setIsBotsDrawerOpen(false);
                 }}
-                className="w-full px-3.5 py-2.5 sm:py-3 hover:bg-[#1c273d] flex items-center justify-between transition-colors cursor-pointer group"
+                className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden group ${
+                  quickMode === 'unranked'
+                    ? 'bg-cyan-500/15 border-cyan-400 ring-2 ring-cyan-400/80 shadow-[0_0_24px_rgba(6,182,212,0.25)]'
+                    : 'bg-[#151e2f] border-slate-700/80 hover:border-cyan-400/50 hover:bg-[#1a253a]'
+                }`}
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-sky-500/20 to-sky-700/15 border border-sky-400/40 flex items-center justify-center text-2xl shadow-inner flex-shrink-0 group-hover:scale-105 transition-transform">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-400 shadow-inner group-hover:scale-105 transition-transform">
+                    <Shield className="w-5 h-5" />
+                  </div>
+                  {quickMode === 'unranked' ? (
+                    <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#06b6d4] animate-ping" />
+                  ) : (
+                    <span className="text-[10px] font-bold text-cyan-400/80 bg-cyan-950/60 px-1.5 py-0.5 rounded-md border border-cyan-500/30">
+                      Safe
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-black text-white leading-tight">Casual 2v2</div>
+                  <div className="text-[10px] text-cyan-300/90 font-bold mt-0.5 truncate">No LP Loss • 10 pts</div>
+                </div>
+              </button>
+
+              {/* Card 3: Play a Friend */}
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playUiClick();
+                  setQuickMode('private');
+                  setIsBotsDrawerOpen(false);
+                }}
+                className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden group ${
+                  quickMode === 'private'
+                    ? 'bg-sky-500/15 border-sky-400 ring-2 ring-sky-400/80 shadow-[0_0_24px_rgba(56,189,248,0.25)]'
+                    : 'bg-[#151e2f] border-slate-700/80 hover:border-sky-400/50 hover:bg-[#1a253a]'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-xl shadow-inner group-hover:scale-105 transition-transform">
                     🤝
                   </div>
-                  <div className="text-left">
-                    <div className="text-sm sm:text-base font-black text-white group-hover:text-sky-300 transition-colors">
-                      Play a Friend
-                    </div>
-                    <div className="text-[11px] text-slate-400 font-medium">Private room code • Challenge a buddy</div>
+                  {quickMode === 'private' ? (
+                    <span className="w-2.5 h-2.5 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8] animate-ping" />
+                  ) : (
+                    <span className="text-[10px] font-bold text-sky-400/80 bg-sky-950/60 px-1.5 py-0.5 rounded-md border border-sky-500/30">
+                      Code
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-black text-white leading-tight">Play a Friend</div>
+                  <div className="text-[10px] text-sky-300/90 font-bold mt-0.5 truncate">Private Room Code</div>
+                </div>
+              </button>
+
+              {/* Card 4: Play Bots (Always 100% visible and interactive!) */}
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playUiClick();
+                  setQuickMode('ai_bots');
+                  setIsBotsDrawerOpen(true);
+                }}
+                className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden group ${
+                  quickMode === 'ai_bots'
+                    ? 'bg-emerald-500/15 border-emerald-400 ring-2 ring-emerald-400/80 shadow-[0_0_24px_rgba(16,185,129,0.25)]'
+                    : 'bg-[#151e2f] border-slate-700/80 hover:border-emerald-400/50 hover:bg-[#1a253a]'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 shadow-inner group-hover:scale-105 transition-transform">
+                    <Bot className="w-5 h-5" />
+                  </div>
+                  {quickMode === 'ai_bots' ? (
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981] animate-ping" />
+                  ) : (
+                    <span className="text-[10px] font-bold text-emerald-400/80 bg-emerald-950/60 px-1.5 py-0.5 rounded-md border border-emerald-500/30">
+                      AI
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-black text-white leading-tight">Play Bots</div>
+                  <div className="text-[10px] text-emerald-300/90 font-bold mt-0.5 truncate">
+                    Instant offline AI practice • {selectedDifficulty.toUpperCase()}
                   </div>
                 </div>
-                <span className="text-xs font-bold text-sky-400/80 group-hover:text-sky-300">Private ›</span>
               </button>
             </div>
 
-            {/* ROW 2: PLAY BOTS (Instant AI Practice + Settings) */}
-            <div className="rounded-2xl bg-[#161f30] border border-slate-700/75 overflow-hidden shadow-sm transition-all hover:border-emerald-400/50">
-              <button
-                onClick={() => {
-                  sounds.playUiClick();
-                  setIsBotsDrawerOpen((prev) => !prev);
-                }}
-                className="w-full px-3.5 py-2.5 sm:py-3 hover:bg-[#1c273d] flex items-center justify-between transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/15 border border-emerald-400/40 flex items-center justify-center text-2xl shadow-inner flex-shrink-0 group-hover:scale-105 transition-transform">
-                    🤖
-                  </div>
-                  <div className="text-left">
-                    <span className="text-sm sm:text-base font-black text-white group-hover:text-emerald-300 transition-colors block leading-tight">
-                      Play Bots
+            {/* Dynamic Configuration Panel for the Selected Game Mode */}
+            {quickMode === 'ai_bots' && (
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-[#0f1726] border border-emerald-500/40 space-y-2.5 animate-in fade-in duration-150">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center justify-between sm:justify-start gap-2">
+                    <span className="text-[11px] font-black text-emerald-400 uppercase tracking-wide">
+                      Bot Difficulty:
                     </span>
-                    <span className="text-[11px] text-slate-400 font-medium">Instant offline AI practice</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-bold text-emerald-300 capitalize">
-                    {selectedDifficulty} • {targetScore} pts
-                  </span>
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
-                </div>
-              </button>
-
-              {/* Inline Bot Controls */}
-              {isBotsDrawerOpen && (
-                <div className="px-3.5 pb-3 pt-1 border-t border-slate-800/80 bg-[#121a29] space-y-2.5 animate-in fade-in duration-150">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">AI Difficulty:</span>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1.5">
                       {(['easy', 'medium', 'hard'] as AIDifficulty[]).map((d) => (
                         <button
                           key={d}
+                          type="button"
                           onClick={() => {
                             sounds.playUiClick();
                             setSelectedDifficulty(d);
                           }}
-                          className={`px-2 py-0.5 rounded text-[11px] font-black capitalize cursor-pointer ${
+                          className={`px-3 py-1 rounded-xl text-xs font-black capitalize transition-all cursor-pointer ${
                             selectedDifficulty === d
-                              ? 'bg-emerald-500 text-slate-950'
+                              ? 'bg-emerald-500 text-slate-950 shadow-md scale-105'
                               : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                           }`}
                         >
@@ -915,59 +759,89 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Target Points:</span>
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-1">
-                        {[5, 7, 10].map((pts) => (
-                          <button
-                            key={pts}
-                            onClick={() => {
-                              sounds.playUiClick();
-                              setTargetScore(pts);
-                            }}
-                            className={`px-2 py-0.5 rounded text-[11px] font-black cursor-pointer ${
-                              targetScore === pts
-                                ? 'bg-amber-500 text-slate-950'
-                                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                            }`}
-                          >
-                            {pts}
-                          </button>
-                        ))}
-                      </div>
-
-                      <label className="flex items-center gap-1.5 text-[11px] text-slate-300 font-bold cursor-pointer ml-1">
-                        <input
-                          type="checkbox"
-                          checked={stickTheDealer}
-                          onChange={(e) => setStickTheDealer(e.target.checked)}
-                          className="rounded text-amber-500 focus:ring-0"
-                        />
-                        <span>Stick</span>
-                      </label>
+                  <div className="flex items-center justify-between sm:justify-end gap-2">
+                    <span className="text-[11px] font-black text-emerald-400 uppercase tracking-wide">
+                      Target:
+                    </span>
+                    <div className="flex gap-1.5">
+                      {[5, 7, 10].map((pts) => (
+                        <button
+                          key={pts}
+                          type="button"
+                          onClick={() => {
+                            sounds.playUiClick();
+                            setTargetScore(pts);
+                          }}
+                          className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                            targetScore === pts
+                              ? 'bg-amber-400 text-slate-950 shadow-md scale-105'
+                              : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                          }`}
+                        >
+                          {pts} pts
+                        </button>
+                      ))}
                     </div>
+
+                    <label className="flex items-center gap-1 text-xs text-slate-300 font-bold cursor-pointer ml-1 select-none">
+                      <input
+                        type="checkbox"
+                        checked={stickTheDealer}
+                        onChange={(e) => setStickTheDealer(e.target.checked)}
+                        className="rounded text-emerald-500 focus:ring-0 accent-emerald-500"
+                      />
+                      <span>Stick</span>
+                    </label>
                   </div>
-
-                  <button
-                    onClick={() => {
-                      sounds.playVictoryFanfare();
-                      onStartAIMatch(selectedDifficulty, {
-                        ...DEFAULT_RULES,
-                        targetScore,
-                        stickTheDealer,
-                      });
-                    }}
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-slate-950" />
-                    <span>Launch AI Match Now</span>
-                  </button>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* ROW 3: CARD VAULT & PACKS */}
+            {quickMode === 'private' && (
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-[#0f1726] border border-sky-500/40 flex items-center justify-between gap-2 animate-in fade-in duration-150">
+                <div className="text-left">
+                  <div className="text-xs font-black text-sky-300">Private Room Match</div>
+                  <div className="text-[11px] text-slate-400">Host a room with a custom code or join a friend's room</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playUiClick();
+                    onOpenMatchmaking('private');
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs transition-colors cursor-pointer"
+                >
+                  Enter Room
+                </button>
+              </div>
+            )}
+
+            {/* Giant 3D Green "Start Game" CTA Button */}
+            <button
+              type="button"
+              onClick={handleStartSelectedGame}
+              className="w-full py-3.5 sm:py-4 rounded-2xl bg-gradient-to-b from-[#34d378] via-[#22c55e] to-[#15803d] hover:brightness-105 active:translate-y-0.5 text-white font-black text-lg sm:text-xl tracking-tight shadow-[0_4px_0_#146435,0_10px_25px_rgba(39,174,96,0.35)] border-t border-emerald-300/40 transition-all cursor-pointer flex items-center justify-center gap-2.5 mt-1"
+            >
+              <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-white" />
+              <span className="flex items-center gap-2">
+                <span>Start Game</span>
+                <span className="text-xs sm:text-sm font-semibold opacity-90">
+                  • {quickMode === 'ai_bots'
+                    ? `Bots (${selectedDifficulty.toUpperCase()})`
+                    : quickMode === 'ranked_solo'
+                    ? 'Ranked Solo'
+                    : quickMode === 'private'
+                    ? 'Private Room'
+                    : 'Casual 2v2'}
+                </span>
+              </span>
+            </button>
+          </div>
+
+          {/* =================================================================
+              CARD VAULT & QUICK ACCESS BAR
+          ================================================================= */}
+          <div className="mt-1 w-full">
             <div className="rounded-2xl bg-[#161f30] border border-slate-700/75 overflow-hidden shadow-sm transition-all hover:border-amber-400/50">
               <div
                 onClick={() => {
@@ -981,7 +855,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 className="w-full px-3.5 py-2.5 sm:py-3 hover:bg-[#1c273d] flex items-center justify-between transition-colors cursor-pointer group"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="relative w-11 h-15 sm:w-12 sm:h-16 rounded-xl overflow-hidden border-2 border-amber-400/80 shadow-md flex-shrink-0 bg-slate-950 group-hover:scale-105 transition-transform">
+                  <div className="relative w-10 h-13 sm:w-11 sm:h-14 rounded-xl overflow-hidden border border-amber-400/80 shadow-md flex-shrink-0 bg-slate-950 group-hover:scale-105 transition-transform">
                     <img
                       src={PACK_ARTWORK_URL}
                       alt="Bower JJ Pack"
@@ -995,7 +869,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                     <span className="text-[11px] text-amber-300/80 font-medium block truncate">
                       {unopenedPacksCount > 0
                         ? `${unopenedPacksCount} booster pack${unopenedPacksCount > 1 ? 's' : ''} ready to open!`
-                        : 'Collect 10 card decks & custom backs'}
+                        : 'Collect 10 card decks, custom felts & wax seals'}
                     </span>
                   </div>
                 </div>

@@ -72,7 +72,7 @@ describe('Collectibles, Card Packs & Server Validation', () => {
     expect(AVATAR_CATALOG.length).toBe(16);
     expect(CARD_COLLECTIONS.length).toBe(10);
     expect(COLLECTIBLE_CARDS.length).toBe(50);
-    expect(CARD_BACK_CATALOG.length).toBe(12);
+    expect(CARD_BACK_CATALOG.length).toBe(15);
 
     const { user } = await repo.getOrCreateUser('FreshCollector', '🤠');
     expect(user.avatarIcon).toBe('the_outlaw');

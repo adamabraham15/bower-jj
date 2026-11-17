@@ -25,6 +25,7 @@ import {
 } from '../config/collectiblesCatalog';
 import { PlayerCollectionState } from '../../server/types';
 import { AvatarPortrait } from './AvatarPortrait';
+import { VaultCollections } from './vault/VaultCollections';
 import { sounds } from '../audio/sound';
 
 interface CollectionModalProps {
@@ -34,11 +35,16 @@ interface CollectionModalProps {
   collectionState?: PlayerCollectionState;
   equippedAvatarId: string;
   equippedCardBackId: string;
+  equippedTableFeltId?: string;
+  waxSealsBalance?: number;
   playerLevel: number;
   playerWins: number;
   onOpenPackModal: () => void;
   onEquipAvatar: (avatarId: string) => void;
   onEquipCardBack: (cardBackId: string) => void;
+  onEquipTableFelt?: (feltId: string) => void;
+  onUpdateWaxSeals?: (newBalance: number) => void;
+  onCardCrafted?: (cardId: string) => void;
 }
 
 export const CollectionModal: React.FC<CollectionModalProps> = ({
@@ -48,11 +54,16 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({
   collectionState,
   equippedAvatarId,
   equippedCardBackId,
+  equippedTableFeltId = 'midnight_navy',
+  waxSealsBalance = 150,
   playerLevel,
   playerWins,
   onOpenPackModal,
   onEquipAvatar,
   onEquipCardBack,
+  onEquipTableFelt = () => {},
+  onUpdateWaxSeals = () => {},
+  onCardCrafted = () => {},
 }) => {
   const [activeTab, setActiveTab] = useState<'packs' | 'collections' | 'avatars'>(initialTab);
   const [avatarFilter, setAvatarFilter] = useState<'all' | 'unlocked' | 'locked'>('all');
@@ -384,166 +395,17 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({
                 </div>
               </div>
 
-              {/* 10 Collectible Card-Back Sets */}
-              <div className="space-y-3 sm:space-y-4">
-                <h3 className="text-[11px] sm:text-xs font-black uppercase tracking-widest text-slate-400">
-                  10 Collectible Card-Back Collections
-                </h3>
-                <div className="grid grid-cols-1 gap-3 sm:gap-4">
-                  {CARD_COLLECTIONS.map((col) => {
-                    const rarity = RARITY_META[col.rarity];
-                    const ownedCount = CARD_IDENTITIES.filter((id) =>
-                      ownedCardMap.has(`${col.id}_${id}`)
-                    ).length;
-                    const isUnlocked = unlockedCardBackSet.has(col.cardBackId) || ownedCount === 5;
-                    const isEquipped = canonicalCardBack === col.cardBackId;
-
-                    return (
-                      <div
-                        key={col.id}
-                        className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border bg-slate-950/85 space-y-3 sm:space-y-4 ${
-                          isEquipped
-                            ? 'border-amber-400 ring-1 ring-amber-400/50'
-                            : isUnlocked
-                            ? 'border-emerald-500/50'
-                            : 'border-slate-800'
-                        }`}
-                      >
-                        {/* Header row with card back thumbnail & unlock progress */}
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="relative w-12 h-18 sm:w-16 sm:h-24 rounded-lg sm:rounded-xl overflow-hidden border border-slate-700 flex-shrink-0 shadow-md">
-                              <img
-                                src={col.cardBackImageUrl}
-                                alt={col.name}
-                                className={`w-full h-full object-cover ${
-                                  isUnlocked ? '' : 'grayscale brightness-50'
-                                }`}
-                              />
-                              {!isUnlocked && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-slate-950/45">
-                                  <Lock className="w-4 h-4 text-slate-200" />
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                <h4 className="text-xs sm:text-base font-black text-white truncate">{col.name}</h4>
-                                <span
-                                  className={`px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black border ${rarity.badgeClass}`}
-                                >
-                                  {rarity.label}
-                                </span>
-                                {isUnlocked && (
-                                  <span className="px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-emerald-500/20 border border-emerald-400/60 text-emerald-300 flex items-center gap-0.5">
-                                    <Check className="w-3 h-3" />
-                                    <span>Unlocked</span>
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 line-clamp-1">{col.description}</p>
-                              <div className="flex items-center gap-2 mt-1.5">
-                                <div className="w-20 sm:w-32 h-1.5 sm:h-2 rounded-full bg-slate-800 overflow-hidden">
-                                  <div
-                                    className="h-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-all"
-                                    style={{ width: `${(ownedCount / 5) * 100}%` }}
-                                  />
-                                </div>
-                                <span className="text-[10px] sm:text-[11px] font-black text-amber-300">
-                                  {ownedCount}/5 Cards
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Equip button / Unlock status */}
-                          <div className="flex-shrink-0">
-                            {isUnlocked ? (
-                              <button
-                                onClick={() => {
-                                  sounds.playUiClick();
-                                  onEquipCardBack(col.cardBackId);
-                                }}
-                                disabled={isEquipped}
-                                className={`px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-xl text-xs font-black cursor-pointer transition-all ${
-                                  isEquipped
-                                    ? 'bg-emerald-500/20 border border-emerald-400/60 text-emerald-300 cursor-default'
-                                    : 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg'
-                                }`}
-                              >
-                                {isEquipped ? 'Equipped' : 'Equip Back'}
-                              </button>
-                            ) : (
-                              <span className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-[10px] font-bold text-slate-500 hidden sm:inline-block">
-                                Collect 5/5
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* 5 Card Identities Row */}
-                        <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
-                          {CARD_IDENTITIES.map((ident) => {
-                            const cardId = `${col.id}_${ident}`;
-                            const def = getCollectibleCardDefinition(cardId)!;
-                            const qty = ownedCardMap.get(cardId) || 0;
-                            const cRarity = RARITY_META[def.rarity];
-
-                            return (
-                              <button
-                                key={cardId}
-                                onClick={() => {
-                                  if (qty > 0) setPreviewCardId(cardId);
-                                }}
-                                className={`relative rounded-lg sm:rounded-xl overflow-hidden border transition-all text-left group ${
-                                  qty > 0
-                                    ? `${cRarity.borderClass} bg-slate-900 cursor-pointer hover:scale-[1.03]`
-                                    : 'border-slate-800 bg-slate-900/40 cursor-default opacity-40'
-                                }`}
-                              >
-                                <div className="aspect-[360/510] w-full relative">
-                                  <img
-                                    src={def.imageUrl}
-                                    alt={def.name}
-                                    loading="lazy"
-                                    className={`w-full h-full object-cover ${qty > 0 ? '' : 'grayscale brightness-40'}`}
-                                  />
-
-                                  {/* Rank Identity Badge (10, J, Q, K, A) */}
-                                  <div className="absolute top-0.5 left-0.5 sm:top-1 sm:left-1 px-1 sm:px-1.5 py-0.2 rounded bg-slate-950/90 border border-amber-400/60 text-[9px] sm:text-[11px] font-black text-amber-300">
-                                    {ident}
-                                  </div>
-
-                                  {qty === 0 && (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/50">
-                                      <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400" />
-                                    </div>
-                                  )}
-                                  {qty > 1 && (
-                                    <span className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 px-1 sm:px-1.5 py-0.2 rounded bg-slate-950/90 border border-emerald-400/60 text-[8px] sm:text-[9px] font-black text-emerald-300">
-                                      x{qty}
-                                    </span>
-                                  )}
-                                </div>
-                                {/* Clean bottom rarity bar on desktop */}
-                                <div className="py-0.5 sm:py-1 px-1 text-center bg-slate-950/95">
-                                  <div className="text-[9px] sm:text-[10px] font-bold text-white truncate hidden sm:block">
-                                    {def.identityName}
-                                  </div>
-                                  <div className={`text-[8px] sm:text-[9px] font-black ${cRarity.textClass}`}>
-                                    {cRarity.label}
-                                  </div>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              {/* 5-Card Vault Sets, Wax Seal Crafting & Custom Table Felts */}
+              <VaultCollections
+                collectionState={collectionState}
+                equippedCardBackId={canonicalCardBack}
+                equippedTableFeltId={equippedTableFeltId}
+                waxSealsBalance={waxSealsBalance}
+                onEquipCardBack={onEquipCardBack}
+                onEquipTableFelt={onEquipTableFelt}
+                onUpdateWaxSeals={onUpdateWaxSeals}
+                onCardCrafted={onCardCrafted}
+              />
             </div>
           )}
 

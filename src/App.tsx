@@ -1174,7 +1174,7 @@ export const App: React.FC = () => {
     multiplayerClient.connect(name, profile.avatarIcon);
   };
 
-  const handleUpdateCosmetic = (category: 'hat' | 'cardBack' | 'banner' | 'title', id: string) => {
+  const handleUpdateCosmetic = (category: 'hat' | 'cardBack' | 'banner' | 'title' | 'tableFelt', id: string) => {
     if (category === 'hat') {
       handleUpdateAvatar(id);
       return;
@@ -1190,11 +1190,24 @@ export const App: React.FC = () => {
     if (category === 'cardBack') {
       multiplayerClient.equipCardBack(finalId);
     } else {
-      multiplayerClient.equipCosmetic(category, finalId);
+      multiplayerClient.equipCosmetic(category as any, finalId);
     }
     if (authUserRef.current?.id) {
       authService.updateUserCosmetic(authUserRef.current.id, category, finalId);
     }
+    try {
+      localStorage.setItem(`bower_jj_${category}`, finalId);
+    } catch {}
+  };
+
+  const handleUpdateWaxSeals = (newBalance: number) => {
+    setProfile(prev => ({
+      ...prev,
+      waxSeals: newBalance,
+    }));
+    try {
+      localStorage.setItem('bower_jj_wax_seals', String(newBalance));
+    } catch {}
   };
 
   // Dedicated Live Site Traffic & Online User Tracker
@@ -1503,6 +1516,7 @@ export const App: React.FC = () => {
         yourRank={userRankPosition}
         currentUsername={profile.username}
         currentUserId={authUser?.id || profile.playerId}
+        currentRankTier={profile.rankTier}
       />
 
       <CollectionModal
@@ -1512,6 +1526,8 @@ export const App: React.FC = () => {
         collectionState={collectionState}
         equippedAvatarId={resolveAvatarId(profile.avatarIcon)}
         equippedCardBackId={resolveCardBackId(profile.equippedCosmetics?.cardBack)}
+        equippedTableFeltId={profile.equippedCosmetics?.tableFelt || 'midnight_navy'}
+        waxSealsBalance={profile.waxSeals ?? 150}
         playerLevel={profile.level}
         playerWins={profile.wins}
         onOpenPackModal={() => {
@@ -1522,6 +1538,8 @@ export const App: React.FC = () => {
         }}
         onEquipAvatar={handleUpdateAvatar}
         onEquipCardBack={(cardBackId) => handleUpdateCosmetic('cardBack', cardBackId)}
+        onEquipTableFelt={(feltId) => handleUpdateCosmetic('tableFelt', feltId)}
+        onUpdateWaxSeals={handleUpdateWaxSeals}
       />
 
       <PackOpeningModal
@@ -1534,6 +1552,7 @@ export const App: React.FC = () => {
         unopenedCount={collectionState?.unopenedPacksCount ?? 0}
         isOpening={isOpeningPack}
         packResult={pendingPackResult}
+        currentWaxSeals={profile.waxSeals ?? 150}
         onRequestOpenPack={() => {
           setIsOpeningPack(true);
           multiplayerClient.openCardPack();
@@ -1543,6 +1562,8 @@ export const App: React.FC = () => {
           setIsOpeningPack(false);
         }}
         onEquipCardBack={(cardBackId) => handleUpdateCosmetic('cardBack', cardBackId)}
+        onEquipTableFelt={(feltId) => handleUpdateCosmetic('tableFelt', feltId)}
+        onUpdateWaxSeals={handleUpdateWaxSeals}
         onOpenCollection={() => {
           setCollectionInitialTab('collections');
           multiplayerClient.fetchCollectionState();
