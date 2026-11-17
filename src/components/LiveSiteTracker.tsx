@@ -22,7 +22,11 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
-import { LivePresenceRecord } from '../services/presenceTracker';
+import { presenceTracker, LivePresenceRecord } from '../services/presenceTracker';
+
+interface LiveSiteTrackerProps {
+  onBackToGame?: () => void;
+}
 
 interface VisitRow {
   id: number;
@@ -59,7 +63,7 @@ function formatTimeAgo(isoDate: string): string {
   return `${hrs}h ago`;
 }
 
-export const LiveSiteTracker: React.FC = () => {
+export const LiveSiteTracker: React.FC<LiveSiteTrackerProps> = ({ onBackToGame }) => {
   const [realtimeMap, setRealtimeMap] = useState<Record<string, LivePresenceRecord>>({});
   const [dbPresence, setDbPresence] = useState<LivePresenceRecord[]>([]);
   const [recentVisits, setRecentVisits] = useState<VisitRow[]>([]);
@@ -132,41 +136,15 @@ export const LiveSiteTracker: React.FC = () => {
     const pollInterval = setInterval(fetchMetrics, 8000);
     const uiTickInterval = setInterval(() => setTick((t) => t + 1), 1000);
 
-    // Subscribe to Supabase Realtime Presence channel for instant sub-second updates
-    let channel: any = null;
-    if (supabase) {
-      channel = supabase.channel('bower_jj_live_presence');
-      channel
-        .on('presence', { event: 'sync' }, () => {
-          const state = channel.presenceState() as Record<string, any[]>;
-          const nextMap: Record<string, LivePresenceRecord> = {};
-          Object.entries(state).forEach(([key, list]) => {
-            if (Array.isArray(list) && list.length > 0) {
-              const latest = list[list.length - 1];
-              if (latest && latest.session_id) {
-                nextMap[latest.session_id] = latest as LivePresenceRecord;
-              } else if (latest) {
-                nextMap[key] = {
-                  session_id: key,
-                  player_id: latest.player_id || 'guest',
-                  username: latest.username || 'Guest',
-                  rank_tier: latest.rank_tier || '9',
-                  activity: latest.activity || 'Main Menu',
-                  device: latest.device || 'Desktop',
-                  traffic_source: latest.traffic_source || 'Direct (bowerjj.com)',
-                  page_url: latest.page_url || 'https://bowerjj.com',
-                  started_at: latest.started_at || new Date().toISOString(),
-                  last_seen_at: latest.last_seen_at || new Date().toISOString(),
-                };
-              }
-            }
-          });
-          setRealtimeMap(nextMap);
-        })
-        .subscribe();
+    // Subscribe to shared PresenceTracker singleton for instant sub-second presence
+    const unsubPresence = presenceTracker.subscribeToPresenceState((nextMap) => {
+      setRealtimeMap(nextMap);
+    });
 
-      // Also listen to postgres_changes on site_presence & site_visits
-      const dbChangesChannel = supabase
+    // Also listen to postgres_changes on site_presence & site_visits
+    let dbChangesChannel: any = null;
+    if (supabase) {
+      dbChangesChannel = supabase
         .channel('bower_jj_tracker_db_changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'site_presence' }, () => {
           fetchMetrics();
@@ -175,20 +153,15 @@ export const LiveSiteTracker: React.FC = () => {
           fetchMetrics();
         })
         .subscribe();
-
-      return () => {
-        clearInterval(pollInterval);
-        clearInterval(uiTickInterval);
-        if (supabase) {
-          if (channel) supabase.removeChannel(channel);
-          if (dbChangesChannel) supabase.removeChannel(dbChangesChannel);
-        }
-      };
     }
 
     return () => {
       clearInterval(pollInterval);
       clearInterval(uiTickInterval);
+      unsubPresence();
+      if (supabase && dbChangesChannel) {
+        supabase.removeChannel(dbChangesChannel);
+      }
     };
   }, [fetchMetrics]);
 
@@ -280,6 +253,12 @@ export const LiveSiteTracker: React.FC = () => {
             </button>
             <a
               href="/"
+              onClick={(e) => {
+                if (onBackToGame) {
+                  e.preventDefault();
+                  onBackToGame();
+                }
+              }}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-xs font-black text-white shadow-lg shadow-emerald-600/25 transition-all"
             >
               Open Game

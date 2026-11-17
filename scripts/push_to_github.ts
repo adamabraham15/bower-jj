@@ -151,10 +151,11 @@ async function main() {
   console.log(`Created tree: ${treeData.sha}`);
 
   console.log(`Creating commit...`);
+  const commitMsg = process.env.COMMIT_MESSAGE || 'feat: Standalone live website presence and analytics tracker (/tracker)';
   const commitData = await ghFetch(`/repos/${OWNER}/${REPO}/git/commits`, {
     method: 'POST',
     body: JSON.stringify({
-      message: 'feat: Gameplay & UI Enhancement Update (Lobby Invite Sync, 3D Pack Opening, Bot Names, Mobile Trick Counter, Chill Lo-Fi Music)',
+      message: commitMsg,
       tree: treeData.sha,
       parents: [latestCommitSha]
     })

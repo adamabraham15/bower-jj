@@ -109,6 +109,16 @@ class PresenceTrackerService {
   private heartbeatTimer: any = null;
   private initialized: boolean = false;
   private visitLogged: boolean = false;
+  private presenceListeners = new Set<(map: Record<string, LivePresenceRecord>) => void>();
+  private currentPresenceMap: Record<string, LivePresenceRecord> = {};
+
+  public subscribeToPresenceState(listener: (map: Record<string, LivePresenceRecord>) => void): () => void {
+    this.presenceListeners.add(listener);
+    listener(this.currentPresenceMap);
+    return () => {
+      this.presenceListeners.delete(listener);
+    };
+  }
 
   public startPlayerTracking(initialProfile?: {
     playerId?: string;
@@ -134,6 +144,22 @@ class PresenceTrackerService {
         config: {
           presence: { key: this.sessionId },
         },
+      });
+
+      this.channel.on('presence', { event: 'sync' }, () => {
+        if (!this.channel) return;
+        const state = this.channel.presenceState() as Record<string, any[]>;
+        const nextMap: Record<string, LivePresenceRecord> = {};
+        Object.entries(state).forEach(([, list]) => {
+          if (Array.isArray(list) && list.length > 0) {
+            const latest = list[list.length - 1];
+            if (latest && latest.session_id) {
+              nextMap[latest.session_id] = latest as LivePresenceRecord;
+            }
+          }
+        });
+        this.currentPresenceMap = nextMap;
+        this.presenceListeners.forEach((fn) => fn(nextMap));
       });
 
       this.channel.subscribe(async (status) => {
