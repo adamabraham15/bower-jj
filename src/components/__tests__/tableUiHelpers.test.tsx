@@ -403,22 +403,24 @@ describe('Table UI & Tutorial Helpers', () => {
 
   it('renders MainMenu with accessible Game Mode selector and uncluttered Play Bots actions', () => {
     const mockProfile = {
-      id: 'test-user',
       username: 'EuchreChampion',
+      playerId: 'test-user-id',
       avatarIcon: 'default',
-      rankTier: 'Gold' as const,
-      rankPoints: 75,
       level: 12,
       xp: 1200,
-      stats: {
-        handsPlayed: 100,
-        handsWon: 60,
-        tricksWon: 250,
-        lonersAttempted: 10,
-        lonersMade: 7,
-        renegesReported: 0,
-        euchresForced: 15,
-      },
+      nextLevelXp: 2000,
+      rankTier: 'K' as const,
+      rankPoints: 75,
+      totalGames: 100,
+      wins: 60,
+      losses: 40,
+      tricksWon: 250,
+      euchres: 15,
+      marches: 20,
+      successfulLoners: 7,
+      currentStreak: 3,
+      bestStreak: 8,
+      favTrumpSuit: 'spades',
     };
 
     const htmlMenu = renderToStaticMarkup(
