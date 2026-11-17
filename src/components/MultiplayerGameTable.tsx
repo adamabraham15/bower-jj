@@ -3,7 +3,7 @@
  * Powered by real-time WebSockets with Hand Privacy Anti-Cheat.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { SanitizedGameState, PlayerSlot, RankTier } from '../../server/types';
 import { Card, Suit, PlayerPosition, getPlayerTeam, getPlayerPartner } from '../engine/types';
 import { getWinningTeam, isCanadianLonerForced, isHandCardInteractive } from '../engine/game';
@@ -144,6 +144,59 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
     }
   }, [serverState.phase, serverState.dealer]);
 
+  // Hand tray horizontal scroll and drag-to-pan handlers (allows moving cards back and forth on mobile)
+  const handScrollRef = useRef<HTMLDivElement>(null);
+  const isDraggingHandRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const scrollStartXRef = useRef(0);
+  const hasDraggedRef = useRef(false);
+  const dragResetTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleTrayMouseDown = (e: React.MouseEvent) => {
+    if (!handScrollRef.current) return;
+    isDraggingHandRef.current = true;
+    hasDraggedRef.current = false;
+    dragStartXRef.current = e.clientX;
+    scrollStartXRef.current = handScrollRef.current.scrollLeft;
+  };
+
+  const handleTrayMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingHandRef.current || !handScrollRef.current) return;
+    const delta = e.clientX - dragStartXRef.current;
+    if (Math.abs(delta) > 5) {
+      hasDraggedRef.current = true;
+    }
+    handScrollRef.current.scrollLeft = scrollStartXRef.current - delta;
+  };
+
+  const handleTrayMouseUp = () => {
+    isDraggingHandRef.current = false;
+    if (dragResetTimerRef.current) clearTimeout(dragResetTimerRef.current);
+    dragResetTimerRef.current = setTimeout(() => {
+      hasDraggedRef.current = false;
+    }, 120);
+  };
+
+  const handleTrayTouchStart = (e: React.TouchEvent) => {
+    if (!handScrollRef.current) return;
+    hasDraggedRef.current = false;
+    dragStartXRef.current = e.touches[0].clientX;
+  };
+
+  const handleTrayTouchMove = (e: React.TouchEvent) => {
+    const delta = Math.abs(e.touches[0].clientX - dragStartXRef.current);
+    if (delta > 8) {
+      hasDraggedRef.current = true;
+    }
+  };
+
+  const handleTrayTouchEnd = () => {
+    if (dragResetTimerRef.current) clearTimeout(dragResetTimerRef.current);
+    dragResetTimerRef.current = setTimeout(() => {
+      hasDraggedRef.current = false;
+    }, 120);
+  };
+
   const yourPos = serverState.yourPosition;
   const yourTeam = yourPos % 2;
   const targetScore = serverState.rules?.targetScore ?? 10;
@@ -158,6 +211,13 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
   const isDealerDiscardPhase = serverState.phase === 'dealer_discard' && isDealer;
   const isBenched = serverState.benchedPlayer === yourPos;
   const isTrickResolving = serverState.phase === 'trick_resolving';
+
+  // Smoothly ensure hand starts at beginning when picking up card / dealer discard begins
+  useEffect(() => {
+    if (isDealerDiscardPhase && handScrollRef.current) {
+      handScrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+    }
+  }, [isDealerDiscardPhase]);
 
   // Helper to map absolute seat position (0, 1, 2, 3) to relative UI placement:
   // 0 offset = Bottom (You)
@@ -814,7 +874,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 <span className="text-amber-400 font-black animate-pulse">
                   {isBenched
                     ? 'Partner Going Alone — Tap a card to discard'
-                    : 'Tap a card to discard it to the kitty'}
+                    : 'Tap a card to discard • Swipe to view all 6'}
                 </span>
               ) : isBenched ? (
                 <span className="text-gray-400">Partner is going alone. Your hand is sitting out.</span>
@@ -849,41 +909,77 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             </button>
           </div>
 
-          {/* Hand Cards (Mobile-first responsive sizing: all 5 cards fit on any mobile screen) */}
-          <div className="flex justify-center items-center gap-1 xs:gap-1.5 min-[400px]:gap-2 sm:gap-3 md:gap-4 max-w-full overflow-visible px-1 sm:px-4 pt-5 sm:pt-7 pb-1.5 sm:pb-2.5 min-h-[96px] xs:min-h-[105px] sm:min-h-[142px] md:min-h-[162px] lg:min-h-[182px]">
-            {displayHand.map((card, idx) => {
-              const isLegal = serverState.phase === 'playing'
-                ? isCardPlayLegal(card, serverState.yourHand, serverState.currentTrick, serverState.trumpSuit)
-                : isDealerDiscardPhase;
+          {/* Mobile swipe helper cue during 6-card discard */}
+          {(isDealerDiscardPhase || displayHand.length > 5) && (
+            <div className="text-[10px] text-amber-300 font-bold sm:hidden flex items-center justify-center space-x-1.5 py-0.5 animate-pulse">
+              <span>👈</span>
+              <span>Swipe cards to view all 6 in full</span>
+              <span>👉</span>
+            </div>
+          )}
 
-              return (
-                <div
-                  key={card.id}
-                  className="transition-transform duration-150 flex-shrink-0 hover:z-30"
-                  style={{ zIndex: idx, maxWidth: 'calc((100vw - 16px) / 5)' }}
-                >
-                  <CardView
-                    card={card}
-                    trumpSuit={serverState.trumpSuit}
-                    isPlayable={isHandCardInteractive({
-                      isDealerDiscardPhase,
-                      isBenched,
-                      isYourTurn,
-                      isLegal,
-                    })}
-                    size="hand"
-                    onClick={() => {
-                      sounds.playCardSnap();
-                      if (isDealerDiscardPhase) {
-                        multiplayerClient.discard(card.id);
-                      } else if (!isBenched && isYourTurn && isLegal) {
-                        multiplayerClient.playCard(card.id);
-                      }
+          {/* Hand Cards Tray (Mobile-first responsive sizing: all 5 fit normally; 6 cards scroll smoothly back and forth on mobile) */}
+          <div
+            ref={handScrollRef}
+            className={`w-full max-w-full overflow-y-visible scrollbar-none select-none ${
+              isDealerDiscardPhase || displayHand.length > 5
+                ? 'overflow-x-auto touch-pan-x cursor-grab active:cursor-grabbing'
+                : 'overflow-x-auto sm:overflow-x-visible touch-pan-x'
+            }`}
+            style={{
+              WebkitOverflowScrolling: 'touch',
+              overscrollBehaviorX: 'contain',
+            }}
+            onMouseDown={handleTrayMouseDown}
+            onMouseMove={handleTrayMouseMove}
+            onMouseUp={handleTrayMouseUp}
+            onMouseLeave={handleTrayMouseUp}
+            onTouchStart={handleTrayTouchStart}
+            onTouchMove={handleTrayTouchMove}
+            onTouchEnd={handleTrayTouchEnd}
+          >
+            <div className="flex items-center justify-center min-w-full w-max gap-1 xs:gap-1.5 min-[400px]:gap-2 sm:gap-3 md:gap-4 px-3 sm:px-6 pt-5 sm:pt-7 pb-1.5 sm:pb-2.5 min-h-[96px] xs:min-h-[105px] sm:min-h-[142px] md:min-h-[162px] lg:min-h-[182px]">
+              {displayHand.map((card, idx) => {
+                const isLegal = serverState.phase === 'playing'
+                  ? isCardPlayLegal(card, serverState.yourHand, serverState.currentTrick, serverState.trumpSuit)
+                  : isDealerDiscardPhase;
+
+                return (
+                  <div
+                    key={card.id}
+                    className="transition-transform duration-150 flex-shrink-0 hover:z-30"
+                    style={{
+                      zIndex: idx,
+                      maxWidth:
+                        isDealerDiscardPhase || displayHand.length > 5
+                          ? undefined
+                          : 'calc((100vw - 16px) / 5)',
                     }}
-                  />
-                </div>
-              );
-            })}
+                  >
+                    <CardView
+                      card={card}
+                      trumpSuit={serverState.trumpSuit}
+                      isPlayable={isHandCardInteractive({
+                        isDealerDiscardPhase,
+                        isBenched,
+                        isYourTurn,
+                        isLegal,
+                      })}
+                      size="hand"
+                      onClick={() => {
+                        if (hasDraggedRef.current) return;
+                        sounds.playCardSnap();
+                        if (isDealerDiscardPhase) {
+                          multiplayerClient.discard(card.id);
+                        } else if (!isBenched && isYourTurn && isLegal) {
+                          multiplayerClient.playCard(card.id);
+                        }
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </footer>
       )}
