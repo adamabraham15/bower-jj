@@ -445,10 +445,17 @@ describe('Table UI & Tutorial Helpers', () => {
 
     expect(htmlMenu).toContain('Select Game Mode');
     expect(htmlMenu).toContain('Start Game');
+    expect(htmlMenu).toContain('Ranked Solo');
+    expect(htmlMenu).toContain('Casual 2v2');
     expect(htmlMenu).toContain('Play a Friend');
     expect(htmlMenu).toContain('Play Bots');
-    expect(htmlMenu).toContain('Custom Room Lobby');
-    expect(htmlMenu).toContain('Instant offline AI practice');
+    expect(htmlMenu).toContain('Open Packs');
+    // Cluttering sub headers removed
+    expect(htmlMenu).not.toContain('Earn Rank LP •');
+    expect(htmlMenu).not.toContain('Relaxed Match •');
+    expect(htmlMenu).not.toContain('Custom Room Lobby');
+    expect(htmlMenu).not.toContain('Instant offline AI practice');
+    expect(htmlMenu).not.toContain('Card Vault &amp; Packs');
     expect(htmlMenu).not.toContain('Private Room Match');
     expect(htmlMenu).not.toContain('Bot Difficulty:');
     expect(htmlMenu).not.toContain('Enter Room');
