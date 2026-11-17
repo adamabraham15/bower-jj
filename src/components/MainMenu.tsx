@@ -324,14 +324,14 @@ export const MainMenu: React.FC<MainMenuProps> = ({
         <div className="w-full max-w-lg lg:max-w-3xl xl:max-w-4xl lg:bg-[#111726]/95 lg:border lg:border-slate-800/90 lg:rounded-3xl lg:shadow-[0_24px_80px_rgba(0,0,0,0.75)] p-3.5 sm:p-5 lg:p-6 flex flex-col justify-between flex-1 my-auto">
           {/* Top Header Bar: BOWER JJ Emblem Logo & Controls (Play removed) */}
           <div>
-            <header className="flex items-center justify-between py-1">
+            <header className="relative flex items-center justify-between py-1 min-h-[44px] sm:min-h-[52px]">
               {/* Left: Quick Profile Avatar Button */}
               <button
                 onClick={() => {
                   sounds.playUiClick();
                   onOpenProfile();
                 }}
-                className="flex items-center gap-2 p-1 sm:p-1.5 rounded-2xl bg-[#161f30] hover:bg-[#1c273d] border border-slate-700/80 shadow-sm transition-all cursor-pointer group"
+                className="flex items-center gap-2 p-1 sm:p-1.5 rounded-2xl bg-[#161f30] hover:bg-[#1c273d] border border-slate-700/80 shadow-sm transition-all cursor-pointer group z-10"
                 title="View Profile & Career Stats"
               >
                 <AvatarPortrait avatarId={profile.avatarIcon} size="xs" />
@@ -341,11 +341,11 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 </div>
               </button>
 
-              {/* Center: BOWER JJ 3D Embossed Gold Foil Logo (Matches Card Pack) */}
+              {/* Center: BOWER JJ 3D Embossed Gold Foil Logo (Centered on top of name/level/rank button) */}
               <div
                 onClick={handleLogoClick}
                 title="BOWER JJ — Home of Competitive Euchre"
-                className="flex items-center justify-center select-none cursor-pointer group py-0.5"
+                className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex items-center justify-center select-none cursor-pointer group py-0.5 z-20 pointer-events-auto"
               >
                 <img
                   src="/assets/bower_jj_pack_logo.png?v=pack_crest"
@@ -355,7 +355,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               </div>
 
               {/* Right: Audio Popover & Cloud Status */}
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#161f30] border border-slate-700/80 shadow-inner">
+              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#161f30] border border-slate-700/80 shadow-inner z-10">
                 <AudioControlsPopover />
                 {isAuthenticated ? (
                   <button
