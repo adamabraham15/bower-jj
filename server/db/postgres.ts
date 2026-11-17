@@ -544,10 +544,18 @@ export class PostgresDatabaseRepository {
 
     try {
       await this.pool.query(`ALTER TABLE public.profiles ALTER COLUMN avatar_icon SET DEFAULT 'the_outlaw'`);
+    } catch {
+      // Ignore if column default cannot be altered
+    }
+    try {
       await this.pool.query(`ALTER TABLE public.player_cosmetics ALTER COLUMN equipped_hat SET DEFAULT 'the_outlaw'`);
+    } catch {
+      // Ignore if column default cannot be altered
+    }
+    try {
       await this.pool.query(`ALTER TABLE public.player_cosmetics ADD COLUMN IF NOT EXISTS equipped_felt TEXT DEFAULT 'midnight_navy'`);
     } catch {
-      // Ignore if table ownership prohibits ALTER COLUMN
+      // Ignore if column already exists
     }
 
     if (!hasHandleNewUser) {
