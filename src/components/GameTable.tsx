@@ -602,11 +602,10 @@ export const GameTable: React.FC<GameTableProps> = ({
           </div>
         </div>
 
-        {/* Player Pods */}
+        {/* Opponent & Partner Pods on Table Felt (North, West, East) */}
         {renderPlayerPod(2, 'top-1.5 sm:top-3 left-1/2 -translate-x-1/2')} {/* Partner (North) */}
         {renderPlayerPod(1, 'left-2 sm:left-6 top-1/2 -translate-y-1/2')} {/* Opponent 1 (West) */}
         {renderPlayerPod(3, 'right-2 sm:right-6 top-1/2 -translate-y-1/2')} {/* Opponent 2 (East) */}
-        {renderPlayerPod(0, 'bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 sm:left-8 md:left-14 sm:translate-x-0')} {/* You (South) */}
 
         {/* Center Trick Arena & Table Hub */}
         <div className="relative w-72 h-72 sm:w-84 sm:h-84 rounded-full border-2 border-amber-400/25 bg-[#070d18]/65 shadow-[0_0_50px_rgba(0,0,0,0.8),inset_0_0_30px_rgba(245,158,11,0.04)] backdrop-blur-xs flex items-center justify-center">
@@ -902,9 +901,20 @@ export const GameTable: React.FC<GameTableProps> = ({
           }`}
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
         >
+          {/* On PC / Desktop (sm+): Your Avatar Pod docked cleanly in your player tray (never covering West's dealer deck) */}
+          <div className="hidden sm:flex sm:absolute sm:left-4 md:left-8 sm:top-1/2 sm:-translate-y-1/2 z-20">
+            {renderPlayerPod(0, 'relative')}
+          </div>
+
           {/* Turn prompt indicator & Sort Option */}
-          <div className="w-full flex items-center justify-between text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-1.5 sm:mb-2.5 px-1 sm:px-2">
-            <div className="flex-1 text-center truncate pr-2">
+          <div className="w-full flex items-center justify-between text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-1 sm:mb-2 px-1 sm:px-2 z-10">
+            {/* Mobile-only compact avatar */}
+            <div className="sm:hidden flex items-center space-x-1 flex-shrink-0">
+              <AvatarPortrait avatarId={profile?.avatarIcon || state.players[0].avatarId} size="xs" />
+              <span className="text-[10px] text-amber-300 font-bold truncate max-w-[65px]">{state.players[0].name}</span>
+            </div>
+
+            <div className="flex-1 text-center truncate px-1">
               {state.phase === 'hand_scored' ? (
                 <span className="text-amber-400 font-bold">Hand Scored — Ready for Next Deal</span>
               ) : state.phase === 'trick_resolving' ? (
@@ -949,7 +959,7 @@ export const GameTable: React.FC<GameTableProps> = ({
           </div>
 
           {/* Hand Cards (Mobile-first responsive sizing: all 5 cards fit on any mobile screen) */}
-          <div className="flex justify-center items-center gap-1 xs:gap-1.5 min-[400px]:gap-2 sm:gap-3 md:gap-4 max-w-full overflow-hidden px-1 sm:px-4 py-1 sm:py-2 min-h-[96px] xs:min-h-[105px] sm:min-h-[142px] md:min-h-[162px] lg:min-h-[182px]">
+          <div className="flex justify-center items-center gap-1 xs:gap-1.5 min-[400px]:gap-2 sm:gap-3 md:gap-4 max-w-full overflow-visible px-1 sm:px-4 pt-5 sm:pt-7 pb-1.5 sm:pb-2.5 min-h-[96px] xs:min-h-[105px] sm:min-h-[142px] md:min-h-[162px] lg:min-h-[182px]">
             {displayHand.map((card, idx) => {
               const isLegal = state.phase === 'playing'
                 ? isCardPlayLegal(card, humanHand, state.currentTrick, state.trumpSuit)
@@ -958,7 +968,7 @@ export const GameTable: React.FC<GameTableProps> = ({
               return (
                 <div
                   key={card.id}
-                  className="transition-transform duration-150 hover:-translate-y-3 flex-shrink-0"
+                  className="transition-transform duration-150 flex-shrink-0 hover:z-30"
                   style={{ zIndex: idx, maxWidth: 'calc((100vw - 16px) / 5)' }}
                 >
                   <CardView
