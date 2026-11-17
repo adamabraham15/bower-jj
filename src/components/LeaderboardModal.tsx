@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { X, Trophy, Medal, Flame, Shield, ArrowUpRight } from 'lucide-react';
+import { X, Trophy, Medal, Flame, Shield, ArrowUpRight, Crown, Star } from 'lucide-react';
 import { LeaderboardEntry } from '../../server/types';
 import { RankBadge } from './RankBadge';
 import { AvatarPortrait } from './AvatarPortrait';
@@ -19,6 +19,68 @@ interface LeaderboardModalProps {
   currentUsername: string;
   currentUserId?: string;
 }
+
+export const TopRankBadge: React.FC<{ position: number }> = ({ position }) => {
+  if (position === 1) {
+    return (
+      <div className="relative flex items-center justify-center flex-shrink-0 pt-1">
+        {/* Crown Accent */}
+        <div className="absolute -top-2.5 z-10 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] animate-bounce duration-1000">
+          <Crown className="w-4 h-4 text-amber-300 fill-amber-300" />
+        </div>
+        {/* Gold Medal Badge */}
+        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-b from-amber-200 via-yellow-400 to-amber-600 border-2 border-yellow-200 shadow-[0_0_14px_rgba(245,158,11,0.8),inset_0_1px_2px_rgba(255,255,255,0.8)] flex items-center justify-center ring-2 ring-amber-500/50 relative overflow-hidden">
+          <div className="absolute -top-3 -left-3 w-6 h-12 bg-white/40 rotate-[25deg] pointer-events-none" />
+          <span className="text-slate-950 font-black text-xs sm:text-sm leading-none drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)] select-none">
+            1
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (position === 2) {
+    return (
+      <div className="relative flex items-center justify-center flex-shrink-0 pt-1">
+        {/* Silver Star Accent */}
+        <div className="absolute -top-2 z-10 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+          <Star className="w-3.5 h-3.5 text-slate-100 fill-slate-200" />
+        </div>
+        {/* Silver Medal Badge */}
+        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-b from-slate-100 via-slate-300 to-slate-400 border-2 border-white shadow-[0_0_12px_rgba(203,213,225,0.7),inset_0_1px_2px_rgba(255,255,255,0.9)] flex items-center justify-center ring-2 ring-slate-400/50 relative overflow-hidden">
+          <div className="absolute -top-3 -left-3 w-6 h-12 bg-white/40 rotate-[25deg] pointer-events-none" />
+          <span className="text-slate-950 font-black text-xs sm:text-sm leading-none drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)] select-none">
+            2
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (position === 3) {
+    return (
+      <div className="relative flex items-center justify-center flex-shrink-0 pt-1">
+        {/* Bronze Star Accent */}
+        <div className="absolute -top-2 z-10 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+          <Star className="w-3.5 h-3.5 text-amber-300 fill-amber-400" />
+        </div>
+        {/* Bronze Medal Badge */}
+        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-b from-amber-500 via-amber-700 to-amber-900 border-2 border-amber-400/90 shadow-[0_0_12px_rgba(217,119,6,0.6),inset_0_1px_2px_rgba(255,255,255,0.5)] flex items-center justify-center ring-2 ring-amber-700/50 relative overflow-hidden">
+          <div className="absolute -top-3 -left-3 w-6 h-12 bg-white/25 rotate-[25deg] pointer-events-none" />
+          <span className="text-amber-100 font-black text-xs sm:text-sm leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] select-none">
+            3
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <span className="text-xs sm:text-sm font-bold text-gray-400 font-mono">
+      #{position}
+    </span>
+  );
+};
 
 export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   isOpen,
@@ -119,27 +181,17 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                     isCurrentUser
                       ? 'bg-amber-500/20 border border-amber-400/60 ring-1 ring-amber-400/40'
                       : isTop1
-                      ? 'bg-gradient-to-r from-amber-500/15 to-transparent border border-amber-500/30'
-                      : 'hover:bg-slate-800/60'
+                      ? 'bg-gradient-to-r from-amber-500/20 via-amber-500/5 to-transparent border border-amber-500/40 shadow-sm'
+                      : isTop2
+                      ? 'bg-gradient-to-r from-slate-400/15 via-slate-400/5 to-transparent border border-slate-400/30'
+                      : isTop3
+                      ? 'bg-gradient-to-r from-amber-700/15 via-amber-700/5 to-transparent border border-amber-700/30'
+                      : 'hover:bg-slate-800/60 border border-transparent'
                   }`}
                 >
                   {/* Rank Position */}
                   <div className="col-span-2 sm:col-span-1 flex items-center justify-center font-black">
-                    {isTop1 ? (
-                      <span className="w-7 h-7 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center text-xs shadow-md">
-                        🥇 1
-                      </span>
-                    ) : isTop2 ? (
-                      <span className="w-7 h-7 rounded-full bg-slate-300 text-slate-950 flex items-center justify-center text-xs shadow-md">
-                        🥈 2
-                      </span>
-                    ) : isTop3 ? (
-                      <span className="w-7 h-7 rounded-full bg-amber-700 text-white flex items-center justify-center text-xs shadow-md">
-                        🥉 3
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-400">#{pos}</span>
-                    )}
+                    <TopRankBadge position={pos} />
                   </div>
 
                   {/* Player Name & Avatar */}
