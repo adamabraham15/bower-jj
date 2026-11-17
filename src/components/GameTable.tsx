@@ -602,10 +602,15 @@ export const GameTable: React.FC<GameTableProps> = ({
           </div>
         </div>
 
-        {/* Opponent & Partner Pods on Table Felt (North, West, East) */}
+        {/* Player Pods on Table Felt:
+            - Partner North at top
+            - Opponent West at left
+            - Opponent East at right
+            - You South at bottom, placed right above the dark blue footer border, cleared away from West's dealer deck */}
         {renderPlayerPod(2, 'top-1.5 sm:top-3 left-1/2 -translate-x-1/2')} {/* Partner (North) */}
         {renderPlayerPod(1, 'left-2 sm:left-6 top-1/2 -translate-y-1/2')} {/* Opponent 1 (West) */}
         {renderPlayerPod(3, 'right-2 sm:right-6 top-1/2 -translate-y-1/2')} {/* Opponent 2 (East) */}
+        {renderPlayerPod(0, 'bottom-1.5 sm:bottom-2.5 left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-28 md:left-32 lg:left-36')} {/* You (South) */}
 
         {/* Center Trick Arena & Table Hub */}
         <div className="relative w-72 h-72 sm:w-84 sm:h-84 rounded-full border-2 border-amber-400/25 bg-[#070d18]/65 shadow-[0_0_50px_rgba(0,0,0,0.8),inset_0_0_30px_rgba(245,158,11,0.04)] backdrop-blur-xs flex items-center justify-center">
@@ -901,19 +906,8 @@ export const GameTable: React.FC<GameTableProps> = ({
           }`}
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
         >
-          {/* On PC / Desktop (sm+): Your Avatar Pod docked cleanly in your player tray (never covering West's dealer deck) */}
-          <div className="hidden sm:flex sm:absolute sm:left-4 md:left-8 sm:top-1/2 sm:-translate-y-1/2 z-20">
-            {renderPlayerPod(0, 'relative')}
-          </div>
-
           {/* Turn prompt indicator & Sort Option */}
           <div className="w-full flex items-center justify-between text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider mb-1 sm:mb-2 px-1 sm:px-2 z-10">
-            {/* Mobile-only compact avatar */}
-            <div className="sm:hidden flex items-center space-x-1 flex-shrink-0">
-              <AvatarPortrait avatarId={profile?.avatarIcon || state.players[0].avatarId} size="xs" />
-              <span className="text-[10px] text-amber-300 font-bold truncate max-w-[65px]">{state.players[0].name}</span>
-            </div>
-
             <div className="flex-1 text-center truncate px-1">
               {state.phase === 'hand_scored' ? (
                 <span className="text-amber-400 font-bold">Hand Scored — Ready for Next Deal</span>
