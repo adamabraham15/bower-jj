@@ -154,7 +154,9 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
         setCurrentRoom(activeRoom);
       }
     } else {
-      const mode = (queueType === 'ranked_rivals' || queueType === 'ranked_duo') ? 'rivals' : 'solo';
+      const mode = (queueType === 'ranked_rivals' || queueType === 'ranked_duo')
+        ? 'rivals'
+        : (queueType === 'unranked' ? 'casual' : 'solo');
       multiplayerClient.enterQueue(mode);
     }
 
@@ -269,7 +271,9 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
                   if (queueType === 'private') {
                     multiplayerClient.createRoom();
                   } else {
-                    const mode = (queueType === 'ranked_rivals' || queueType === 'ranked_duo') ? 'rivals' : 'solo';
+                    const mode = (queueType === 'ranked_rivals' || queueType === 'ranked_duo')
+                      ? 'rivals'
+                      : (queueType === 'unranked' ? 'casual' : 'solo');
                     multiplayerClient.enterQueue(mode);
                   }
                 }

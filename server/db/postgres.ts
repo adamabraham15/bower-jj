@@ -1111,7 +1111,6 @@ export class PostgresDatabaseRepository {
       const playerResults: any[] = [];
       const isRankedMode =
         input.mode === 'ranked_solo' ||
-        input.mode === 'ranked_rivals' ||
         input.mode === 'ranked_duo';
 
       // 3. Process Each Human Player Atomically

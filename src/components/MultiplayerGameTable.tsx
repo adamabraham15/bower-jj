@@ -742,7 +742,10 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             euchres={serverState.matchStats?.teamEuchres?.[yourTeam] ?? 0}
             loners={serverState.matchStats?.playerLoners?.[yourPos] ?? 0}
             lpDelta={
-              serverState.queueMode === 'custom' || serverState.queueMode === 'casual'
+              !serverState.isMatchmade ||
+              serverState.queueMode === 'custom' ||
+              serverState.queueMode === 'casual' ||
+              serverState.queueMode === 'rivals'
                 ? 0
                 : (lastRankUpdate?.lpChange ?? (isVictory ? 24 : -16))
             }

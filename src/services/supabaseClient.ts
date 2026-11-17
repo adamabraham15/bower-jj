@@ -583,39 +583,8 @@ class AuthService {
         }
       }
 
-      // Record rank progression for competitive ranking
-      const rankRes = await supabase.from('player_ranks').select('rank_tier, rank_points, mmr').eq('user_id', userId).maybeSingle();
-      if (rankRes.data) {
-        const lpDelta = won ? 20 : -15;
-        const TIER_ORDER = ['9', '10', 'Q', 'K', 'A', 'BOWER_JJ'];
-        let newPoints = (rankRes.data.rank_points || 0) + lpDelta;
-        let newTier = rankRes.data.rank_tier || '9';
-        const currentTierIdx = TIER_ORDER.indexOf(newTier);
-
-        if (newPoints >= 100) {
-          if (currentTierIdx < TIER_ORDER.length - 1) {
-            newTier = TIER_ORDER[currentTierIdx + 1];
-            newPoints = newPoints - 100;
-          } else {
-            newPoints = 100;
-          }
-        } else if (newPoints < 0) {
-          if (currentTierIdx > 0) {
-            newTier = TIER_ORDER[currentTierIdx - 1];
-            newPoints = 75;
-          } else {
-            newPoints = 0;
-          }
-        }
-
-        const newMmr = Math.max(800, (rankRes.data.mmr || 1200) + (won ? 15 : -10));
-        await supabase.from('player_ranks').update({
-          rank_tier: newTier,
-          rank_points: newPoints,
-          mmr: newMmr,
-          updated_at: new Date().toISOString(),
-        }).eq('user_id', userId);
-      }
+      // Note: Offline bot/practice matches do NOT award LP or update player_ranks.
+      // Rank progression and LP are strictly earned in matchmade Competitive Ranked play.
 
       // Record entry in player_match_history
       try {
@@ -627,8 +596,8 @@ class AuthService {
           won,
           mode: details?.mode || 'offline_ai',
           score: details?.score || (won ? '10 - 7' : '7 - 10'),
-          lp_change: won ? 20 : -15,
-          mmr_change: won ? 15 : -10,
+          lp_change: 0,
+          mmr_change: 0,
           opponent_names: details?.opponentNames || ['BowerAI North', 'BowerAI East', 'BowerAI West'],
           created_at: new Date().toISOString(),
         });

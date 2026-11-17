@@ -488,7 +488,7 @@ export class RoomManager {
       room.abandonedUserIds.push(abandoningUserId);
 
       // If this was an active ranked match, assess the abandonment penalty immediately
-      if (room.status === 'playing' && (room.isMatchmade || room.queueMode === 'solo' || room.queueMode === 'rivals' || room.queueMode === 'duo')) {
+      if (room.status === 'playing' && room.isMatchmade && room.queueMode !== 'casual') {
         const oppPos1 = ((pos + 1) % 4) as PlayerPosition;
         const oppPos2 = ((pos + 3) % 4) as PlayerPosition;
         const oppNames = [room.slots[oppPos1]?.username || 'Opponent 1', room.slots[oppPos2]?.username || 'Opponent 2'];
@@ -1193,7 +1193,8 @@ export class RoomManager {
 
         const room = this.createRoom(hostId, DEFAULT_RULES);
         room.isMatchmade = true;
-        room.queueMode = 'solo';
+        const isAllCasual = matchedUserIds.every(uid => this.connections.get(uid)?.inQueue === 'casual');
+        room.queueMode = isAllCasual ? 'casual' : 'solo';
 
         for (let i = 1; i < 4; i++) {
           const uid = matchedUserIds[i];
@@ -1245,7 +1246,8 @@ export class RoomManager {
 
       const room = this.createRoom(hostId, DEFAULT_RULES);
       room.isMatchmade = true;
-      room.queueMode = 'solo';
+      const isAllCasual = matchedUserIds.every(uid => this.connections.get(uid)?.inQueue === 'casual');
+      room.queueMode = isAllCasual ? 'casual' : 'solo';
 
       // Distribute humans across opposing teams (Seat 0 Team Blue, Seat 1 Team Red)
       for (let i = 1; i < humanCount; i++) {
@@ -1446,17 +1448,11 @@ export class RoomManager {
     const winningTeam = getWinningTeam(state.scores, state.rules.targetScore);
     const finalScore = `${state.scores[0]} - ${state.scores[1]}`;
     const isRanked =
-      room.isMatchmade ||
-      room.queueMode === 'solo' ||
-      room.queueMode === 'rivals' ||
-      room.queueMode === 'duo';
+      Boolean(room.isMatchmade) &&
+      room.queueMode !== 'casual';
     const pgMode: 'ranked_solo' | 'ranked_rivals' | 'ranked_duo' | 'unranked' =
-      room.queueMode === 'rivals'
-        ? 'ranked_rivals'
-        : room.queueMode === 'duo'
-        ? 'ranked_duo'
-        : (room.isMatchmade || room.queueMode === 'solo')
-        ? 'ranked_solo'
+      isRanked
+        ? (room.queueMode === 'duo' ? 'ranked_duo' : 'ranked_solo')
         : 'unranked';
 
     // Calculate MMR averages
@@ -1792,6 +1788,7 @@ export class RoomManager {
       }),
       roomId: room?.id,
       roomCode: room?.code,
+      isMatchmade: Boolean(room?.isMatchmade),
       queueMode: room?.queueMode,
       rules: state.rules,
       winningTeam: state.phase === 'game_over' ? getWinningTeam(state.scores, state.rules.targetScore) : undefined,

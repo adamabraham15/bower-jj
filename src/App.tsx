@@ -759,17 +759,15 @@ export const App: React.FC = () => {
             const targetScore = serverGameState.rules?.targetScore ?? 10;
             const winningTeam = serverGameState.winningTeam ?? getWinningTeam(serverGameState.scores, targetScore);
             const won = winningTeam === myTeam;
-            const isRanked = serverGameState.queueMode !== 'custom' && serverGameState.queueMode !== 'casual';
+            const isRanked =
+              Boolean(serverGameState.isMatchmade) &&
+              (serverGameState.queueMode === 'solo' || serverGameState.queueMode === 'duo');
             const oppSlots = serverGameState.slots.filter(s => s.position % 2 !== myTeam);
             const oppNames = oppSlots.map(s => s.username || `Player ${s.position}`);
             const modeLabel = formatMatchMode(
-              serverGameState.queueMode === 'rivals'
-                ? 'ranked_rivals'
-                : serverGameState.queueMode === 'duo'
-                ? 'ranked_duo'
-                : isRanked
-                ? 'ranked_solo'
-                : 'custom'
+              isRanked
+                ? (serverGameState.queueMode === 'duo' ? 'ranked_duo' : 'ranked_solo')
+                : (serverGameState.queueMode === 'rivals' ? 'ranked_rivals' : 'custom')
             );
 
             const mpMatchItem: MatchHistoryItem = {
@@ -1042,7 +1040,7 @@ export const App: React.FC = () => {
         mode: 'Casual AI',
         won,
         score: `${userScore} - ${oppScore}`,
-        lpChange: won ? 20 : -15,
+        lpChange: 0,
         opponentNames: oppNames,
       };
 

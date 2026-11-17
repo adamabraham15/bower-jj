@@ -245,6 +245,7 @@ export interface SanitizedGameState {
   slots: PlayerSlot[];
   roomId?: string;
   roomCode?: string;
+  isMatchmade?: boolean;
   queueMode?: 'solo' | 'rivals' | 'duo' | 'casual' | 'custom';
   rules?: EuchreHouseRules;
   winningTeam?: Team;
