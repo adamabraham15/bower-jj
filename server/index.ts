@@ -595,6 +595,11 @@ export async function createMultiplayerServer(
             break;
           }
 
+          case 'GAME_FORFEIT': {
+            activeRm.handleForfeit(uid);
+            break;
+          }
+
           case 'ROOM_SWITCH_SEAT': {
             const room = activeRm.switchSeat(uid, msg.targetPosition);
             const pos = room.slots.findIndex(s => s && s.userId === uid);

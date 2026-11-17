@@ -391,13 +391,15 @@ export class RoomManager {
     try {
       const active = await this.pgRepo.getActiveMatchForUser(userId);
       if (active && active.room && active.state && active.room.status === 'playing') {
+        if (active.room.abandonedUserIds?.includes(userId)) return false;
         const code = active.room.code;
-        this.rooms.set(code, active.room);
-        this.gameStates.set(code, active.state);
-
         const slotIdx = active.room.slots.findIndex(s => s && s.userId === userId);
         if (slotIdx !== -1) {
           const slot = active.room.slots[slotIdx]!;
+          if (slot.abandoned) return false;
+          this.rooms.set(code, active.room);
+          this.gameStates.set(code, active.state);
+
           slot.isAI = false;
           slot.abandoned = false;
           slot.connected = true;
@@ -492,9 +494,11 @@ export class RoomManager {
     // 1. Reconnection check against in-memory active rooms
     for (const [code, room] of this.rooms.entries()) {
       if (room.status === 'finished') continue;
+      if (room.abandonedUserIds?.includes(userId)) continue;
       const slotIdx = room.slots.findIndex(s => s && s.userId === userId);
       if (slotIdx !== -1) {
         const slot = room.slots[slotIdx]!;
+        if (slot.abandoned) continue;
         slot.connected = true;
         slot.isAI = false;
         slot.abandoned = false;
@@ -1200,7 +1204,107 @@ export class RoomManager {
         type: 'ROOM_UPDATE',
         room,
       });
+    } else if (room.status === 'playing') {
+      this.handleForfeit(userId);
     }
+  }
+
+  public handleForfeit(userId: string): void {
+    const conn = this.connections.get(userId);
+    let roomCode = conn?.roomCode;
+
+    if (!roomCode) {
+      for (const [code, r] of this.rooms.entries()) {
+        if (r.status === 'playing' && r.slots.some(s => s && s.userId === userId)) {
+          roomCode = code;
+          break;
+        }
+      }
+    }
+
+    if (conn) {
+      conn.roomCode = undefined;
+    }
+
+    if (!roomCode) {
+      if (this.pgRepo) {
+        this.pgRepo.getActiveMatchForUser(userId).then(active => {
+          if (active?.room?.code) {
+            const otherHumans = active.room.slots.filter(
+              s => s && !s.isAI && s.userId && s.userId !== userId && !s.abandoned
+            );
+            if (otherHumans.length === 0) {
+              this.clearActiveMatchSnapshot(active.room.code);
+            }
+          }
+        }).catch(() => {});
+      }
+      return;
+    }
+
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      this.clearActiveMatchSnapshot(roomCode);
+      return;
+    }
+
+    const slotIdx = room.slots.findIndex(s => s && s.userId === userId);
+    if (slotIdx === -1) return;
+
+    const slot = room.slots[slotIdx]!;
+    slot.abandoned = true;
+    slot.connected = false;
+    slot.isAI = true;
+
+    if (!room.abandonedUserIds) room.abandonedUserIds = [];
+    if (!room.abandonedUserIds.includes(userId)) {
+      room.abandonedUserIds.push(userId);
+    }
+
+    // Clear disconnect timer for this player
+    const timerKey = `${roomCode}_${slotIdx}`;
+    const existingTimer = this.disconnectTimers.get(timerKey);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      this.disconnectTimers.delete(timerKey);
+    }
+
+    // Check if other human players are still present in this match
+    const remainingHumans = room.slots.filter(
+      s => s && !s.isAI && s.userId && s.userId !== userId && !s.abandoned && !room.abandonedUserIds?.includes(s.userId)
+    );
+
+    if (remainingHumans.length === 0) {
+      // Single human vs bots, or all humans forfeited: delete match instance permanently!
+      room.status = 'finished';
+      for (let i = 0; i < 4; i++) {
+        const k = `${roomCode}_${i}`;
+        const dt = this.disconnectTimers.get(k);
+        if (dt) {
+          clearTimeout(dt);
+          this.disconnectTimers.delete(k);
+        }
+      }
+      const handTimer = this.handScoredTimers.get(roomCode);
+      if (handTimer) {
+        clearTimeout(handTimer);
+        this.handScoredTimers.delete(roomCode);
+      }
+      this.clearActiveMatchSnapshot(roomCode);
+      this.gameStates.delete(roomCode);
+      this.rooms.delete(roomCode);
+      logger.info(`[FORFEIT] Match ${roomCode} deleted permanently (no human players remaining)`);
+    } else {
+      // Multiplayer match with remaining humans: assess abandonment and replace seat with AI bot
+      this.handlePlayerAbandoned(roomCode, slotIdx as PlayerPosition);
+      this.persistActiveMatch(roomCode);
+      logger.info(`[FORFEIT] User ${userId} abandoned active match ${roomCode}. AI bot replaced their seat.`);
+    }
+
+    this.sendToUser(userId, {
+      type: 'ROOM_UPDATE',
+      room: { ...room, status: 'finished' },
+    });
   }
 
   // --- MATCHMAKING QUEUE (REAL PLAYERS FIRST, TIER-COMPENSATED BOTS SECOND) ---

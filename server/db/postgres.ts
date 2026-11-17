@@ -1415,7 +1415,8 @@ export class PostgresDatabaseRepository {
     const matches = await this.loadActiveMatches(30);
     for (const match of matches) {
       if (match.room && match.state && match.room.status === 'playing') {
-        const hasUser = match.room.slots.some(s => s && s.userId === userId);
+        if (match.room.abandonedUserIds?.includes(userId)) continue;
+        const hasUser = match.room.slots.some(s => s && s.userId === userId && !s.abandoned);
         if (hasUser) {
           return match;
         }

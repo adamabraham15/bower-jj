@@ -305,6 +305,7 @@ export type ClientMessage =
   | { type: 'GAME_DISCARD'; cardId: string }
   | { type: 'GAME_PLAY_CARD'; cardId: string }
   | { type: 'GAME_NEXT_HAND' }
+  | { type: 'GAME_FORFEIT' }
   | { type: 'SEND_EMOTE'; text?: string; emoji?: string }
   // Social / Friends
   | { type: 'FRIEND_REQUEST_SEND'; targetUsername: string }

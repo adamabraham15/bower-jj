@@ -42,7 +42,7 @@ export const AudioControlsPopover: React.FC<AudioControlsPopoverProps> = ({
   const isAllMuted = prefs.sfxMuted && !prefs.musicEnabled;
 
   return (
-    <div ref={containerRef} className="relative inline-block">
+    <div ref={containerRef} className="relative inline-block flex-shrink-0">
       <button
         type="button"
         onClick={() => {
@@ -53,9 +53,9 @@ export const AudioControlsPopover: React.FC<AudioControlsPopoverProps> = ({
         aria-label="Music and Sound Settings"
         className={`${
           compact
-            ? 'p-1 sm:p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-gray-300'
+            ? 'w-7 h-7 sm:w-8 sm:h-8 p-0 justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-gray-300'
             : 'p-2 sm:p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-gray-300 hover:text-white'
-        } flex items-center space-x-1 transition-all relative`}
+        } flex items-center transition-all relative flex-shrink-0`}
       >
         {isAllMuted ? (
           <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" />

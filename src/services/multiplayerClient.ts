@@ -619,6 +619,14 @@ export class MultiplayerClient {
     this.isPendingPartyCreate = false;
   }
 
+  public forfeitGame() {
+    this.send({ type: 'GAME_FORFEIT' });
+    this.currentRoom = null;
+    this.myPosition = null;
+    this.pendingJoinCode = null;
+    this.isPendingPartyCreate = false;
+  }
+
   public isPendingJoin(): boolean {
     return this.pendingJoinCode !== null || this.isPendingPartyCreate;
   }

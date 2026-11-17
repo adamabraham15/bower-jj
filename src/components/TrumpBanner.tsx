@@ -28,7 +28,7 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
 
   return (
     <div
-      className="flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-3 py-1 rounded-full bg-slate-950 border border-amber-400 shadow-md max-w-[38vw] xs:max-w-[40vw] sm:max-w-none"
+      className="flex items-center space-x-1 sm:space-x-1.5 px-1.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-slate-950 border border-amber-400 shadow-md min-w-0 flex-shrink"
       title={
         callerName
           ? `Trump: ${trumpSuit.toUpperCase()} — Called by ${callerName}${teamLabel ? ` (${teamLabel})` : ''}`
@@ -49,7 +49,7 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
 
       {callerName && (
         <span
-          className={`flex items-center space-x-1 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-full border min-w-0 ${
+          className={`hidden xs:flex items-center space-x-1 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-full border min-w-0 flex-shrink ${
             callerTeam === undefined
               ? 'bg-slate-800 border-slate-700 text-gray-200'
               : isTeam

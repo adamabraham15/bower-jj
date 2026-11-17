@@ -1448,7 +1448,7 @@ export const App: React.FC = () => {
               try {
                 sessionStorage.removeItem('bower_match_minimized');
               } catch {}
-              multiplayerClient.leaveRoom();
+              multiplayerClient.forfeitGame();
               multiplayerClient.leaveQueue();
               setMultiplayerState(null);
               setCurrentView('menu');
@@ -1480,7 +1480,7 @@ export const App: React.FC = () => {
             try {
               sessionStorage.removeItem('bower_match_minimized');
             } catch {}
-            multiplayerClient.leaveRoom();
+            multiplayerClient.forfeitGame();
             multiplayerClient.leaveQueue();
             setMultiplayerState(null);
             setCurrentView('menu');
