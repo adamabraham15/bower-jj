@@ -316,12 +316,12 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                 <Sparkles className="w-3 h-3 text-amber-400" />
                 <span>{nextTierInfo ? `Next Tier: ${nextTierInfo.name}` : 'Apex Tier Reached'}</span>
               </div>
-              <div className="text-xs font-black text-amber-300 mt-0.5">
+              <div className="text-xs font-black text-amber-300 sm:mt-0.5">
                 {nextTierInfo
-                  ? `+${nextTierInfo.promotionSeals} Wax Seals on Promotion`
+                  ? `+${nextTierInfo.promotionSeals} Wax Seals`
                   : '👑 Supreme Bower Immortal'}
               </div>
-              <div className="text-[10px] text-cyan-300 font-semibold mt-0.5">
+              <div className="hidden sm:block text-[10px] text-cyan-300 font-semibold mt-0.5">
                 {myEntry
                   ? `Ranked Record: ${myEntry.wins}W - ${myEntry.losses}L (${myEntry.winRate}%)`
                   : 'Play 1 Ranked Match to place on Leaderboard'}
@@ -376,14 +376,13 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             {/* Column Headers */}
             <div className="grid grid-cols-12 gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 bg-slate-950/60 border-b border-slate-800 text-[10px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-wider">
               <div className="col-span-2 sm:col-span-1 text-center">Rank</div>
-              <div className="col-span-4 sm:col-span-4">Competitor</div>
-              <div className="col-span-3 sm:col-span-4 text-center">
+              <div className="col-span-5 sm:col-span-4">Competitor</div>
+              <div className="col-span-5 sm:col-span-4 text-right sm:text-center pr-1 sm:pr-0">
                 <span className="hidden sm:inline">Crest &amp; Division</span>
-                <span className="sm:hidden">Crest/LP</span>
+                <span className="sm:hidden">Crest &amp; LP</span>
               </div>
-              <div className="col-span-3 sm:col-span-3 text-right">
-                <span className="hidden sm:inline">Ranked Win %</span>
-                <span className="sm:hidden">Record</span>
+              <div className="hidden sm:block sm:col-span-3 text-right">
+                <span>Ranked Win %</span>
               </div>
             </div>
 
@@ -439,7 +438,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                       </div>
 
                       {/* Player Name, Avatar & MMR */}
-                      <div className="col-span-4 sm:col-span-4 flex items-center space-x-2 sm:space-x-2.5 min-w-0">
+                      <div className="col-span-5 sm:col-span-4 flex items-center space-x-2 sm:space-x-2.5 min-w-0">
                         <AvatarPortrait avatarId={entry.avatarIcon} size="xs" showRarityGem />
                         <div className="min-w-0 truncate">
                           <div className="font-black text-white text-xs sm:text-sm truncate flex items-center space-x-1 sm:space-x-1.5">
@@ -469,8 +468,8 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Artistic Rank Badge, Division & LP */}
-                      <div className="col-span-3 sm:col-span-4 flex items-center justify-center space-x-1.5 sm:space-x-2.5">
+                      {/* Artistic Rank Badge, Full Rank Name, Division & LP */}
+                      <div className="col-span-5 sm:col-span-4 flex items-center justify-end sm:justify-center space-x-2 sm:space-x-2.5">
                         <RankBadge
                           tier={entry.rankTier}
                           division={entry.rankDivision}
@@ -481,7 +480,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                         />
                         <div className="text-left leading-tight min-w-0">
                           <div
-                            className="text-[10px] sm:text-xs font-black whitespace-nowrap"
+                            className="text-[11px] sm:text-xs font-black whitespace-nowrap"
                             style={{ color: entryInfo.color }}
                           >
                             {entryInfo.name}{' '}
@@ -495,8 +494,8 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Ranked Win Rate / Ranked Games */}
-                      <div className="col-span-3 sm:col-span-3 text-right">
+                      {/* Ranked Win Rate / Ranked Games (Desktop Only) */}
+                      <div className="hidden sm:block sm:col-span-3 text-right">
                         <div className="text-[11px] sm:text-xs font-black text-emerald-400">
                           {entry.winRate}% <span className="hidden sm:inline">Win</span>
                         </div>
