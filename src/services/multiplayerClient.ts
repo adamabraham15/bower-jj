@@ -128,6 +128,10 @@ export class MultiplayerClient {
     newPoints: number;
     lpChange: number;
     didRankUp: boolean;
+    mmrChange?: number;
+    newMmr?: number;
+    lobbyMmr?: number;
+    lobbyRankLabel?: string;
   }) => void;
   private onPartyInviteCallback?: (invite: { fromUsername: string; fromAvatar: string; roomCode: string; mode?: string; expiresAt?: number }) => void;
   private onProfileCallback?: (profile: PublicPlayerData) => void;
@@ -176,6 +180,10 @@ export class MultiplayerClient {
       newPoints: number;
       lpChange: number;
       didRankUp: boolean;
+      mmrChange?: number;
+      newMmr?: number;
+      lobbyMmr?: number;
+      lobbyRankLabel?: string;
     }) => void;
     onPartyInvite?: (invite: { fromUsername: string; fromAvatar: string; roomCode: string; mode?: string; expiresAt?: number }) => void;
     onProfile?: (profile: PublicPlayerData) => void;

@@ -344,7 +344,19 @@ export type ServerMessage =
   | { type: 'COLLECTION_STATE'; collection: PlayerCollectionState }
   | { type: 'PACK_OPENED'; result: PackOpenResult }
   | { type: 'PACK_EARNED'; count: number; totalUnopened: number; reason: string; level?: number; unlockedAvatars?: string[] }
-  | { type: 'RANK_UPDATE'; oldTier: RankTier; newTier: RankTier; oldPoints: number; newPoints: number; lpChange: number; didRankUp: boolean }
+  | {
+      type: 'RANK_UPDATE';
+      oldTier: RankTier;
+      newTier: RankTier;
+      oldPoints: number;
+      newPoints: number;
+      lpChange: number;
+      didRankUp: boolean;
+      mmrChange?: number;
+      newMmr?: number;
+      lobbyMmr?: number;
+      lobbyRankLabel?: string;
+    }
   | { type: 'PARTY_INVITE_RECEIVED'; fromUsername: string; fromAvatar: string; roomCode: string; mode?: string; expiresAt?: number }
   | { type: 'PROFILE_DATA'; profile: PublicPlayerData }
   | { type: 'MATCHMAKING_STATS'; stats: MatchmakingStats }

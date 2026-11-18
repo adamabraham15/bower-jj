@@ -1736,8 +1736,9 @@ export class RoomManager {
         : 'unranked';
 
     // Calculate MMR averages
-    const team0Mmr = (this.getPlayerMmr(room.slots[0]) + this.getPlayerMmr(room.slots[2])) / 2;
-    const team1Mmr = (this.getPlayerMmr(room.slots[1]) + this.getPlayerMmr(room.slots[3])) / 2;
+    const team0Mmr = Math.round((this.getPlayerMmr(room.slots[0]) + this.getPlayerMmr(room.slots[2])) / 2);
+    const team1Mmr = Math.round((this.getPlayerMmr(room.slots[1]) + this.getPlayerMmr(room.slots[3])) / 2);
+    const lobbyMmr = Math.round((team0Mmr + team1Mmr) / 2);
 
     const team0Names = [room.slots[0]?.username || 'Player 1', room.slots[2]?.username || 'Player 3'];
     const team1Names = [room.slots[1]?.username || 'Player 2', room.slots[3]?.username || 'Player 4'];
@@ -1760,6 +1761,8 @@ export class RoomManager {
         const partnerPos = ((s.position + 2) % 4) as PlayerPosition;
         const partnerSlot = room.slots[partnerPos];
         const teammateAbandoned = Boolean(partnerSlot && partnerSlot.abandoned);
+        const myTeamMmr = pTeam === 0 ? team0Mmr : team1Mmr;
+        const oppTeamMmr = pTeam === 0 ? team1Mmr : team0Mmr;
         return {
           userId: s.userId!,
           position: s.position,
@@ -1768,6 +1771,9 @@ export class RoomManager {
           rankTier: s.rankTier || userAcc?.rankTier || '9',
           rankPoints: userAcc?.rankPoints || 0,
           mmr: userAcc?.mmr || 1200,
+          teamMmr: myTeamMmr,
+          opponentMmr: oppTeamMmr,
+          lobbyMmr,
           tricksWon: state.matchStats?.teamTricksWon?.[pTeam] ?? state.tricksWon[pTeam] ?? 0,
           euchres: state.matchStats?.teamEuchres?.[pTeam] ?? 0,
           marches: state.matchStats?.teamMarches?.[pTeam] ?? 0,
@@ -1787,6 +1793,8 @@ export class RoomManager {
           finalScore,
           durationSeconds: Math.max(0, Math.round((Date.now() - room.createdAt) / 1000)),
           humanPlayers,
+          lobbyMmr,
+          teamMmrs: [team0Mmr, team1Mmr],
           idempotencyKey: `match_${room.id}`,
         })
         .then(async (res) => {
@@ -1802,6 +1810,9 @@ export class RoomManager {
                   newPoints: pr.newPoints,
                   lpChange: pr.lpChange,
                   didRankUp,
+                  mmrChange: pr.mmrChange,
+                  newMmr: pr.newMmr,
+                  lobbyMmr: pr.lobbyMmr || lobbyMmr,
                 });
               }
 
@@ -1913,6 +1924,9 @@ export class RoomManager {
               newPoints: rankResult.newPoints,
               lpChange: rankResult.lpChange,
               didRankUp: rankResult.didRankUp,
+              mmrChange: rankResult.mmrChange,
+              newMmr: rankResult.newMmr,
+              lobbyMmr: rankResult.lobbyMmr,
             });
           }
         }

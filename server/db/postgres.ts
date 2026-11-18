@@ -64,6 +64,8 @@ export interface MatchResultRecordInput {
   winningTeam: number;
   finalScore: string;
   durationSeconds?: number;
+  lobbyMmr?: number;
+  teamMmrs?: [number, number];
   humanPlayers: {
     userId: string;
     position: PlayerPosition;
@@ -72,6 +74,9 @@ export interface MatchResultRecordInput {
     rankTier: RankTier;
     rankPoints: number;
     mmr: number;
+    teamMmr?: number;
+    opponentMmr?: number;
+    lobbyMmr?: number;
     tricksWon: number;
     euchres: number;
     marches: number;
@@ -1058,6 +1063,7 @@ export class PostgresDatabaseRepository {
       lpChange: number;
       mmrChange: number;
       newMmr: number;
+      lobbyMmr?: number;
       newXp: number;
       newLevel: number;
       levelsGained: number;
@@ -1144,7 +1150,27 @@ export class PostgresDatabaseRepository {
         const currentMmr = rankRow.rows[0]?.mmr ?? p.mmr ?? 1200;
         let hasDemotionShield = Boolean(rankRow.rows[0]?.has_demotion_shield);
 
-        // Calculate LP change and Elo MMR (strictly zero in unranked/private modes or teammate abandonment loss mitigation)
+        // Derive team MMR, opponent MMR, and lobby MMR
+        const myTeamPlayers = input.humanPlayers.filter((hp) => hp.team === p.team);
+        const oppTeamPlayers = input.humanPlayers.filter((hp) => hp.team !== p.team);
+
+        const myTeamMmr: number =
+          p.teamMmr ??
+          (myTeamPlayers.length > 0
+            ? Math.round(myTeamPlayers.reduce((acc, curr) => acc + (curr.mmr || 1200), 0) / myTeamPlayers.length)
+            : currentMmr);
+
+        const oppMmr: number =
+          p.opponentMmr ??
+          (oppTeamPlayers.length > 0
+            ? Math.round(oppTeamPlayers.reduce((acc, curr) => acc + (curr.mmr || 1200), 0) / oppTeamPlayers.length)
+            : input.teamMmrs
+            ? input.teamMmrs[p.team === 0 ? 1 : 0]
+            : myTeamMmr);
+
+        const lobbyMmr: number = p.lobbyMmr ?? input.lobbyMmr ?? Math.round((myTeamMmr + oppMmr) / 2);
+
+        // Calculate competitive LP change and Elo MMR relative to opponent & lobby MMR
         let lpChange = 0;
         let mmrChange = 0;
         let newPoints = currentPoints;
@@ -1153,11 +1179,37 @@ export class PostgresDatabaseRepository {
 
         if (isRankedMode) {
           if (!won && p.teammateAbandoned) {
+            // Loss Mitigation Protection: Teammate abandoned during match
             lpChange = 0;
             mmrChange = 0;
           } else {
-            lpChange = won ? 24 : -16;
-            mmrChange = won ? 18 : -14;
+            // Expected win probability via standard competitive Elo rating curve
+            const expectedWinProb = 1 / (1 + Math.pow(10, (oppMmr - currentMmr) / 400));
+
+            // Opponent MMR differential & Lobby difficulty relative to player
+            const oppDelta = Math.round((oppMmr - myTeamMmr) / 30);
+            const lobbyDelta = Math.round((lobbyMmr - currentMmr) / 35);
+            // High-stakes lobby prestige bracket (bonus for competing in Ace/Bower JJ tiers)
+            const prestigeBonus = lobbyMmr >= 1600 ? 4 : lobbyMmr >= 1450 ? 2 : 0;
+
+            if (won) {
+              // Base win is 24 LP; scaled up by higher-rated opponents and higher-tier lobbies
+              const rawWinLp = 24 + oppDelta + lobbyDelta + prestigeBonus;
+              lpChange = Math.max(12, Math.min(42, rawWinLp));
+
+              // Elo MMR gain (base +18, scaling with opponent strength up to +34)
+              const rawMmrWin = Math.round(18 + 24 * (0.5 - expectedWinProb));
+              mmrChange = Math.max(6, Math.min(36, rawMmrWin));
+            } else {
+              // Base loss is -16 LP; softened if playing up in higher MMR lobby, penalized if upset by lower MMR
+              const rawLossLp = -16 + oppDelta + lobbyDelta + (prestigeBonus > 0 ? 1 : 0);
+              // Bounded: minimum loss -8 LP (tough high-MMR underdog match), maximum loss -35 LP (upset loss)
+              lpChange = Math.min(-8, Math.max(-35, rawLossLp));
+
+              // Elo MMR penalty (base -14, softened for underdogs down to -6, harsher for favorites up to -32)
+              const rawMmrLoss = Math.round(-14 + 24 * (0.5 - expectedWinProb));
+              mmrChange = Math.min(-6, Math.max(-32, rawMmrLoss));
+            }
           }
 
           newPoints = currentPoints + lpChange;
@@ -1317,6 +1369,7 @@ export class PostgresDatabaseRepository {
           lpChange,
           mmrChange,
           newMmr,
+          lobbyMmr,
           newXp,
           newLevel,
           levelsGained,

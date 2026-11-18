@@ -43,6 +43,7 @@ interface PostMatchModalProps {
   lpDelta?: number;
   isRanked?: boolean;
   matchTypeLabel?: string;
+  ratingLabel?: string;
   oldTier?: RankTier;
   newTier?: RankTier;
   currentPoints?: number;
@@ -67,6 +68,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
   lpDelta = 22,
   isRanked,
   matchTypeLabel,
+  ratingLabel,
   oldTier = '9',
   newTier = '9',
   currentPoints = 45,
@@ -192,8 +194,8 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
                       : '+0 LP'}
                   </span>
                 </span>
-                <span className="text-[10px] text-gray-500 block">
-                  {(lpDelta ?? 0) === 0 ? 'Rank Protected' : 'Opponent-Sensitive'}
+                <span className="text-[10px] text-gray-400 block font-medium">
+                  {ratingLabel || ((lpDelta ?? 0) === 0 ? 'Rank Protected' : 'MMR-Scaled Match')}
                 </span>
               </div>
             </div>

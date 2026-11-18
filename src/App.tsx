@@ -354,6 +354,10 @@ export const App: React.FC = () => {
     oldPoints: number;
     newPoints: number;
     lpChange: number;
+    mmrChange?: number;
+    newMmr?: number;
+    lobbyMmr?: number;
+    lobbyRankLabel?: string;
   } | null>(null);
 
   // Live Multiplayer & Social State

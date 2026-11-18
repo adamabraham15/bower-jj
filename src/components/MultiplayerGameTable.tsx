@@ -54,6 +54,10 @@ interface MultiplayerGameTableProps {
     oldPoints: number;
     newPoints: number;
     lpChange: number;
+    mmrChange?: number;
+    newMmr?: number;
+    lobbyMmr?: number;
+    lobbyRankLabel?: string;
   } | null;
   onOpenRules: () => void;
   onOpenTutorial: () => void;
@@ -1009,6 +1013,18 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             ? (lastRankUpdate?.lpChange ?? (isVictory ? 24 : -16))
             : 0;
 
+          const ratingLabel = isRankedMatch
+            ? lastRankUpdate?.lobbyRankLabel || (lastRankUpdate?.lobbyMmr
+              ? `Lobby ${lastRankUpdate.lobbyMmr} MMR • ${
+                  (lastRankUpdate.lpChange ?? 0) >= 28
+                    ? 'High-Rank Bonus'
+                    : (lastRankUpdate.lpChange ?? 0) > -12 && (lastRankUpdate.lpChange ?? 0) < 0
+                    ? 'High-Lobby Loss Relief'
+                    : 'MMR-Scaled'
+                }`
+              : 'Competitive MMR-Scaled')
+            : undefined;
+
           return (
             <PostMatchModal
               isOpen={true}
@@ -1021,6 +1037,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
               lpDelta={effectiveLpDelta}
               isRanked={isRankedMatch}
               matchTypeLabel={matchTypeLabel}
+              ratingLabel={ratingLabel}
               oldTier={lastRankUpdate?.oldTier || (profile?.rankTier as any) || serverState.slots[yourPos]?.rankTier || '9'}
               newTier={lastRankUpdate?.newTier || (profile?.rankTier as any) || serverState.slots[yourPos]?.rankTier || '9'}
               currentPoints={lastRankUpdate?.newPoints ?? profile?.rankPoints ?? 0}

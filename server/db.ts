@@ -377,37 +377,53 @@ class Database {
     newPoints: number;
     lpChange: number;
     didRankUp: boolean;
+    mmrChange: number;
+    newMmr: number;
+    lobbyMmr: number;
   } | null {
     const user = this.data.users[userId];
     if (!user) return null;
 
     const oldTier = user.rankTier;
     const oldPoints = user.rankPoints;
+    const preMatchMmr = user.mmr;
 
     // Expected score based on Elo formula
-    const expected = 1 / (1 + Math.pow(10, (opponentAverageMmr - user.mmr) / 400));
-    const actual = isWin ? 1 : 0;
-    const kFactor = user.placementMatchesRemaining > 0 ? 40 : 25;
-    const mmrDelta = Math.round(kFactor * (actual - expected));
-    user.mmr = Math.max(600, user.mmr + mmrDelta);
+    const expected = 1 / (1 + Math.pow(10, (opponentAverageMmr - preMatchMmr) / 400));
+    let mmrDelta = 0;
+    if (isWin) {
+      const rawMmrWin = Math.round(18 + 24 * (0.5 - expected));
+      mmrDelta = Math.max(6, Math.min(36, rawMmrWin));
+    } else if (isTeammateAbandoned) {
+      mmrDelta = 0;
+    } else {
+      const rawMmrLoss = Math.round(-14 + 24 * (0.5 - expected));
+      mmrDelta = Math.min(-6, Math.max(-32, rawMmrLoss));
+    }
+    user.mmr = Math.max(600, preMatchMmr + mmrDelta);
 
     if (user.placementMatchesRemaining > 0) {
       user.placementMatchesRemaining--;
     }
 
-    // Opponent-sensitive LP gain/loss calculation
+    // Opponent-sensitive & Lobby MMR-scaled LP gain/loss calculation
+    const lobbyMmr = Math.round((teamAverageMmr + opponentAverageMmr) / 2);
+    const oppDelta = Math.round((opponentAverageMmr - teamAverageMmr) / 30);
+    const lobbyDelta = Math.round((lobbyMmr - preMatchMmr) / 35);
+    const prestigeBonus = lobbyMmr >= 1600 ? 4 : lobbyMmr >= 1450 ? 2 : 0;
+
     let lpChange = 0;
     if (isWin) {
-      // Base win reward 20 LP
-      lpChange = 20 + Math.round((opponentAverageMmr - teamAverageMmr) / 25);
-      lpChange = Math.max(12, Math.min(35, lpChange)); // Bound between 12 and 35
+      // Base win is 24 LP; scaled up by higher-rated opponents and higher-tier lobbies
+      const rawWin = 24 + oppDelta + lobbyDelta + prestigeBonus;
+      lpChange = Math.max(12, Math.min(42, rawWin));
     } else if (isTeammateAbandoned) {
       // Loss Mitigation Protection: Teammate abandoned during match
       lpChange = 0;
     } else {
-      // Base loss penalty 18 LP
-      lpChange = -(18 + Math.round((teamAverageMmr - opponentAverageMmr) / 25));
-      lpChange = Math.min(-10, Math.max(-32, lpChange)); // Bound between -10 and -32
+      // Base loss penalty is -16 LP; softened if playing up in higher MMR lobby, penalized if upset by lower MMR
+      const rawLoss = -16 + oppDelta + lobbyDelta + (prestigeBonus > 0 ? 1 : 0);
+      lpChange = Math.min(-8, Math.max(-35, rawLoss));
     }
 
     let didRankUp = false;
@@ -470,6 +486,9 @@ class Database {
       newPoints: user.rankPoints,
       lpChange,
       didRankUp,
+      mmrChange: mmrDelta,
+      newMmr: user.mmr,
+      lobbyMmr,
     };
   }
 
