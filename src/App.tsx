@@ -1714,6 +1714,7 @@ export const App: React.FC = () => {
         currentRankTier={profile.rankTier}
         currentRankDivision={profile.rankDivision}
         currentRankPoints={profile.rankPoints}
+        onOpenOwnProfile={() => setIsProfileOpen(true)}
         onPreviewPromotion={(mode) => {
           const curTier = profile.rankTier || '9';
           const curDiv = profile.rankDivision || 'III';

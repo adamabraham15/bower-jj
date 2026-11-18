@@ -274,7 +274,10 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
               </div>
               <div className="text-xs font-bold text-slate-400">
-                LVL {profile.level} • <span className="text-amber-400">Rank {profile.rankTier}</span>
+                LVL {profile.level} •{' '}
+                <span className="text-amber-400">
+                  {RANK_INFO[profile.rankTier]?.name || `Rank ${profile.rankTier}`}
+                </span>
               </div>
             </div>
           </button>
@@ -326,19 +329,26 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           {/* Top Header Bar: BOWER JJ Emblem Logo & Controls (Play removed) */}
           <div>
             <header className="relative flex items-center justify-between py-1 min-h-[44px] sm:min-h-[52px]">
-              {/* Left: Quick Profile Avatar Button */}
+              {/* Left: Prominent Account & Profile Button */}
               <button
                 onClick={() => {
                   sounds.playUiClick();
                   onOpenProfile();
                 }}
-                className="flex items-center gap-2 p-1 sm:p-1.5 rounded-2xl bg-[#161f30] hover:bg-[#1c273d] border border-slate-700/80 shadow-sm transition-all cursor-pointer group z-10"
-                title="View Profile & Career Stats"
+                className="flex items-center gap-2 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-2xl bg-gradient-to-r from-[#1d2840] to-[#151e30] hover:from-[#24324f] hover:to-[#1a253b] border-2 border-amber-400/75 hover:border-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.28)] active:scale-95 transition-all cursor-pointer group z-10"
+                title="Open My Account, Stats & Wardrobe"
               >
-                <AvatarPortrait avatarId={profile.avatarIcon} size="xs" />
-                <div className="hidden sm:flex flex-col text-left pr-1">
-                  <span className="text-[11px] font-black text-white truncate max-w-[85px]">{profile.username}</span>
-                  <span className="text-[9px] font-bold text-amber-400">LVL {profile.level}</span>
+                <div className="relative flex-shrink-0">
+                  <AvatarPortrait avatarId={profile.avatarIcon} size="xs" />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-950" />
+                </div>
+                <div className="flex flex-col text-left leading-tight pr-0.5">
+                  <span className="text-[10px] sm:text-xs font-black text-amber-300 group-hover:text-amber-200 uppercase tracking-wider flex items-center gap-1">
+                    <span>Account</span>
+                  </span>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-white truncate max-w-[68px] sm:max-w-[95px]">
+                    {profile.username} • L{profile.level}
+                  </span>
                 </div>
               </button>
 
@@ -410,7 +420,9 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 <span className="text-xs font-bold text-slate-300">LVL {profile.level}</span>
                 <span className="text-slate-500 text-xs">•</span>
                 <span className="text-xs font-bold text-slate-300">
-                  Rank <strong className="text-amber-400">{profile.rankTier}</strong>
+                  <strong className="text-amber-400">
+                    {RANK_INFO[profile.rankTier]?.name || `Rank ${profile.rankTier}`}
+                  </strong>
                 </span>
               </button>
 

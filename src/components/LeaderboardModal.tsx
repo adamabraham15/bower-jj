@@ -30,6 +30,7 @@ import {
   getRankDivisionInfo,
 } from './RankBadge';
 import { AvatarPortrait } from './AvatarPortrait';
+import { PublicProfileModal, PublicPlayerData } from './PublicProfileModal';
 import { multiplayerClient } from '../services/multiplayerClient';
 import { authService } from '../services/supabaseClient';
 import { sounds } from '../audio/sound';
@@ -45,6 +46,7 @@ interface LeaderboardModalProps {
   currentRankDivision?: RankDivision;
   currentRankPoints?: number;
   onPreviewPromotion?: (mode: 'division' | 'tier') => void;
+  onOpenOwnProfile?: () => void;
 }
 
 export const TopRankBadge: React.FC<{ position: number }> = ({ position }) => {
@@ -114,10 +116,15 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   currentRankDivision,
   currentRankPoints,
   onPreviewPromotion,
+  onOpenOwnProfile,
 }) => {
   const [localEntries, setLocalEntries] = useState<LeaderboardEntry[]>(entries);
   const [isLoading, setIsLoading] = useState<boolean>(entries.length === 0);
   const [activeTab, setActiveTab] = useState<'standings' | 'road'>('standings');
+  const [selectedPlayerProfile, setSelectedPlayerProfile] = useState<{
+    player: PublicPlayerData;
+    isCurrentUser: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (entries.length > 0) {
@@ -420,16 +427,40 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                   return (
                     <div
                       key={entry.userId || `leaderboard_row_${idx}`}
-                      className={`grid grid-cols-12 gap-1.5 sm:gap-2 items-center p-2 sm:p-2.5 rounded-2xl transition-all ${
+                      onClick={() => {
+                        sounds.playUiClick();
+                        setSelectedPlayerProfile({
+                          isCurrentUser,
+                          player: {
+                            id: entry.userId,
+                            username: entry.username,
+                            avatarIcon: entry.avatarIcon,
+                            equippedCardBack: entry.equippedCardBack,
+                            level: 1,
+                            rankTier: entry.rankTier,
+                            rankDivision: entry.rankDivision,
+                            rankPoints: entry.rankPoints,
+                            mmr: entry.mmr,
+                            rankPosition: pos,
+                            wins: entry.wins,
+                            losses: entry.losses,
+                            totalGames: entry.rankedGames ?? entry.totalGames,
+                            winStreak: entry.winStreak,
+                            bestStreak: entry.bestStreak,
+                          },
+                        });
+                      }}
+                      title={`Click to view ${entry.username}'s profile`}
+                      className={`grid grid-cols-12 gap-1.5 sm:gap-2 items-center p-2 sm:p-2.5 rounded-2xl transition-all cursor-pointer group ${
                         isCurrentUser
-                          ? 'bg-amber-500/20 border border-amber-400/60 ring-1 ring-amber-400/40'
+                          ? 'bg-amber-500/20 border border-amber-400/60 ring-1 ring-amber-400/40 hover:bg-amber-500/30'
                           : isTop1
-                          ? 'bg-gradient-to-r from-amber-500/20 via-amber-500/5 to-transparent border border-amber-500/40 shadow-sm'
+                          ? 'bg-gradient-to-r from-amber-500/20 via-amber-500/5 to-transparent border border-amber-500/40 shadow-sm hover:border-amber-400'
                           : isTop2
-                          ? 'bg-gradient-to-r from-slate-400/15 via-slate-400/5 to-transparent border border-slate-400/30'
+                          ? 'bg-gradient-to-r from-slate-400/15 via-slate-400/5 to-transparent border border-slate-400/30 hover:border-slate-300/60'
                           : isTop3
-                          ? 'bg-gradient-to-r from-amber-700/15 via-amber-700/5 to-transparent border border-amber-700/30'
-                          : 'hover:bg-slate-800/60 border border-transparent'
+                          ? 'bg-gradient-to-r from-amber-700/15 via-amber-700/5 to-transparent border border-amber-700/30 hover:border-amber-500/60'
+                          : 'hover:bg-slate-800/70 border border-transparent hover:border-slate-700/80'
                       }`}
                     >
                       {/* Rank Position */}
@@ -711,10 +742,22 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             </span>
           </div>
           <span className="text-[11px] text-amber-400 font-bold">
-            Top Tier: Supreme Bower (JJ)
+            Tap any player to inspect profile
           </span>
         </div>
       </div>
+
+      {/* Inspect Competitor Profile Modal */}
+      <PublicProfileModal
+        isOpen={Boolean(selectedPlayerProfile)}
+        onClose={() => setSelectedPlayerProfile(null)}
+        player={selectedPlayerProfile?.player || null}
+        isCurrentUser={selectedPlayerProfile?.isCurrentUser}
+        onOpenOwnProfile={() => {
+          onClose();
+          onOpenOwnProfile?.();
+        }}
+      />
     </div>
   );
 };
