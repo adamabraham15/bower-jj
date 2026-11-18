@@ -24,9 +24,12 @@ function createTestPostgresPool() {
 
 describe('Season 2 Sovereign Hierarchy Ranked System & Leaderboard Filter', () => {
   it('defines bespoke metadata, emblems, titles, and 100-LP divisions (III -> II -> I) for all 6 Sovereign Tiers', () => {
-    expect(RANK_INFO['9'].name).toBe('Copper IX');
-    expect(RANK_INFO['9'].imageUrl).toContain('rank_tier_9.jpg');
-    expect(RANK_INFO['10'].name).toBe('Silver X');
+    expect(RANK_INFO['9'].name).toBe('Copper Squire');
+    expect(RANK_INFO['9'].monogram).toBe('S');
+    expect(RANK_INFO['9'].imageUrl).toContain('rank_tier_squire.jpg');
+    expect(RANK_INFO['10'].name).toBe('Silver Baron');
+    expect(RANK_INFO['10'].monogram).toBe('B');
+    expect(RANK_INFO['10'].imageUrl).toContain('rank_tier_baron.jpg');
     expect(RANK_INFO['Q'].name).toBe('Verdant Queen');
     expect(RANK_INFO['K'].name).toBe('Crimson King');
     expect(RANK_INFO['A'].name).toBe('Astral Ace');

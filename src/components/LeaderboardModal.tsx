@@ -561,7 +561,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                     : 'bg-slate-950/40 border-slate-800/80 opacity-60'
                 }`}
               >
-                <div className="text-[10px] font-bold text-slate-400 uppercase">Copper IX &amp; Silver X</div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase">Squire &amp; Baron</div>
                 <div className="text-xs font-black text-slate-200 mt-0.5">Iron Rim Back</div>
                 <div className="text-[10px] font-bold mt-1 text-emerald-400 flex items-center justify-center gap-0.5">
                   {isIronEarned ? (
@@ -569,7 +569,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                       <Check className="w-3 h-3" /> Unlocked
                     </>
                   ) : (
-                    'Reach Copper IX'
+                    'Reach Copper Squire'
                   )}
                 </div>
               </div>
