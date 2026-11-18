@@ -467,7 +467,7 @@ export const RankUpModal: React.FC<RankUpModalProps> = ({
                   Sovereign Ascension Chest
                 </div>
                 <div className="text-xs sm:text-sm text-white font-black">
-                  +{sealsEarned} Wax Seals • {info.rewardSummary}
+                  {info.rewardSummary}
                 </div>
               </div>
             </div>
