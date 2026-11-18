@@ -132,9 +132,10 @@ describe('Friends List, Match History & Rank Progression', () => {
       const compUserId = 'cccccccc-3333-4000-8000-000000000003';
       const { user: compUser } = db.getOrCreateUser('LadderClimber', '⚡', undefined, compUserId);
 
-      // Set initial state: Tier 9, 85 LP
+      // Set initial state: Tier 9, Division I, 85 LP
       db.updateUser(compUserId, {
         rankTier: '9',
+        rankDivision: 'I',
         rankPoints: 85,
         eloMmr: 1200,
         wins: 4,

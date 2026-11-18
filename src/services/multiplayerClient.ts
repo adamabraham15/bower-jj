@@ -129,6 +129,10 @@ export class MultiplayerClient {
     newPoints: number;
     lpChange: number;
     didRankUp: boolean;
+    didDivisionUp?: boolean;
+    oldDivision?: string;
+    newDivision?: string;
+    promotionSealsAwarded?: number;
     mmrChange?: number;
     newMmr?: number;
     lobbyMmr?: number;
@@ -182,6 +186,10 @@ export class MultiplayerClient {
       newPoints: number;
       lpChange: number;
       didRankUp: boolean;
+      didDivisionUp?: boolean;
+      oldDivision?: string;
+      newDivision?: string;
+      promotionSealsAwarded?: number;
       mmrChange?: number;
       newMmr?: number;
       lobbyMmr?: number;

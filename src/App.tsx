@@ -23,7 +23,7 @@ import { AchievementsModal } from './components/AchievementsModal';
 import { AuthModal } from './components/AuthModal';
 import { AccountActivationModal, AccountActivationState } from './components/AccountActivationModal';
 import { EmoteWheel } from './components/EmoteWheel';
-import { RankTier } from './components/RankBadge';
+import { RankTier, RankDivision, RANK_TIER_ORDER } from './components/RankBadge';
 import { LiveSiteTracker } from './components/LiveSiteTracker';
 import { presenceTracker } from './services/presenceTracker';
 import { authService } from './services/supabaseClient';
@@ -109,6 +109,7 @@ export function createGuestProfile(): PlayerProfileData {
     xp: 0,
     nextLevelXp: 1000,
     rankTier: '9',
+    rankDivision: 'III',
     rankPoints: 0,
     totalGames: 0,
     wins: 0,
@@ -368,11 +369,14 @@ export const App: React.FC = () => {
   const [collectionState, setCollectionState] = useState<PlayerCollectionState | undefined>();
   const lastRecordedGameOverRoomRef = useRef<string | null>(null);
 
-  // Rank Promotion Fanfare Modal
+  // Rank Promotion Fanfare Modal (supports both Division Up and Full Tier Ascension)
   const [rankUpData, setRankUpData] = useState<{
     oldTier: RankTier;
     newTier: RankTier;
+    oldDivision?: RankDivision;
+    newDivision?: RankDivision;
     newPoints: number;
+    promotionSealsAwarded?: number;
   } | null>(null);
 
   // Notice Toast & Party Invite Toast
@@ -444,6 +448,7 @@ export const App: React.FC = () => {
             xp: normXp.xp,
             nextLevelXp: normXp.nextLevelXp,
             rankTier: (sync.rank?.rank_tier as RankTier) || prev.rankTier,
+            rankDivision: (sync.rank?.rank_division as RankDivision) || prev.rankDivision || 'III',
             rankPoints: sync.rank?.rank_points ?? prev.rankPoints,
             wins: sync.statistics?.wins ?? prev.wins,
             losses: sync.statistics?.losses ?? prev.losses,
@@ -575,6 +580,9 @@ export const App: React.FC = () => {
         xp: normXp.xp,
         nextLevelXp: normXp.nextLevelXp,
         rankTier: resolvedRankTier,
+        rankDivision: keepPrevRank
+          ? prev.rankDivision
+          : ((user.rankDivision as RankDivision) || prev.rankDivision || 'III'),
         rankPoints: resolvedRankPoints,
         wins: resolvedWins,
         losses: resolvedLosses,
@@ -916,18 +924,27 @@ export const App: React.FC = () => {
         setProfile(prev => ({
           ...prev,
           rankTier: update.newTier,
+          rankDivision: (update.newDivision as RankDivision) || prev.rankDivision || 'III',
           rankPoints: update.newPoints,
+          waxSeals:
+            typeof update.promotionSealsAwarded === 'number' && update.promotionSealsAwarded > 0
+              ? (prev.waxSeals ?? 150) + update.promotionSealsAwarded
+              : prev.waxSeals,
         }));
 
         if (authUserRef.current?.id) {
           setTimeout(() => syncAuthoritativeProfile(authUserRef.current.id), 350);
         }
 
-        if (update.didRankUp) {
+        // Trigger RankUpModal on EVERY division promotion (III -> II -> I) AND full Rank-to-Rank Tier Ascension!
+        if (update.didRankUp || update.didDivisionUp) {
           setRankUpData({
             oldTier: update.oldTier,
             newTier: update.newTier,
+            oldDivision: update.oldDivision as RankDivision | undefined,
+            newDivision: update.newDivision as RankDivision | undefined,
             newPoints: update.newPoints,
+            promotionSealsAwarded: update.promotionSealsAwarded,
           });
         }
       },
@@ -1695,7 +1712,36 @@ export const App: React.FC = () => {
         currentUsername={profile.username}
         currentUserId={authUser?.id || profile.playerId}
         currentRankTier={profile.rankTier}
+        currentRankDivision={profile.rankDivision}
         currentRankPoints={profile.rankPoints}
+        onPreviewPromotion={(mode) => {
+          const curTier = profile.rankTier || '9';
+          const curDiv = profile.rankDivision || 'III';
+          if (mode === 'division') {
+            const nextDiv: RankDivision = curDiv === 'III' ? 'II' : curDiv === 'II' ? 'I' : 'II';
+            const prevDiv: RankDivision = nextDiv === 'I' ? 'II' : 'III';
+            setRankUpData({
+              oldTier: curTier === 'BOWER_JJ' ? 'K' : curTier,
+              newTier: curTier === 'BOWER_JJ' ? 'K' : curTier,
+              oldDivision: prevDiv,
+              newDivision: nextDiv,
+              newPoints: 18,
+              promotionSealsAwarded: nextDiv === 'I' ? 35 : 25,
+            });
+          } else {
+            const curIdx = RANK_TIER_ORDER.indexOf(curTier);
+            const fromTier: RankTier = curIdx < RANK_TIER_ORDER.length - 1 ? curTier : 'A';
+            const toTier: RankTier =
+              curIdx < RANK_TIER_ORDER.length - 1 ? RANK_TIER_ORDER[curIdx + 1] : 'BOWER_JJ';
+            setRankUpData({
+              oldTier: fromTier,
+              newTier: toTier,
+              oldDivision: 'I',
+              newDivision: toTier === 'BOWER_JJ' ? 'APEX' : 'III',
+              newPoints: 14,
+            });
+          }
+        }}
       />
 
       <CollectionModal
@@ -1784,7 +1830,10 @@ export const App: React.FC = () => {
           onClose={() => setRankUpData(null)}
           oldTier={rankUpData.oldTier}
           newTier={rankUpData.newTier}
+          oldDivision={rankUpData.oldDivision}
+          newDivision={rankUpData.newDivision}
           newPoints={rankUpData.newPoints}
+          promotionSealsAwarded={rankUpData.promotionSealsAwarded}
         />
       )}
 

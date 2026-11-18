@@ -10,6 +10,7 @@ import crypto from 'crypto';
 import {
   UserAccount,
   RankTier,
+  RankDivision,
   MatchRecord,
   FriendSummary,
   LeaderboardEntry,
@@ -59,10 +60,14 @@ export const PROMOTION_WAX_SEALS: Record<RankTier, number> = {
   'BOWER_JJ': 500,
 };
 
-export function getSubDivisionFromPoints(tier: RankTier, points: number): 'III' | 'II' | 'I' | 'APEX' {
+export const DIVISION_UP_WAX_SEALS: Record<'II' | 'I', number> = {
+  II: 25,
+  I: 35,
+};
+
+export function normalizeRankDivision(tier: RankTier, division?: string): RankDivision {
   if (tier === 'BOWER_JJ') return 'APEX';
-  if (points >= 67) return 'I';
-  if (points >= 34) return 'II';
+  if (division === 'I' || division === 'II' || division === 'III') return division;
   return 'III';
 }
 
@@ -206,10 +211,13 @@ export class PostgresDatabaseRepository {
       try {
         await client.query(`ALTER TABLE public.card_drop_history ADD COLUMN IF NOT EXISTS dust_awarded INT NOT NULL DEFAULT 0;`);
       } catch {}
+      try {
+        await client.query(`ALTER TABLE public.player_ranks ADD COLUMN IF NOT EXISTS rank_division TEXT NOT NULL DEFAULT 'III';`);
+      } catch {}
 
-      // Fast-path skip if schema + catalogs + 4.6.0/4.6.1/4.7.0 migrations are already cleanly applied
+      // Fast-path skip if schema + catalogs + 4.6.0/4.6.1/4.7.0/4.7.1 migrations are already cleanly applied
       const migRes = await client.query(
-        `SELECT version FROM schema_migrations WHERE version IN ('4.5.0', '4.6.0', '4.6.1', '4.7.0')`
+        `SELECT version FROM schema_migrations WHERE version IN ('4.5.0', '4.6.0', '4.6.1', '4.7.0', '4.7.1')`
       );
       const appliedVersions = new Set(migRes.rows.map((r) => String(r.version)));
       const bpStillExistsRes = await client.query(
@@ -308,6 +316,18 @@ export class PostgresDatabaseRepository {
           `
           INSERT INTO schema_migrations (version, description, applied_at)
           VALUES ('4.7.0', 'Season 2 Sovereign Hierarchy Ranked Revamp, Progress Carryover & Veteran Spoils', NOW())
+          ON CONFLICT (version) DO NOTHING;
+          `
+        );
+      }
+
+      // Run Migration 4.7.1: 100-LP Per Division (III -> II -> I) Calibration
+      if (!appliedVersions.has('4.7.1')) {
+        await this.runSeason2Division100LpMigrationTx(client);
+        await client.query(
+          `
+          INSERT INTO schema_migrations (version, description, applied_at)
+          VALUES ('4.7.1', 'Calibrate 100 LP per Division (III -> II -> I) for active ranked players', NOW())
           ON CONFLICT (version) DO NOTHING;
           `
         );
@@ -519,6 +539,56 @@ export class PostgresDatabaseRepository {
         WHERE id = $1;
         `,
         [uid, bonusSeals]
+      );
+    }
+  }
+
+  /**
+   * Migration 4.7.1: Calibrate 100 LP per Division (III -> II -> I)
+   * Converts previously stored 0-100 tier LP into explicit (rank_division, 0-100 division LP)
+   * so each sub-division has a full 0-100 LP climb.
+   */
+  private async runSeason2Division100LpMigrationTx(client: pg.PoolClient): Promise<void> {
+    const rowsRes = await client.query(
+      `
+      SELECT user_id, rank_tier, rank_points
+      FROM public.player_ranks
+      WHERE placement_matches_remaining < 5
+         OR rank_points > 0
+         OR rank_tier <> '9'
+         OR mmr <> 1200;
+      `
+    );
+
+    for (const r of rowsRes.rows) {
+      const uid = r.user_id as string;
+      const tier = (r.rank_tier || '9') as RankTier;
+      const pts = Number(r.rank_points || 0);
+
+      let div: RankDivision = 'III';
+      let divLp = pts;
+
+      if (tier === 'BOWER_JJ') {
+        div = 'APEX';
+        divLp = pts;
+      } else if (pts >= 67) {
+        div = 'I';
+        divLp = Math.min(95, Math.max(15, Math.round(((pts - 67) / 33) * 100)));
+      } else if (pts >= 34) {
+        div = 'II';
+        divLp = Math.min(95, Math.max(20, Math.round(((pts - 34) / 33) * 100)));
+      } else {
+        div = 'III';
+        divLp = Math.min(95, Math.max(15, Math.round((pts / 33) * 100)));
+      }
+
+      await client.query(
+        `
+        UPDATE public.player_ranks
+        SET rank_division = $2, rank_points = $3, updated_at = NOW()
+        WHERE user_id = $1;
+        `,
+        [uid, div, divLp]
       );
     }
   }
@@ -850,7 +920,7 @@ export class PostgresDatabaseRepository {
       SELECT
         p.id, p.player_id as "playerId", p.username, p.avatar_icon as "avatarIcon", p.wax_seals as "waxSeals",
         p.created_at as "createdAt", p.last_active as "lastActive",
-        r.rank_tier as "rankTier", r.rank_points as "rankPoints", r.mmr,
+        r.rank_tier as "rankTier", r.rank_division as "rankDivision", r.rank_points as "rankPoints", r.mmr,
         r.placement_matches_remaining as "placementMatchesRemaining",
         r.has_demotion_shield as "hasDemotionShield",
         s.total_games as "totalGames", s.wins, s.losses, s.tricks_won as "tricksWon",
@@ -909,7 +979,7 @@ export class PostgresDatabaseRepository {
       SELECT
         p.id, p.player_id as "playerId", p.username, p.avatar_icon as "avatarIcon", p.wax_seals as "waxSeals",
         p.created_at as "createdAt", p.last_active as "lastActive",
-        r.rank_tier as "rankTier", r.rank_points as "rankPoints", r.mmr,
+        r.rank_tier as "rankTier", r.rank_division as "rankDivision", r.rank_points as "rankPoints", r.mmr,
         r.placement_matches_remaining as "placementMatchesRemaining",
         r.has_demotion_shield as "hasDemotionShield",
         s.total_games as "totalGames", s.wins, s.losses, s.tricks_won as "tricksWon",
@@ -1093,7 +1163,12 @@ export class PostgresDatabaseRepository {
         }
       }
 
-      if (updates.rankTier !== undefined || updates.rankPoints !== undefined || updates.mmr !== undefined) {
+      if (
+        updates.rankTier !== undefined ||
+        updates.rankDivision !== undefined ||
+        updates.rankPoints !== undefined ||
+        updates.mmr !== undefined
+      ) {
         await client.query(
           `
           UPDATE public.player_ranks SET
@@ -1101,10 +1176,18 @@ export class PostgresDatabaseRepository {
             rank_points = COALESCE($3, rank_points),
             mmr = COALESCE($4, mmr),
             has_demotion_shield = COALESCE($5, has_demotion_shield),
+            rank_division = COALESCE($6, rank_division),
             updated_at = NOW()
           WHERE user_id = $1
           `,
-          [userId, updates.rankTier, updates.rankPoints, updates.mmr, updates.hasDemotionShield]
+          [
+            userId,
+            updates.rankTier,
+            updates.rankPoints,
+            updates.mmr,
+            updates.hasDemotionShield,
+            updates.rankDivision,
+          ]
         );
       }
 
@@ -1182,6 +1265,11 @@ export class PostgresDatabaseRepository {
       won: boolean;
       oldTier: RankTier;
       newTier: RankTier;
+      oldDivision?: RankDivision;
+      newDivision?: RankDivision;
+      didRankUp?: boolean;
+      didDivisionUp?: boolean;
+      promotionSealsAwarded?: number;
       oldPoints: number;
       newPoints: number;
       lpChange: number;
@@ -1264,12 +1352,13 @@ export class PostgresDatabaseRepository {
       for (const p of input.humanPlayers) {
         const won = p.team === input.winningTeam;
 
-        // Authoritative read of player's current rank tier, points, MMR, and demotion shield from PostgreSQL
+        // Authoritative read of player's current rank tier, division, points, MMR, and demotion shield from PostgreSQL
         const rankRow = await client.query(
-          `SELECT rank_tier, rank_points, mmr, has_demotion_shield FROM public.player_ranks WHERE user_id = $1 LIMIT 1`,
+          `SELECT rank_tier, rank_division, rank_points, mmr, has_demotion_shield FROM public.player_ranks WHERE user_id = $1 LIMIT 1`,
           [p.userId]
         );
         const currentTier = (rankRow.rows[0]?.rank_tier || p.rankTier || '9') as RankTier;
+        const currentDivision = normalizeRankDivision(currentTier, rankRow.rows[0]?.rank_division);
         const currentPoints = rankRow.rows[0]?.rank_points ?? p.rankPoints ?? 0;
         const currentMmr = rankRow.rows[0]?.mmr ?? p.mmr ?? 1200;
         let hasDemotionShield = Boolean(rankRow.rows[0]?.has_demotion_shield);
@@ -1299,6 +1388,10 @@ export class PostgresDatabaseRepository {
         let mmrChange = 0;
         let newPoints = currentPoints;
         let newTier = currentTier;
+        let newDivision: RankDivision = currentDivision;
+        let didRankUp = false;
+        let didDivisionUp = false;
+        let promotionSealsAwarded = 0;
         let newMmr = currentMmr;
 
         if (isRankedMode) {
@@ -1338,27 +1431,60 @@ export class PostgresDatabaseRepository {
 
           newPoints = currentPoints + lpChange;
           const currentTierIdx = TIER_ORDER.indexOf(currentTier);
-          let promotionSealsAwarded = 0;
 
           if (newPoints >= 100) {
-            if (currentTierIdx < TIER_ORDER.length - 1) {
-              newTier = TIER_ORDER[currentTierIdx + 1];
-              newPoints = newPoints - 100;
-              hasDemotionShield = true;
-              promotionSealsAwarded = PROMOTION_WAX_SEALS[newTier] || 75;
-            } else {
+            if (currentTier === 'BOWER_JJ') {
               // Respect DB CHECK constraint (rank_points BETWEEN 0 AND 100) at max tier BOWER_JJ
+              newDivision = 'APEX';
               newPoints = 100;
+            } else if (currentDivision === 'III') {
+              // Division Promotion: III -> II (100 LP each)
+              newDivision = 'II';
+              newPoints = Math.min(100, newPoints - 100);
+              hasDemotionShield = true;
+              didDivisionUp = true;
+              promotionSealsAwarded = DIVISION_UP_WAX_SEALS['II'];
+            } else if (currentDivision === 'II') {
+              // Division Promotion: II -> I (100 LP each)
+              newDivision = 'I';
+              newPoints = Math.min(100, newPoints - 100);
+              hasDemotionShield = true;
+              didDivisionUp = true;
+              promotionSealsAwarded = DIVISION_UP_WAX_SEALS['I'];
+            } else {
+              // Full Rank Tier Promotion: Division I -> Next Tier Division III!
+              if (currentTierIdx < TIER_ORDER.length - 1) {
+                newTier = TIER_ORDER[currentTierIdx + 1];
+                newDivision = newTier === 'BOWER_JJ' ? 'APEX' : 'III';
+                newPoints = Math.min(100, newPoints - 100);
+                hasDemotionShield = true;
+                didRankUp = true;
+                didDivisionUp = true;
+                promotionSealsAwarded = PROMOTION_WAX_SEALS[newTier] || 75;
+              } else {
+                newDivision = 'APEX';
+                newPoints = 100;
+              }
             }
           } else if (newPoints < 0) {
             if (hasDemotionShield) {
               newPoints = 0;
               hasDemotionShield = false;
+            } else if (currentDivision === 'I') {
+              newDivision = 'II';
+              newPoints = 75;
+              hasDemotionShield = true;
+            } else if (currentDivision === 'II') {
+              newDivision = 'III';
+              newPoints = 75;
+              hasDemotionShield = true;
             } else if (currentTierIdx > 0) {
               newTier = TIER_ORDER[currentTierIdx - 1];
+              newDivision = 'I';
               newPoints = 75; // Demotion soft landing
               hasDemotionShield = true;
             } else {
+              newDivision = 'III';
               newPoints = 0;
             }
           }
@@ -1370,14 +1496,15 @@ export class PostgresDatabaseRepository {
             `
             UPDATE public.player_ranks SET
               rank_tier = $2,
-              rank_points = $3,
-              mmr = $4,
-              has_demotion_shield = $5,
+              rank_division = $3,
+              rank_points = $4,
+              mmr = $5,
+              has_demotion_shield = $6,
               placement_matches_remaining = GREATEST(0, placement_matches_remaining - 1),
               updated_at = NOW()
             WHERE user_id = $1;
             `,
-            [p.userId, newTier, newPoints, newMmr, hasDemotionShield]
+            [p.userId, newTier, newDivision, newPoints, newMmr, hasDemotionShield]
           );
 
           if (promotionSealsAwarded > 0) {
@@ -1502,6 +1629,11 @@ export class PostgresDatabaseRepository {
           won,
           oldTier: currentTier,
           newTier,
+          oldDivision: currentDivision,
+          newDivision,
+          didRankUp,
+          didDivisionUp,
+          promotionSealsAwarded,
           oldPoints: currentPoints,
           newPoints,
           lpChange,
@@ -1767,7 +1899,7 @@ export class PostgresDatabaseRepository {
       SELECT
         p.id as "userId", p.username, p.avatar_icon as "avatarIcon",
         c.equipped_card_back as "equippedCardBack",
-        r.rank_tier as "rankTier", r.rank_points as "rankPoints", r.mmr,
+        r.rank_tier as "rankTier", r.rank_division as "rankDivision", r.rank_points as "rankPoints", r.mmr,
         COALESCE(s.wins, 0) as wins, COALESCE(s.losses, 0) as losses,
         COALESCE(s.total_games, 0) as "totalGames",
         COALESCE(s.current_streak, 0) as "winStreak",
@@ -1791,6 +1923,12 @@ export class PostgresDatabaseRepository {
           WHEN 'K' THEN 4
           WHEN 'Q' THEN 3
           WHEN '10' THEN 2
+          ELSE 1
+        END DESC,
+        CASE COALESCE(r.rank_division, 'III')
+          WHEN 'APEX' THEN 4
+          WHEN 'I' THEN 3
+          WHEN 'II' THEN 2
           ELSE 1
         END DESC,
         r.rank_points DESC,
@@ -1837,6 +1975,7 @@ export class PostgresDatabaseRepository {
         avatarIcon: resolveAvatarId(r.avatarIcon),
         equippedCardBack: resolveCardBackId(r.equippedCardBack),
         rankTier: r.rankTier || '9',
+        rankDivision: normalizeRankDivision((r.rankTier || '9') as RankTier, r.rankDivision),
         rankPoints: r.rankPoints || 0,
         mmr: r.mmr || 1200,
         wins,
@@ -2746,6 +2885,7 @@ export class PostgresDatabaseRepository {
       xp: normalizedXp,
       nextLevelXp: 1000,
       rankTier: (row.rankTier as RankTier) || '9',
+      rankDivision: normalizeRankDivision((row.rankTier as RankTier) || '9', row.rankDivision),
       rankPoints: row.rankPoints ?? 0,
       mmr: row.mmr ?? 1200,
       placementMatchesRemaining: row.placementMatchesRemaining ?? 0,

@@ -7,6 +7,7 @@
 import React from 'react';
 
 export type RankTier = '9' | '10' | 'Q' | 'K' | 'A' | 'BOWER_JJ';
+export type RankDivision = 'III' | 'II' | 'I' | 'APEX';
 
 export interface RankTierMetadata {
   tier: RankTier;
@@ -160,10 +161,14 @@ export const RANK_INFO: Record<RankTier, RankTierMetadata> = {
   },
 };
 
-export function getRankDivisionInfo(tier: RankTier, points: number = 0): RankDivisionInfo {
+export function getRankDivisionInfo(
+  tier: RankTier,
+  points: number = 0,
+  explicitDivision?: RankDivision
+): RankDivisionInfo {
   const safeTier: RankTier = RANK_INFO[tier] ? tier : '9';
   const info = RANK_INFO[safeTier];
-  const clampedPoints = Math.max(0, points || 0);
+  const clampedPoints = Math.min(100, Math.max(0, points || 0));
 
   if (safeTier === 'BOWER_JJ') {
     return {
@@ -180,30 +185,18 @@ export function getRankDivisionInfo(tier: RankTier, points: number = 0): RankDiv
     };
   }
 
-  let division: 'III' | 'II' | 'I' = 'III';
-  let divisionNumber: 1 | 2 | 3 = 1;
-  let starsFilled: 1 | 2 | 3 = 1;
-  let nextMilestoneLp = 34;
-  let divFloor = 0;
+  // Each division (III -> II -> I) requires 100 LP (0 to 100 LP per division)
+  const division: 'III' | 'II' | 'I' =
+    explicitDivision === 'I' || explicitDivision === 'II' || explicitDivision === 'III'
+      ? explicitDivision
+      : 'III';
 
-  if (clampedPoints >= 67) {
-    division = 'I';
-    divisionNumber = 3;
-    starsFilled = 3;
-    nextMilestoneLp = 100;
-    divFloor = 67;
-  } else if (clampedPoints >= 34) {
-    division = 'II';
-    divisionNumber = 2;
-    starsFilled = 2;
-    nextMilestoneLp = 67;
-    divFloor = 34;
-  }
-
-  const span = Math.max(1, nextMilestoneLp - divFloor);
-  const divisionProgressPercent = Math.min(100, Math.max(0, Math.round(((clampedPoints - divFloor) / span) * 100)));
-  const lpToNextMilestone = Math.max(0, nextMilestoneLp - clampedPoints);
-  const lpToNextTier = Math.max(0, 100 - clampedPoints);
+  const divisionNumber: 1 | 2 | 3 = division === 'I' ? 3 : division === 'II' ? 2 : 1;
+  const starsFilled: 1 | 2 | 3 = divisionNumber;
+  const nextMilestoneLp = 100;
+  const divisionProgressPercent = clampedPoints;
+  const lpToNextMilestone = Math.max(0, 100 - clampedPoints);
+  const lpToNextTier = (3 - divisionNumber) * 100 + lpToNextMilestone;
   const isPromoSeries = clampedPoints >= 76;
 
   return {
@@ -222,7 +215,8 @@ export function getRankDivisionInfo(tier: RankTier, points: number = 0): RankDiv
 
 interface RankBadgeProps {
   tier: RankTier;
-  points?: number; // 0 to 100
+  division?: RankDivision;
+  points?: number; // 0 to 100 LP within current division
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   showLabel?: boolean;
   showDivisionPips?: boolean;
@@ -231,6 +225,7 @@ interface RankBadgeProps {
 
 export const RankBadge: React.FC<RankBadgeProps> = ({
   tier,
+  division,
   points,
   size = 'md',
   showLabel = true,
@@ -239,7 +234,7 @@ export const RankBadge: React.FC<RankBadgeProps> = ({
 }) => {
   const safeTier: RankTier = RANK_INFO[tier] ? tier : '9';
   const info = RANK_INFO[safeTier];
-  const divInfo = getRankDivisionInfo(safeTier, points ?? 0);
+  const divInfo = getRankDivisionInfo(safeTier, points ?? 0, division);
 
   const sizePixels = {
     xs: 26,

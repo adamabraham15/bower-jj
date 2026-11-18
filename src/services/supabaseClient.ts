@@ -655,6 +655,7 @@ class AuthService {
           avatar_icon,
           player_ranks!inner (
             rank_tier,
+            rank_division,
             rank_points,
             mmr,
             placement_matches_remaining
@@ -687,6 +688,12 @@ class AuthService {
         Q: 3,
         '10': 2,
         '9': 1,
+      };
+      const divWeights: Record<string, number> = {
+        APEX: 4,
+        I: 3,
+        II: 2,
+        III: 1,
       };
 
       const isRankedMode = (mode?: string) =>
@@ -723,6 +730,7 @@ class AuthService {
         const totalGames = hasRankedHist ? mh.length : (s?.total_games || 0);
         const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
         const tier = r?.rank_tier || '9';
+        const division = tier === 'BOWER_JJ' ? 'APEX' : (r?.rank_division || 'III');
         const points = r?.rank_points || 0;
         const mmr = r?.mmr || 1200;
 
@@ -731,6 +739,7 @@ class AuthService {
           username: p.username || 'Player',
           avatarIcon: resolveAvatarId(p.avatar_icon),
           rankTier: tier,
+          rankDivision: division,
           rankPoints: points,
           mmr,
           wins,
@@ -741,11 +750,13 @@ class AuthService {
           winStreak: s?.current_streak || 0,
           bestStreak: s?.best_streak || 0,
           tierWeight: tierWeights[tier] || 1,
+          divWeight: divWeights[division] || 1,
         };
       });
 
       formatted.sort((a, b) => {
         if (b.tierWeight !== a.tierWeight) return b.tierWeight - a.tierWeight;
+        if (b.divWeight !== a.divWeight) return b.divWeight - a.divWeight;
         if (b.rankPoints !== a.rankPoints) return b.rankPoints - a.rankPoints;
         return b.mmr - a.mmr;
       });
@@ -756,6 +767,7 @@ class AuthService {
         username: e.username,
         avatarIcon: e.avatarIcon,
         rankTier: e.rankTier,
+        rankDivision: e.rankDivision,
         rankPoints: e.rankPoints,
         mmr: e.mmr,
         wins: e.wins,

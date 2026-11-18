@@ -24,6 +24,7 @@ import {
 import { LeaderboardEntry, RankTier } from '../../server/types';
 import {
   RankBadge,
+  RankDivision,
   RANK_INFO,
   RANK_TIER_ORDER,
   getRankDivisionInfo,
@@ -41,7 +42,9 @@ interface LeaderboardModalProps {
   currentUsername: string;
   currentUserId?: string;
   currentRankTier?: RankTier;
+  currentRankDivision?: RankDivision;
   currentRankPoints?: number;
+  onPreviewPromotion?: (mode: 'division' | 'tier') => void;
 }
 
 export const TopRankBadge: React.FC<{ position: number }> = ({ position }) => {
@@ -108,7 +111,9 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   currentUsername,
   currentUserId,
   currentRankTier,
+  currentRankDivision,
   currentRankPoints,
+  onPreviewPromotion,
 }) => {
   const [localEntries, setLocalEntries] = useState<LeaderboardEntry[]>(entries);
   const [isLoading, setIsLoading] = useState<boolean>(entries.length === 0);
@@ -155,9 +160,11 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
       (Boolean(currentUserId) && e.userId === currentUserId)
   );
   const resolvedTier: RankTier = currentRankTier || myEntry?.rankTier || '9';
+  const resolvedDivision: RankDivision =
+    currentRankDivision || myEntry?.rankDivision || (resolvedTier === 'BOWER_JJ' ? 'APEX' : 'III');
   const resolvedPoints: number = currentRankPoints ?? myEntry?.rankPoints ?? 0;
   const resolvedInfo = RANK_INFO[resolvedTier] || RANK_INFO['9'];
-  const resolvedDiv = getRankDivisionInfo(resolvedTier, resolvedPoints);
+  const resolvedDiv = getRankDivisionInfo(resolvedTier, resolvedPoints, resolvedDivision);
 
   const tierWeight: Record<RankTier, number> = {
     '9': 1,
@@ -221,6 +228,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             <div className="flex items-center gap-3.5">
               <RankBadge
                 tier={resolvedTier}
+                division={resolvedDivision}
                 points={resolvedPoints}
                 size="md"
                 showLabel={false}
@@ -242,33 +250,39 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                 <div className="text-[11px] text-slate-300 font-semibold">
                   {resolvedInfo.title} •{' '}
                   <span className="text-amber-300 font-mono font-bold">
-                    {resolvedPoints}/100 LP
+                    {resolvedPoints}/100 LP in Div {resolvedDiv.division}
                   </span>
-                  {nextTierInfo && (
+                  {resolvedTier !== 'BOWER_JJ' && (
                     <span className="text-slate-400">
                       {' '}
-                      ({resolvedDiv.lpToNextTier} LP to {nextTierInfo.name})
+                      ({resolvedDiv.lpToNextMilestone} LP to{' '}
+                      {resolvedDiv.division === 'III'
+                        ? 'Div II'
+                        : resolvedDiv.division === 'II'
+                        ? 'Div I'
+                        : nextTierInfo?.name || 'Next Tier'})
                     </span>
                   )}
                 </div>
 
-                {/* 3-Division Segmented Progress Bar (Div III | Div II | Div I) */}
-                <div className="mt-1.5 flex items-center gap-1.5 w-56 sm:w-64">
-                  {[
-                    { label: 'III', start: 0, end: 33 },
-                    { label: 'II', start: 34, end: 66 },
-                    { label: 'I', start: 67, end: 100 },
-                  ].map((seg) => {
-                    const segSpan = seg.end - seg.start + 1;
+                {/* 3-Division Segmented Progress Bar (Div III: 100 LP | Div II: 100 LP | Div I: 100 LP) */}
+                <div className="mt-1.5 flex items-center gap-1.5 w-60 sm:w-72">
+                  {(['III', 'II', 'I'] as const).map((divLabel, segIdx) => {
+                    const activeIdx = resolvedDiv.divisionNumber - 1; // 0 for III, 1 for II, 2 for I
                     const fillPct =
-                      resolvedPoints >= seg.end
+                      resolvedTier === 'BOWER_JJ' || segIdx < activeIdx
                         ? 100
-                        : resolvedPoints <= seg.start
+                        : segIdx > activeIdx
                         ? 0
-                        : Math.round(((resolvedPoints - seg.start) / segSpan) * 100);
+                        : Math.min(100, Math.max(0, resolvedPoints));
+                    const isCurrentSeg = segIdx === activeIdx && resolvedTier !== 'BOWER_JJ';
                     return (
-                      <div key={seg.label} className="flex-1 flex flex-col gap-0.5">
-                        <div className="h-2 rounded-full bg-slate-950 border border-slate-700/80 overflow-hidden p-[1px]">
+                      <div key={divLabel} className="flex-1 flex flex-col gap-0.5">
+                        <div
+                          className={`h-2 rounded-full bg-slate-950 border overflow-hidden p-[1px] ${
+                            isCurrentSeg ? 'border-amber-400/70' : 'border-slate-700/80'
+                          }`}
+                        >
                           <div
                             className="h-full rounded-full transition-all duration-500"
                             style={{
@@ -278,8 +292,16 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                             }}
                           />
                         </div>
-                        <span className="text-[8px] font-black text-slate-400 text-center uppercase tracking-wider">
-                          Div {seg.label}
+                        <span
+                          className={`text-[8px] font-black text-center uppercase tracking-wider ${
+                            isCurrentSeg
+                              ? 'text-amber-300'
+                              : segIdx < activeIdx
+                              ? 'text-emerald-400'
+                              : 'text-slate-400'
+                          }`}
+                        >
+                          Div {divLabel} (100 LP)
                         </span>
                       </div>
                     );
@@ -390,7 +412,11 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                   const isTop2 = pos === 2;
                   const isTop3 = pos === 3;
                   const entryInfo = RANK_INFO[entry.rankTier] || RANK_INFO['9'];
-                  const entryDiv = getRankDivisionInfo(entry.rankTier, entry.rankPoints);
+                  const entryDiv = getRankDivisionInfo(
+                    entry.rankTier,
+                    entry.rankPoints,
+                    entry.rankDivision
+                  );
 
                   return (
                     <div
@@ -447,6 +473,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                       <div className="col-span-3 sm:col-span-3 flex items-center justify-center space-x-1.5 sm:space-x-2">
                         <RankBadge
                           tier={entry.rankTier}
+                          division={entry.rankDivision}
                           points={entry.rankPoints}
                           size="sm"
                           showLabel={false}
@@ -463,7 +490,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                             )}
                           </div>
                           <div className="text-[10px] font-mono font-bold text-white">
-                            {entry.rankPoints} LP
+                            {entry.rankPoints}/100 LP
                           </div>
                         </div>
                       </div>
@@ -489,18 +516,40 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
         ) : (
           /* TAB 2: THE SOVEREIGN PATH (INTERACTIVE RANKED ROAD & ARTISTIC BADGE SHOWCASE) */
           <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-3">
-            <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/10 via-slate-900 to-cyan-500/10 border border-amber-500/30 flex items-center justify-between">
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-slate-900 to-cyan-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-0.5">
                 <div className="text-xs font-black text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>How The Sovereign Hierarchy Works</span>
+                  <span>3 Divisions × 100 LP Per Tier</span>
                 </div>
                 <p className="text-[11px] text-slate-300 leading-relaxed">
-                  Each Rank Tier spans <strong>3 Sub-Divisions (Div III → II → I)</strong> across 100 LP.
-                  Crossing 100 LP promotes you to the next Sovereign Crest, activates a{' '}
-                  <strong>Demotion Protection Shield</strong>, and awards bonus <strong>Wax Seals</strong>!
+                  Climb <strong>Div III (100 LP) ➔ Div II (100 LP) ➔ Div I (100 LP)</strong> in each Rank Tier.
+                  Every 100 LP triggers a <strong>Division Promotion Fanfare</strong>, and conquering Division I unleashes a{' '}
+                  <strong>Grand Sovereign Tier Ascension</strong>!
                 </p>
               </div>
+              {onPreviewPromotion && (
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => {
+                      sounds.playUiClick();
+                      onPreviewPromotion('division');
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-amber-400/40 text-[10px] font-black text-amber-300 uppercase tracking-wider transition-all active:scale-95"
+                  >
+                    ✨ Preview Div Up
+                  </button>
+                  <button
+                    onClick={() => {
+                      sounds.playUiClick();
+                      onPreviewPromotion('tier');
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 text-[10px] font-black uppercase tracking-wider shadow-md transition-all active:scale-95"
+                  >
+                    👑 Preview Rank Up
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Season Milestone Card Backs Strip */}
@@ -620,7 +669,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                           </span>
                           {tierKey !== 'BOWER_JJ' && (
                             <span className="text-[10px] font-mono text-slate-400">
-                              Divisions: III (0 LP) • II (34 LP) • I (67 LP)
+                              3 Divisions: Div III (100 LP) ➔ Div II (100 LP) ➔ Div I (100 LP)
                             </span>
                           )}
                         </div>

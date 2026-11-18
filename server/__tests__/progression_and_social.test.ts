@@ -54,9 +54,10 @@ describe('Ranked Progression & Hidden MMR Engine', () => {
     expect(result!.lpChange).toBeGreaterThanOrEqual(28);
   });
 
-  it('promotes player to next tier when crossing 100 LP and activates demotion shield', () => {
+  it('promotes player to next tier when crossing 100 LP in Division I and activates demotion shield', () => {
     const { user } = db.getOrCreateUser(genName('Ascender'), '🚀');
     user.rankTier = '9';
+    user.rankDivision = 'I';
     user.rankPoints = 90;
 
     const result = db.recordRankedMatchResult(
@@ -70,6 +71,7 @@ describe('Ranked Progression & Hidden MMR Engine', () => {
 
     expect(result!.didRankUp).toBe(true);
     expect(result!.newTier).toBe('10');
+    expect(result!.newDivision).toBe('III');
     expect(result!.newPoints).toBeLessThan(100);
     expect(result!.user.hasDemotionShield).toBe(true);
   });

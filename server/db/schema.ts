@@ -26,6 +26,7 @@ CREATE INDEX IF NOT EXISTS idx_profiles_player_id ON profiles(player_id);
 CREATE TABLE IF NOT EXISTS player_ranks (
   user_id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
   rank_tier TEXT NOT NULL DEFAULT '9',
+  rank_division TEXT NOT NULL DEFAULT 'III',
   rank_points INT NOT NULL DEFAULT 0,
   mmr INT NOT NULL DEFAULT 1200,
   placement_matches_remaining INT NOT NULL DEFAULT 5,

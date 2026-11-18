@@ -17,6 +17,7 @@ import {
 import { CardIdentity, RarityTier } from '../src/config/collectiblesCatalog';
 
 export type RankTier = '9' | '10' | 'Q' | 'K' | 'A' | 'BOWER_JJ';
+export type RankDivision = 'III' | 'II' | 'I' | 'APEX';
 
 export interface MatchRecord {
   id: string;
@@ -118,6 +119,7 @@ export interface FriendSummary {
   avatarIcon: string;
   equippedCardBack?: string;
   rankTier: RankTier;
+  rankDivision?: RankDivision;
   rankPoints: number;
   level: number;
   isOnline: boolean;
@@ -135,7 +137,8 @@ export interface UserAccount {
   
   // Competitive Ranking & MMR
   rankTier: RankTier;
-  rankPoints: number; // 0 to 100 LP
+  rankDivision?: RankDivision; // III -> II -> I (100 LP each)
+  rankPoints: number; // 0 to 100 LP within current division
   mmr: number; // Hidden Elo rating (baseline 1200)
   placementMatchesRemaining: number;
   hasDemotionShield: boolean;
@@ -267,6 +270,7 @@ export interface LeaderboardEntry {
   avatarIcon: string;
   equippedCardBack?: string;
   rankTier: RankTier;
+  rankDivision?: RankDivision;
   rankPoints: number;
   mmr: number;
   wins: number;
@@ -285,6 +289,7 @@ export interface PublicPlayerData {
   equippedCardBack?: string;
   level: number;
   rankTier: RankTier;
+  rankDivision?: RankDivision;
   rankPoints: number;
   totalGames?: number;
   wins?: number;
@@ -365,7 +370,8 @@ export type ServerMessage =
       lobbyRankLabel?: string;
       promotionSealsAwarded?: number;
       didDivisionUp?: boolean;
-      newDivision?: string;
+      oldDivision?: RankDivision;
+      newDivision?: RankDivision;
     }
   | { type: 'PARTY_INVITE_RECEIVED'; fromUsername: string; fromAvatar: string; roomCode: string; mode?: string; expiresAt?: number }
   | { type: 'PROFILE_DATA'; profile: PublicPlayerData }

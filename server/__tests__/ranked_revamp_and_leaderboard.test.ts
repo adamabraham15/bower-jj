@@ -1,11 +1,13 @@
 /**
  * BOWER JJ — Season 2 Sovereign Hierarchy Ranked Revamp & Leaderboard Filter Tests
+ * Verifies 100 LP per Division (III -> II -> I -> Next Tier III), Division-Up & Tier-Up rewards,
+ * and strict Ranked-Queue-Only Leaderboard filtering.
  */
 
 import { describe, it, expect } from 'vitest';
 import crypto from 'crypto';
 import { newDb } from 'pg-mem';
-import { db, PROMOTION_WAX_SEALS } from '../db';
+import { db, PROMOTION_WAX_SEALS, DIVISION_UP_WAX_SEALS } from '../db';
 import { PostgresDatabaseRepository } from '../db/postgres';
 import { RANK_INFO, getRankDivisionInfo } from '../../src/components/RankBadge';
 
@@ -21,7 +23,7 @@ function createTestPostgresPool() {
 }
 
 describe('Season 2 Sovereign Hierarchy Ranked System & Leaderboard Filter', () => {
-  it('defines bespoke metadata, emblems, titles, and sub-divisions for all 6 Sovereign Tiers', () => {
+  it('defines bespoke metadata, emblems, titles, and 100-LP divisions (III -> II -> I) for all 6 Sovereign Tiers', () => {
     expect(RANK_INFO['9'].name).toBe('Copper IX');
     expect(RANK_INFO['9'].imageUrl).toContain('rank_tier_9.jpg');
     expect(RANK_INFO['10'].name).toBe('Silver X');
@@ -30,22 +32,28 @@ describe('Season 2 Sovereign Hierarchy Ranked System & Leaderboard Filter', () =
     expect(RANK_INFO['A'].name).toBe('Astral Ace');
     expect(RANK_INFO['BOWER_JJ'].name).toBe('Supreme Bower');
 
-    // Sub-Division III (0 - 33 LP)
-    const div3 = getRankDivisionInfo('10', 20);
+    // Division III (0 - 100 LP)
+    const div3 = getRankDivisionInfo('10', 40, 'III');
     expect(div3.division).toBe('III');
     expect(div3.starsFilled).toBe(1);
+    expect(div3.lpToNextMilestone).toBe(60);
+    expect(div3.lpToNextTier).toBe(260);
     expect(div3.isPromoSeries).toBe(false);
 
-    // Sub-Division II (34 - 66 LP)
-    const div2 = getRankDivisionInfo('K', 55);
+    // Division II (0 - 100 LP)
+    const div2 = getRankDivisionInfo('K', 55, 'II');
     expect(div2.division).toBe('II');
     expect(div2.starsFilled).toBe(2);
+    expect(div2.lpToNextMilestone).toBe(45);
+    expect(div2.lpToNextTier).toBe(145);
     expect(div2.fullRankName).toBe('Crimson King • Div II');
 
-    // Sub-Division I & Promo Series (67 - 99 LP, Promo at 76+ LP)
-    const div1Promo = getRankDivisionInfo('A', 82);
+    // Division I & Promo Series (0 - 100 LP, Promo at 76+ LP)
+    const div1Promo = getRankDivisionInfo('A', 82, 'I');
     expect(div1Promo.division).toBe('I');
     expect(div1Promo.starsFilled).toBe(3);
+    expect(div1Promo.lpToNextMilestone).toBe(18);
+    expect(div1Promo.lpToNextTier).toBe(18);
     expect(div1Promo.isPromoSeries).toBe(true);
 
     // Apex Tier
@@ -53,13 +61,15 @@ describe('Season 2 Sovereign Hierarchy Ranked System & Leaderboard Filter', () =
     expect(apex.division).toBe('APEX');
   });
 
-  it('awards Promotion Wax Seal Spoils when ascending to a new Rank Tier', () => {
+  it('progresses through Division III -> II -> I (100 LP each) before promoting to the next Rank Tier', () => {
     const { user } = db.getOrCreateUser(`PromoHero_${Date.now()}`, 'the_outlaw');
     user.rankTier = '9';
+    user.rankDivision = 'III';
     user.rankPoints = 88;
     const initialSeals = user.waxSeals ?? 150;
 
-    const res = db.recordRankedMatchResult(
+    // 1. Cross 100 LP in Division III -> Promotes to Division II (+25 Wax Seals)
+    const resDiv2 = db.recordRankedMatchResult(
       user.id,
       true,
       1200,
@@ -67,15 +77,57 @@ describe('Season 2 Sovereign Hierarchy Ranked System & Leaderboard Filter', () =
       '10 - 6',
       ['Opponent A', 'Opponent B']
     );
+    expect(resDiv2!.didDivisionUp).toBe(true);
+    expect(resDiv2!.didRankUp).toBe(false);
+    expect(resDiv2!.newTier).toBe('9');
+    expect(resDiv2!.oldDivision).toBe('III');
+    expect(resDiv2!.newDivision).toBe('II');
+    expect(resDiv2!.newPoints).toBe(12); // 88 + 24 - 100 = 12 LP in Div II
+    expect(resDiv2!.promotionSealsAwarded).toBe(DIVISION_UP_WAX_SEALS['II']);
 
-    expect(res).not.toBeNull();
-    expect(res!.didRankUp).toBe(true);
-    expect(res!.newTier).toBe('10');
-    expect(res!.promotionSealsAwarded).toBe(PROMOTION_WAX_SEALS['10']);
-    expect(user.waxSeals).toBe(initialSeals + PROMOTION_WAX_SEALS['10']);
+    // 2. Cross 100 LP in Division II -> Promotes to Division I (+35 Wax Seals)
+    user.rankPoints = 90;
+    const resDiv1 = db.recordRankedMatchResult(
+      user.id,
+      true,
+      1200,
+      1200,
+      '10 - 6',
+      ['Opponent A', 'Opponent B']
+    );
+    expect(resDiv1!.didDivisionUp).toBe(true);
+    expect(resDiv1!.didRankUp).toBe(false);
+    expect(resDiv1!.newTier).toBe('9');
+    expect(resDiv1!.oldDivision).toBe('II');
+    expect(resDiv1!.newDivision).toBe('I');
+    expect(resDiv1!.promotionSealsAwarded).toBe(DIVISION_UP_WAX_SEALS['I']);
+
+    // 3. Cross 100 LP in Division I -> Promotes to Next Rank Tier '10' Division III (+75 Wax Seals)
+    user.rankPoints = 88;
+    const resTierUp = db.recordRankedMatchResult(
+      user.id,
+      true,
+      1200,
+      1200,
+      '10 - 6',
+      ['Opponent A', 'Opponent B']
+    );
+    expect(resTierUp!.didRankUp).toBe(true);
+    expect(resTierUp!.didDivisionUp).toBe(true);
+    expect(resTierUp!.oldTier).toBe('9');
+    expect(resTierUp!.newTier).toBe('10');
+    expect(resTierUp!.oldDivision).toBe('I');
+    expect(resTierUp!.newDivision).toBe('III');
+    expect(resTierUp!.promotionSealsAwarded).toBe(PROMOTION_WAX_SEALS['10']);
+    expect(user.waxSeals).toBe(
+      initialSeals +
+        DIVISION_UP_WAX_SEALS['II'] +
+        DIVISION_UP_WAX_SEALS['I'] +
+        PROMOTION_WAX_SEALS['10']
+    );
   });
 
-  it('strictly excludes unranked & casual-only players from PostgreSQL Leaderboard', async () => {
+  it('strictly excludes unranked & casual-only players from PostgreSQL Leaderboard and sorts by Tier -> Division -> LP', async () => {
     const pool = createTestPostgresPool();
     const repo = new PostgresDatabaseRepository(pool);
     await repo.initSchema();
@@ -149,6 +201,8 @@ describe('Season 2 Sovereign Hierarchy Ranked System & Leaderboard Filter', () =
       expect(usernames).not.toContain('CasualChillPlayer');
 
       const gladiatorEntry = leaderboard.find((e) => e.username === 'RankedGladiator')!;
+      expect(gladiatorEntry.rankDivision).toBe('III');
+      expect(gladiatorEntry.rankPoints).toBe(24);
       expect(gladiatorEntry.wins).toBe(1);
       expect(gladiatorEntry.losses).toBe(0);
       expect(gladiatorEntry.rankedGames).toBe(1);

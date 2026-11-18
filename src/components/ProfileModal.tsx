@@ -19,7 +19,7 @@ import {
   Sparkles,
   Layers,
 } from 'lucide-react';
-import { RankBadge, RankTier } from './RankBadge';
+import { RankBadge, RankTier, RankDivision } from './RankBadge';
 import { sounds } from '../audio/sound';
 import { authService } from '../services/supabaseClient';
 import { AvatarPortrait } from './AvatarPortrait';
@@ -50,6 +50,7 @@ export interface PlayerProfileData {
   xp: number;
   nextLevelXp: number;
   rankTier: RankTier;
+  rankDivision?: RankDivision;
   rankPoints: number;
   totalGames: number;
   wins: number;
@@ -266,7 +267,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
           {/* Rank Badge - positioned cleanly on the right, fully below banner */}
           <div className="flex-shrink-0 pl-2">
-            <RankBadge tier={profile.rankTier} points={profile.rankPoints} size="md" />
+            <RankBadge
+              tier={profile.rankTier}
+              division={profile.rankDivision}
+              points={profile.rankPoints}
+              size="md"
+            />
           </div>
         </div>
 

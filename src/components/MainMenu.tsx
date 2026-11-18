@@ -455,6 +455,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               >
                 <RankBadge
                   tier={profile.rankTier}
+                  division={profile.rankDivision}
                   points={profile.rankPoints}
                   size="xs"
                   showLabel={false}
@@ -466,7 +467,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                   </span>
                   {profile.rankTier !== 'BOWER_JJ' && (
                     <span className="text-amber-200/90 text-[11px] ml-1 font-mono">
-                      • {getRankDivisionInfo(profile.rankTier, profile.rankPoints).division}
+                      • {getRankDivisionInfo(profile.rankTier, profile.rankPoints, profile.rankDivision).division}
                     </span>
                   )}
                 </span>

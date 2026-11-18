@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import {
   UserAccount,
   RankTier,
+  RankDivision,
   MatchRecord,
   LeaderboardEntry,
   FriendSummary,
@@ -42,6 +43,14 @@ const DB_FILE = path.join(DB_DIR, 'db.json');
 
 export const TIER_ORDER: RankTier[] = ['9', '10', 'Q', 'K', 'A', 'BOWER_JJ'];
 
+export const DIVISION_ORDER: RankDivision[] = ['III', 'II', 'I', 'APEX'];
+export const DIVISION_WEIGHT: Record<RankDivision, number> = {
+  III: 1,
+  II: 2,
+  I: 3,
+  APEX: 4,
+};
+
 export const PROMOTION_WAX_SEALS: Record<RankTier, number> = {
   '9': 50,
   '10': 75,
@@ -51,10 +60,14 @@ export const PROMOTION_WAX_SEALS: Record<RankTier, number> = {
   'BOWER_JJ': 500,
 };
 
-export function getSubDivisionFromPoints(tier: RankTier, points: number): 'III' | 'II' | 'I' | 'APEX' {
+export const DIVISION_UP_WAX_SEALS: Record<'II' | 'I', number> = {
+  II: 25,
+  I: 35,
+};
+
+export function normalizeRankDivision(tier: RankTier, division?: string): RankDivision {
   if (tier === 'BOWER_JJ') return 'APEX';
-  if (points >= 67) return 'I';
-  if (points >= 34) return 'II';
+  if (division === 'I' || division === 'II' || division === 'III') return division;
   return 'III';
 }
 
@@ -283,6 +296,7 @@ class Database {
       
       // Ranked & MMR
       rankTier: '9',
+      rankDivision: 'III',
       rankPoints: 0,
       mmr: 1200,
       placementMatchesRemaining: 5,
@@ -403,12 +417,14 @@ class Database {
     lobbyMmr: number;
     promotionSealsAwarded?: number;
     didDivisionUp?: boolean;
-    newDivision?: string;
+    oldDivision?: RankDivision;
+    newDivision?: RankDivision;
   } | null {
     const user = this.data.users[userId];
     if (!user) return null;
 
     const oldTier = user.rankTier;
+    const oldDivision = normalizeRankDivision(oldTier, user.rankDivision);
     const oldPoints = user.rankPoints;
     const preMatchMmr = user.mmr;
 
@@ -451,27 +467,51 @@ class Database {
     }
 
     let didRankUp = false;
+    let didDivisionUp = false;
     let promotionSealsAwarded = 0;
-    const oldDivision = getSubDivisionFromPoints(oldTier, oldPoints);
     let targetPoints = user.rankPoints + lpChange;
 
     const currentTierIdx = TIER_ORDER.indexOf(user.rankTier);
 
     if (targetPoints >= 100) {
-      // Rank Up!
-      if (currentTierIdx < TIER_ORDER.length - 1) {
-        user.rankTier = TIER_ORDER[currentTierIdx + 1];
+      if (user.rankTier === 'BOWER_JJ') {
+        // At max tier BOWER_JJ, LP accumulates past 100
+        user.rankDivision = 'APEX';
+        user.rankPoints = targetPoints;
+      } else if (oldDivision === 'III') {
+        // Division Promotion: III -> II (100 LP each)
+        user.rankDivision = 'II';
         user.rankPoints = targetPoints - 100;
         user.hasDemotionShield = true;
-        didRankUp = true;
-        promotionSealsAwarded = PROMOTION_WAX_SEALS[user.rankTier] || 75;
+        didDivisionUp = true;
+        promotionSealsAwarded = DIVISION_UP_WAX_SEALS['II'];
+      } else if (oldDivision === 'II') {
+        // Division Promotion: II -> I (100 LP each)
+        user.rankDivision = 'I';
+        user.rankPoints = targetPoints - 100;
+        user.hasDemotionShield = true;
+        didDivisionUp = true;
+        promotionSealsAwarded = DIVISION_UP_WAX_SEALS['I'];
+      } else {
+        // Full Rank Tier Promotion from Division I -> Next Tier Division III!
+        if (currentTierIdx < TIER_ORDER.length - 1) {
+          user.rankTier = TIER_ORDER[currentTierIdx + 1];
+          user.rankDivision = user.rankTier === 'BOWER_JJ' ? 'APEX' : 'III';
+          user.rankPoints = targetPoints - 100;
+          user.hasDemotionShield = true;
+          didRankUp = true;
+          didDivisionUp = true;
+          promotionSealsAwarded = PROMOTION_WAX_SEALS[user.rankTier] || 75;
+        } else {
+          user.rankPoints = targetPoints;
+        }
+      }
+
+      if (promotionSealsAwarded > 0) {
         user.waxSeals = (user.waxSeals ?? 150) + promotionSealsAwarded;
         if (user.collectionState) {
           user.collectionState.waxSeals = user.waxSeals;
         }
-      } else {
-        // At max tier BOWER_JJ, LP accumulates past 100
-        user.rankPoints = targetPoints;
       }
     } else if (targetPoints < 0) {
       // Demotion Check
@@ -479,22 +519,30 @@ class Database {
         // Shield absorbs the loss once
         user.rankPoints = 0;
         user.hasDemotionShield = false;
+      } else if (oldDivision === 'I') {
+        user.rankDivision = 'II';
+        user.rankPoints = 75;
+        user.hasDemotionShield = true;
+      } else if (oldDivision === 'II') {
+        user.rankDivision = 'III';
+        user.rankPoints = 75;
+        user.hasDemotionShield = true;
       } else if (currentTierIdx > 0) {
-        // Demote one tier down with 75 LP
+        // Demote one tier down into Division I with 75 LP
         user.rankTier = TIER_ORDER[currentTierIdx - 1];
+        user.rankDivision = 'I';
         user.rankPoints = 75;
         user.hasDemotionShield = true;
       } else {
+        user.rankDivision = 'III';
         user.rankPoints = 0;
       }
     } else {
+      user.rankDivision = oldDivision;
       user.rankPoints = targetPoints;
     }
 
-    const newDivision = getSubDivisionFromPoints(user.rankTier, user.rankPoints);
-    const divWeight: Record<string, number> = { III: 1, II: 2, I: 3, APEX: 4 };
-    const didDivisionUp =
-      didRankUp || (user.rankTier === oldTier && (divWeight[newDivision] || 1) > (divWeight[oldDivision] || 1));
+    const newDivision = normalizeRankDivision(user.rankTier, user.rankDivision);
 
     // Record Match History
     const matchRecord: MatchRecord = {
@@ -527,6 +575,7 @@ class Database {
       lobbyMmr,
       promotionSealsAwarded,
       didDivisionUp,
+      oldDivision,
       newDivision,
     };
   }
@@ -881,6 +930,9 @@ class Database {
     rankedUsers.sort((a, b) => {
       const tierDiff = TIER_ORDER.indexOf(b.rankTier) - TIER_ORDER.indexOf(a.rankTier);
       if (tierDiff !== 0) return tierDiff;
+      const divA = DIVISION_WEIGHT[normalizeRankDivision(a.rankTier, a.rankDivision)] || 1;
+      const divB = DIVISION_WEIGHT[normalizeRankDivision(b.rankTier, b.rankDivision)] || 1;
+      if (divB !== divA) return divB - divA;
       if (b.rankPoints !== a.rankPoints) return b.rankPoints - a.rankPoints;
       return (b.mmr || 1200) - (a.mmr || 1200);
     });
@@ -900,6 +952,7 @@ class Database {
         avatarIcon: resolveAvatarId(u.avatarIcon),
         equippedCardBack: resolveCardBackId(u.equippedCosmetics?.cardBack),
         rankTier: u.rankTier,
+        rankDivision: normalizeRankDivision(u.rankTier, u.rankDivision),
         rankPoints: u.rankPoints,
         mmr: u.mmr || 1200,
         wins: rWins,

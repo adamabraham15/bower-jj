@@ -18,7 +18,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { RankBadge, RankTier, RANK_INFO, getRankDivisionInfo } from './RankBadge';
+import { RankBadge, RankTier, RankDivision, RANK_INFO, getRankDivisionInfo } from './RankBadge';
 import { sounds } from '../audio/sound';
 import { multiplayerClient } from '../services/multiplayerClient';
 import { AvatarPortrait } from './AvatarPortrait';
@@ -46,6 +46,7 @@ interface PostMatchModalProps {
   ratingLabel?: string;
   oldTier?: RankTier;
   newTier?: RankTier;
+  newDivision?: RankDivision;
   currentPoints?: number;
   xpEarned?: number;
   playerLevel: number;
@@ -71,6 +72,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
   ratingLabel,
   oldTier = '9',
   newTier = '9',
+  newDivision,
   currentPoints = 45,
   xpEarned = 450,
   playerLevel,
@@ -169,14 +171,21 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
             <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <RankBadge tier={newTier} points={currentPoints} size="md" showLabel={false} />
+                  <RankBadge
+                    tier={newTier}
+                    division={newDivision}
+                    points={currentPoints}
+                    size="md"
+                    showLabel={false}
+                  />
                   <div>
                     <div className="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center space-x-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                      <span>{ getRankDivisionInfo(newTier, currentPoints).fullRankName }</span>
+                      <span>{getRankDivisionInfo(newTier, currentPoints, newDivision).fullRankName}</span>
                     </div>
                     <div className="text-[11px] text-gray-300 font-semibold">
-                      {currentPoints} / 100 LP • {RANK_INFO[newTier]?.title || 'Competitor'}
+                      {currentPoints} / 100 LP in Div {getRankDivisionInfo(newTier, currentPoints, newDivision).division} •{' '}
+                      {RANK_INFO[newTier]?.title || 'Competitor'}
                     </div>
                   </div>
                 </div>
@@ -201,24 +210,21 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
                 </div>
               </div>
 
-              {/* 3-Division Progress Strip */}
+              {/* 3-Division Progress Strip (100 LP per Division: III -> II -> I) */}
               {newTier !== 'BOWER_JJ' && (
                 <div className="pt-1 border-t border-slate-800/80 flex items-center justify-between gap-2">
                   <div className="flex-1 flex items-center gap-1.5">
-                    {[
-                      { label: 'III', start: 0, end: 33 },
-                      { label: 'II', start: 34, end: 66 },
-                      { label: 'I', start: 67, end: 100 },
-                    ].map((seg) => {
-                      const segSpan = seg.end - seg.start + 1;
+                    {(['III', 'II', 'I'] as const).map((divLabel, segIdx) => {
+                      const dInfo = getRankDivisionInfo(newTier, currentPoints, newDivision);
+                      const activeIdx = dInfo.divisionNumber - 1;
                       const fillPct =
-                        currentPoints >= seg.end
+                        segIdx < activeIdx
                           ? 100
-                          : currentPoints <= seg.start
+                          : segIdx > activeIdx
                           ? 0
-                          : Math.round(((currentPoints - seg.start) / segSpan) * 100);
+                          : Math.min(100, Math.max(0, currentPoints));
                       return (
-                        <div key={seg.label} className="flex-1">
+                        <div key={divLabel} className="flex-1">
                           <div className="h-1.5 rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
                             <div
                               className="h-full rounded-full transition-all duration-500"
@@ -233,9 +239,9 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
                     })}
                   </div>
                   <span className="text-[10px] font-bold text-amber-300 whitespace-nowrap">
-                    {getRankDivisionInfo(newTier, currentPoints).isPromoSeries
-                      ? '🔥 Promo Series!'
-                      : `${getRankDivisionInfo(newTier, currentPoints).lpToNextTier} LP to Next Tier`}
+                    {getRankDivisionInfo(newTier, currentPoints, newDivision).isPromoSeries
+                      ? '🔥 Promo Ready!'
+                      : `${getRankDivisionInfo(newTier, currentPoints, newDivision).lpToNextMilestone} LP to Next Div`}
                   </span>
                 </div>
               )}
