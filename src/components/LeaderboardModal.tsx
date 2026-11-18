@@ -376,8 +376,8 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             {/* Column Headers */}
             <div className="grid grid-cols-12 gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 bg-slate-950/60 border-b border-slate-800 text-[10px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-wider">
               <div className="col-span-2 sm:col-span-1 text-center">Rank</div>
-              <div className="col-span-4 sm:col-span-5">Competitor</div>
-              <div className="col-span-3 sm:col-span-3 text-center">
+              <div className="col-span-4 sm:col-span-4">Competitor</div>
+              <div className="col-span-3 sm:col-span-4 text-center">
                 <span className="hidden sm:inline">Crest &amp; Division</span>
                 <span className="sm:hidden">Crest/LP</span>
               </div>
@@ -439,7 +439,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                       </div>
 
                       {/* Player Name, Avatar & MMR */}
-                      <div className="col-span-4 sm:col-span-5 flex items-center space-x-2 sm:space-x-2.5 min-w-0">
+                      <div className="col-span-4 sm:col-span-4 flex items-center space-x-2 sm:space-x-2.5 min-w-0">
                         <AvatarPortrait avatarId={entry.avatarIcon} size="xs" showRarityGem />
                         <div className="min-w-0 truncate">
                           <div className="font-black text-white text-xs sm:text-sm truncate flex items-center space-x-1 sm:space-x-1.5">
@@ -470,7 +470,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                       </div>
 
                       {/* Artistic Rank Badge, Division & LP */}
-                      <div className="col-span-3 sm:col-span-3 flex items-center justify-center space-x-1.5 sm:space-x-2">
+                      <div className="col-span-3 sm:col-span-4 flex items-center justify-center space-x-1.5 sm:space-x-2.5">
                         <RankBadge
                           tier={entry.rankTier}
                           division={entry.rankDivision}
@@ -481,7 +481,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                         />
                         <div className="text-left leading-tight min-w-0">
                           <div
-                            className="text-[10px] sm:text-xs font-black truncate"
+                            className="text-[10px] sm:text-xs font-black whitespace-nowrap"
                             style={{ color: entryInfo.color }}
                           >
                             {entryInfo.name}{' '}
