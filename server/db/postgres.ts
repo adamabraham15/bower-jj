@@ -50,6 +50,22 @@ const { Pool } = pg;
 
 export const TIER_ORDER: RankTier[] = ['9', '10', 'Q', 'K', 'A', 'BOWER_JJ'];
 
+export const PROMOTION_WAX_SEALS: Record<RankTier, number> = {
+  '9': 50,
+  '10': 75,
+  'Q': 125,
+  'K': 200,
+  'A': 300,
+  'BOWER_JJ': 500,
+};
+
+export function getSubDivisionFromPoints(tier: RankTier, points: number): 'III' | 'II' | 'I' | 'APEX' {
+  if (tier === 'BOWER_JJ') return 'APEX';
+  if (points >= 67) return 'I';
+  if (points >= 34) return 'II';
+  return 'III';
+}
+
 export interface PostgresConfig {
   connectionString?: string;
   max?: number;
@@ -191,9 +207,9 @@ export class PostgresDatabaseRepository {
         await client.query(`ALTER TABLE public.card_drop_history ADD COLUMN IF NOT EXISTS dust_awarded INT NOT NULL DEFAULT 0;`);
       } catch {}
 
-      // Fast-path skip if schema + catalogs + 4.6.0/4.6.1 migrations are already cleanly applied
+      // Fast-path skip if schema + catalogs + 4.6.0/4.6.1/4.7.0 migrations are already cleanly applied
       const migRes = await client.query(
-        `SELECT version FROM schema_migrations WHERE version IN ('4.5.0', '4.6.0', '4.6.1')`
+        `SELECT version FROM schema_migrations WHERE version IN ('4.5.0', '4.6.0', '4.6.1', '4.7.0')`
       );
       const appliedVersions = new Set(migRes.rows.map((r) => String(r.version)));
       const bpStillExistsRes = await client.query(
@@ -280,6 +296,18 @@ export class PostgresDatabaseRepository {
           `
           INSERT INTO schema_migrations (version, description, applied_at)
           VALUES ('4.6.0', 'Collectible Card Packs, Card Backs, Illustrated Avatars & Battle Pass Retirement', NOW())
+          ON CONFLICT (version) DO NOTHING;
+          `
+        );
+      }
+
+      // Run Migration 4.7.0: Season 2 Sovereign Hierarchy Soft Reset & Veteran Carryover Rewards
+      if (!appliedVersions.has('4.7.0')) {
+        await this.runSeason2RankedRevampMigrationTx(client);
+        await client.query(
+          `
+          INSERT INTO schema_migrations (version, description, applied_at)
+          VALUES ('4.7.0', 'Season 2 Sovereign Hierarchy Ranked Revamp, Progress Carryover & Veteran Spoils', NOW())
           ON CONFLICT (version) DO NOTHING;
           `
         );
@@ -407,6 +435,92 @@ export class PostgresDatabaseRepository {
       if (added) newlyUnlocked.push(av.id);
     }
     return newlyUnlocked;
+  }
+
+  /**
+   * Season 2 Sovereign Hierarchy Soft Reset & Progress Carryover Migration (v4.7.0)
+   * Preserves ~70-85% of existing ranked players' climb while recalibrating the ladder
+   * and granting Season 1 Veteran Wax Seal Spoils.
+   */
+  private async runSeason2RankedRevampMigrationTx(client: pg.PoolClient): Promise<void> {
+    const rankedRowsRes = await client.query(
+      `
+      SELECT
+        user_id, rank_tier, rank_points, mmr, placement_matches_remaining
+      FROM public.player_ranks
+      WHERE placement_matches_remaining < 5
+         OR rank_points > 0
+         OR rank_tier <> '9'
+         OR mmr <> 1200;
+      `
+    );
+
+    for (const row of rankedRowsRes.rows) {
+      const uid = row.user_id as string;
+      const oldTier = (row.rank_tier || '9') as RankTier;
+      const oldPoints = Number(row.rank_points || 0);
+      const oldMmr = Number(row.mmr || 1200);
+
+      let newTier: RankTier = '9';
+      let newPoints = 0;
+      let newMmr = oldMmr;
+      let bonusSeals = 75;
+
+      if (oldTier === 'BOWER_JJ') {
+        newTier = 'K';
+        newPoints = Math.min(90, Math.max(55, Math.round(50 + oldPoints * 0.35)));
+        newMmr = Math.max(1340, Math.round(1200 + (oldMmr - 1200) * 0.72));
+        bonusSeals = 350;
+      } else if (oldTier === 'A') {
+        newTier = 'Q';
+        newPoints = Math.min(90, Math.max(68, Math.round(60 + oldPoints * 0.35)));
+        newMmr = Math.max(1300, Math.round(1200 + (oldMmr - 1200) * 0.75));
+        bonusSeals = 250;
+      } else if (oldTier === 'K') {
+        newTier = 'Q';
+        newPoints = Math.min(66, Math.max(35, Math.round(30 + oldPoints * 0.4)));
+        newMmr = Math.max(1260, Math.round(1200 + (oldMmr - 1200) * 0.8));
+        bonusSeals = 200;
+      } else if (oldTier === 'Q') {
+        newTier = '10';
+        newPoints = Math.min(90, Math.max(68, Math.round(60 + oldPoints * 0.35)));
+        newMmr = Math.max(1230, Math.round(1200 + (oldMmr - 1200) * 0.85));
+        bonusSeals = 150;
+      } else if (oldTier === '10') {
+        newTier = '10';
+        newPoints = Math.min(95, Math.max(25, Math.round(oldPoints * 0.75)));
+        newMmr = Math.round(1200 + (oldMmr - 1200) * 0.85);
+        bonusSeals = 125;
+      } else {
+        newTier = '9';
+        newPoints = oldPoints > 0 ? Math.min(95, Math.max(18, Math.round(oldPoints * 0.85))) : 12;
+        newMmr = Math.round(1200 + (oldMmr - 1200) * 0.85);
+        bonusSeals = 75;
+      }
+
+      await client.query(
+        `
+        UPDATE public.player_ranks SET
+          rank_tier = $2,
+          rank_points = $3,
+          mmr = $4,
+          has_demotion_shield = TRUE,
+          updated_at = NOW()
+        WHERE user_id = $1;
+        `,
+        [uid, newTier, newPoints, newMmr]
+      );
+
+      await client.query(
+        `
+        UPDATE public.profiles SET
+          wax_seals = COALESCE(wax_seals, 150) + $2,
+          updated_at = NOW()
+        WHERE id = $1;
+        `,
+        [uid, bonusSeals]
+      );
+    }
   }
 
   private async runCollectibleOverhaulMigrationTx(client: pg.PoolClient): Promise<void> {
@@ -1224,12 +1338,14 @@ export class PostgresDatabaseRepository {
 
           newPoints = currentPoints + lpChange;
           const currentTierIdx = TIER_ORDER.indexOf(currentTier);
+          let promotionSealsAwarded = 0;
 
           if (newPoints >= 100) {
             if (currentTierIdx < TIER_ORDER.length - 1) {
               newTier = TIER_ORDER[currentTierIdx + 1];
               newPoints = newPoints - 100;
               hasDemotionShield = true;
+              promotionSealsAwarded = PROMOTION_WAX_SEALS[newTier] || 75;
             } else {
               // Respect DB CHECK constraint (rank_points BETWEEN 0 AND 100) at max tier BOWER_JJ
               newPoints = 100;
@@ -1263,6 +1379,18 @@ export class PostgresDatabaseRepository {
             `,
             [p.userId, newTier, newPoints, newMmr, hasDemotionShield]
           );
+
+          if (promotionSealsAwarded > 0) {
+            await client.query(
+              `
+              UPDATE public.profiles SET
+                wax_seals = COALESCE(wax_seals, 150) + $2,
+                updated_at = NOW()
+              WHERE id = $1;
+              `,
+              [p.userId, promotionSealsAwarded]
+            );
+          }
         }
 
         // Update player_statistics
@@ -1641,12 +1769,21 @@ export class PostgresDatabaseRepository {
         c.equipped_card_back as "equippedCardBack",
         r.rank_tier as "rankTier", r.rank_points as "rankPoints", r.mmr,
         COALESCE(s.wins, 0) as wins, COALESCE(s.losses, 0) as losses,
-        COALESCE(s.total_games, 0) as "totalGames"
+        COALESCE(s.total_games, 0) as "totalGames",
+        COALESCE(s.current_streak, 0) as "winStreak",
+        COALESCE(s.best_streak, 0) as "bestStreak"
       FROM public.profiles p
       LEFT JOIN public.player_ranks r ON p.id = r.user_id
       LEFT JOIN public.player_statistics s ON p.id = s.user_id
       LEFT JOIN public.player_cosmetics c ON p.id = c.user_id
-      WHERE p.is_banned = FALSE AND p.username NOT LIKE 'Bench_%'
+      WHERE p.is_banned = FALSE
+        AND p.username NOT LIKE 'Bench_%'
+        AND (
+          COALESCE(r.placement_matches_remaining, 5) < 5
+          OR COALESCE(r.rank_points, 0) > 0
+          OR COALESCE(r.rank_tier, '9') <> '9'
+          OR COALESCE(r.mmr, 1200) <> 1200
+        )
       ORDER BY
         CASE r.rank_tier
           WHEN 'BOWER_JJ' THEN 6
@@ -1663,9 +1800,36 @@ export class PostgresDatabaseRepository {
       [limit]
     );
 
+    // Also compute ranked-only match history counts for these leaderboard players
+    const rankedStatsByUser = new Map<string, { wins: number; losses: number; total: number }>();
+    if (res.rows.length > 0) {
+      try {
+        const mhRes = await this.queryWithRetry(
+          `
+          SELECT user_id, won, mode
+          FROM public.player_match_history
+          WHERE mode IN ('ranked_solo', 'ranked_duo', 'ranked_rivals', 'Ranked Abandonment (Penalty)');
+          `
+        );
+        for (const mh of mhRes.rows) {
+          const uid = String(mh.user_id);
+          const cur = rankedStatsByUser.get(uid) || { wins: 0, losses: 0, total: 0 };
+          cur.total += 1;
+          if (mh.won) cur.wins += 1;
+          else cur.losses += 1;
+          rankedStatsByUser.set(uid, cur);
+        }
+      } catch {
+        // Fallback to player_statistics if match_history query is unavailable
+      }
+    }
+
     return res.rows.map((r, idx) => {
-      const tg = r.totalGames || 0;
-      const winRate = tg > 0 ? Math.round((r.wins / tg) * 100) : 0;
+      const rStat = rankedStatsByUser.get(String(r.userId));
+      const wins = rStat && rStat.total > 0 ? rStat.wins : (r.wins || 0);
+      const losses = rStat && rStat.total > 0 ? rStat.losses : (r.losses || 0);
+      const tg = rStat && rStat.total > 0 ? rStat.total : (r.totalGames || 0);
+      const winRate = tg > 0 ? Math.round((wins / tg) * 100) : 0;
       return {
         rankPosition: idx + 1,
         userId: r.userId,
@@ -1675,10 +1839,13 @@ export class PostgresDatabaseRepository {
         rankTier: r.rankTier || '9',
         rankPoints: r.rankPoints || 0,
         mmr: r.mmr || 1200,
-        wins: r.wins,
-        losses: r.losses,
+        wins,
+        losses,
         totalGames: tg,
+        rankedGames: tg,
         winRate,
+        winStreak: r.winStreak || 0,
+        bestStreak: r.bestStreak || 0,
       };
     });
   }

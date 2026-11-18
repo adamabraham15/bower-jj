@@ -18,7 +18,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { RankBadge, RankTier } from './RankBadge';
+import { RankBadge, RankTier, RANK_INFO, getRankDivisionInfo } from './RankBadge';
 import { sounds } from '../audio/sound';
 import { multiplayerClient } from '../services/multiplayerClient';
 import { AvatarPortrait } from './AvatarPortrait';
@@ -166,38 +166,79 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
           {/* 1. Competitive LP & MMR Delta or Match Type */}
           {isRanked || (lpDelta !== undefined && lpDelta !== 0) ? (
-            <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <RankBadge tier={newTier} points={currentPoints} size="md" />
-                <div>
-                  <div className="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center space-x-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Ranked Progression</span>
+            <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <RankBadge tier={newTier} points={currentPoints} size="md" showLabel={false} />
+                  <div>
+                    <div className="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center space-x-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      <span>{ getRankDivisionInfo(newTier, currentPoints).fullRankName }</span>
+                    </div>
+                    <div className="text-[11px] text-gray-300 font-semibold">
+                      {currentPoints} / 100 LP • {RANK_INFO[newTier]?.title || 'Competitor'}
+                    </div>
                   </div>
-                  <div className="text-[11px] text-gray-300 font-semibold">
-                    {currentPoints} / 100 LP ({newTier} Tier)
-                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span
+                    className={`text-base font-black font-mono flex items-center justify-end space-x-1 ${
+                      (lpDelta ?? 0) > 0 ? 'text-emerald-400' : (lpDelta ?? 0) < 0 ? 'text-red-400' : 'text-amber-300'
+                    }`}
+                  >
+                    <span>
+                      {(lpDelta ?? 0) > 0
+                        ? `+${lpDelta} LP`
+                        : (lpDelta ?? 0) < 0
+                        ? `-${Math.abs(lpDelta!)} LP`
+                        : '+0 LP'}
+                    </span>
+                  </span>
+                  <span className="text-[10px] text-gray-400 block font-medium">
+                    {ratingLabel || ((lpDelta ?? 0) === 0 ? 'Rank Protected' : 'MMR-Scaled Match')}
+                  </span>
                 </div>
               </div>
 
-              <div className="text-right">
-                <span
-                  className={`text-base font-black font-mono flex items-center justify-end space-x-1 ${
-                    (lpDelta ?? 0) > 0 ? 'text-emerald-400' : (lpDelta ?? 0) < 0 ? 'text-red-400' : 'text-amber-300'
-                  }`}
-                >
-                  <span>
-                    {(lpDelta ?? 0) > 0
-                      ? `+${lpDelta} LP`
-                      : (lpDelta ?? 0) < 0
-                      ? `-${Math.abs(lpDelta!)} LP`
-                      : '+0 LP'}
+              {/* 3-Division Progress Strip */}
+              {newTier !== 'BOWER_JJ' && (
+                <div className="pt-1 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                  <div className="flex-1 flex items-center gap-1.5">
+                    {[
+                      { label: 'III', start: 0, end: 33 },
+                      { label: 'II', start: 34, end: 66 },
+                      { label: 'I', start: 67, end: 100 },
+                    ].map((seg) => {
+                      const segSpan = seg.end - seg.start + 1;
+                      const fillPct =
+                        currentPoints >= seg.end
+                          ? 100
+                          : currentPoints <= seg.start
+                          ? 0
+                          : Math.round(((currentPoints - seg.start) / segSpan) * 100);
+                      return (
+                        <div key={seg.label} className="flex-1">
+                          <div className="h-1.5 rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${fillPct}%`,
+                                backgroundColor: RANK_INFO[newTier]?.color || '#f59e0b',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <span className="text-[10px] font-bold text-amber-300 whitespace-nowrap">
+                    {getRankDivisionInfo(newTier, currentPoints).isPromoSeries
+                      ? '🔥 Promo Series!'
+                      : `${getRankDivisionInfo(newTier, currentPoints).lpToNextTier} LP to Next Tier`}
                   </span>
-                </span>
-                <span className="text-[10px] text-gray-400 block font-medium">
-                  {ratingLabel || ((lpDelta ?? 0) === 0 ? 'Rank Protected' : 'MMR-Scaled Match')}
-                </span>
-              </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between text-xs">

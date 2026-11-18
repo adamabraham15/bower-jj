@@ -35,6 +35,7 @@ import { AudioControlsPopover } from './AudioControlsPopover';
 import { CardView } from './CardView';
 import { CARD_COLLECTIONS, PACK_ARTWORK_URL, RARITY_META } from '../config/collectiblesCatalog';
 import { SanitizedGameState } from '../../server/types';
+import { RankBadge, RANK_INFO, getRankDivisionInfo } from './RankBadge';
 
 interface MainMenuProps {
   profile: PlayerProfileData;
@@ -452,14 +453,25 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 }}
                 className="relative z-30 -mt-1.5 inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#151d2e] hover:bg-[#1c263b] border border-amber-400/60 shadow-lg transition-all active:scale-95 cursor-pointer"
               >
-                <span className="w-5 h-5 rounded-md bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 font-black text-xs flex items-center justify-center shadow">
-                  {profile.rankTier}
-                </span>
+                <RankBadge
+                  tier={profile.rankTier}
+                  points={profile.rankPoints}
+                  size="xs"
+                  showLabel={false}
+                  showDivisionPips={false}
+                />
                 <span className="text-xs sm:text-sm font-black text-white">
-                  Rank <span className="text-amber-400">{profile.rankTier}</span>
+                  <span className="text-amber-400">
+                    {RANK_INFO[profile.rankTier]?.name || `Rank ${profile.rankTier}`}
+                  </span>
+                  {profile.rankTier !== 'BOWER_JJ' && (
+                    <span className="text-amber-200/90 text-[11px] ml-1 font-mono">
+                      • {getRankDivisionInfo(profile.rankTier, profile.rankPoints).division}
+                    </span>
+                  )}
                 </span>
                 <span className="text-slate-500 text-xs">•</span>
-                <span className="text-xs font-bold text-slate-200">{profile.rankPoints}/100 LP</span>
+                <span className="text-xs font-bold text-slate-200 font-mono">{profile.rankPoints}/100 LP</span>
               </button>
             </div>
           </div>

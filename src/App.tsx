@@ -1695,6 +1695,7 @@ export const App: React.FC = () => {
         currentUsername={profile.username}
         currentUserId={authUser?.id || profile.playerId}
         currentRankTier={profile.rankTier}
+        currentRankPoints={profile.rankPoints}
       />
 
       <CollectionModal

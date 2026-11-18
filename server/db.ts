@@ -42,6 +42,22 @@ const DB_FILE = path.join(DB_DIR, 'db.json');
 
 export const TIER_ORDER: RankTier[] = ['9', '10', 'Q', 'K', 'A', 'BOWER_JJ'];
 
+export const PROMOTION_WAX_SEALS: Record<RankTier, number> = {
+  '9': 50,
+  '10': 75,
+  'Q': 125,
+  'K': 200,
+  'A': 300,
+  'BOWER_JJ': 500,
+};
+
+export function getSubDivisionFromPoints(tier: RankTier, points: number): 'III' | 'II' | 'I' | 'APEX' {
+  if (tier === 'BOWER_JJ') return 'APEX';
+  if (points >= 67) return 'I';
+  if (points >= 34) return 'II';
+  return 'III';
+}
+
 interface DatabaseSchema {
   users: Record<string, UserAccount>; // userId -> UserAccount
   sessions: Record<string, string>; // sessionToken -> userId
@@ -385,6 +401,9 @@ class Database {
     mmrChange: number;
     newMmr: number;
     lobbyMmr: number;
+    promotionSealsAwarded?: number;
+    didDivisionUp?: boolean;
+    newDivision?: string;
   } | null {
     const user = this.data.users[userId];
     if (!user) return null;
@@ -432,6 +451,8 @@ class Database {
     }
 
     let didRankUp = false;
+    let promotionSealsAwarded = 0;
+    const oldDivision = getSubDivisionFromPoints(oldTier, oldPoints);
     let targetPoints = user.rankPoints + lpChange;
 
     const currentTierIdx = TIER_ORDER.indexOf(user.rankTier);
@@ -443,6 +464,11 @@ class Database {
         user.rankPoints = targetPoints - 100;
         user.hasDemotionShield = true;
         didRankUp = true;
+        promotionSealsAwarded = PROMOTION_WAX_SEALS[user.rankTier] || 75;
+        user.waxSeals = (user.waxSeals ?? 150) + promotionSealsAwarded;
+        if (user.collectionState) {
+          user.collectionState.waxSeals = user.waxSeals;
+        }
       } else {
         // At max tier BOWER_JJ, LP accumulates past 100
         user.rankPoints = targetPoints;
@@ -464,6 +490,11 @@ class Database {
     } else {
       user.rankPoints = targetPoints;
     }
+
+    const newDivision = getSubDivisionFromPoints(user.rankTier, user.rankPoints);
+    const divWeight: Record<string, number> = { III: 1, II: 2, I: 3, APEX: 4 };
+    const didDivisionUp =
+      didRankUp || (user.rankTier === oldTier && (divWeight[newDivision] || 1) > (divWeight[oldDivision] || 1));
 
     // Record Match History
     const matchRecord: MatchRecord = {
@@ -494,6 +525,9 @@ class Database {
       mmrChange: mmrDelta,
       newMmr: user.mmr,
       lobbyMmr,
+      promotionSealsAwarded,
+      didDivisionUp,
+      newDivision,
     };
   }
 
@@ -826,29 +860,57 @@ class Database {
   // --- LEADERBOARD ---
 
   public getLeaderboard(limit = 50): LeaderboardEntry[] {
-    const allUsers = Object.values(this.data.users);
+    const isRankedHistoryEntry = (m: MatchRecord) =>
+      m.mode === 'ranked_solo' ||
+      m.mode === 'ranked_duo' ||
+      m.mode === 'ranked_rivals' ||
+      (typeof m.mode === 'string' && m.mode.toLowerCase().includes('ranked'));
 
-    allUsers.sort((a, b) => {
+    // Strictly include ONLY players who have queued up and participated in Ranked games
+    const rankedUsers = Object.values(this.data.users).filter((u) => {
+      if (!u.username || u.username.startsWith('Bench_')) return false;
+      const rankedMatches = (u.matchHistory || []).filter(isRankedHistoryEntry);
+      if (rankedMatches.length > 0) return true;
+      if (typeof u.placementMatchesRemaining === 'number' && u.placementMatchesRemaining < 5) return true;
+      if ((u.rankPoints || 0) > 0) return true;
+      if (u.rankTier && u.rankTier !== '9') return true;
+      if (typeof u.mmr === 'number' && u.mmr !== 1200) return true;
+      return false;
+    });
+
+    rankedUsers.sort((a, b) => {
       const tierDiff = TIER_ORDER.indexOf(b.rankTier) - TIER_ORDER.indexOf(a.rankTier);
       if (tierDiff !== 0) return tierDiff;
       if (b.rankPoints !== a.rankPoints) return b.rankPoints - a.rankPoints;
-      return b.mmr - a.mmr;
+      return (b.mmr || 1200) - (a.mmr || 1200);
     });
 
-    return allUsers.slice(0, limit).map((u, idx) => ({
-      rankPosition: idx + 1,
-      userId: u.id,
-      username: u.username,
-      avatarIcon: resolveAvatarId(u.avatarIcon),
-      equippedCardBack: resolveCardBackId(u.equippedCosmetics?.cardBack),
-      rankTier: u.rankTier,
-      rankPoints: u.rankPoints,
-      mmr: u.mmr,
-      wins: u.wins,
-      losses: u.losses,
-      totalGames: u.totalGames,
-      winRate: u.totalGames > 0 ? Math.round((u.wins / u.totalGames) * 100) : 0,
-    }));
+    return rankedUsers.slice(0, limit).map((u, idx) => {
+      const rankedMatches = (u.matchHistory || []).filter(isRankedHistoryEntry);
+      const hasRankedHistory = rankedMatches.length > 0;
+      const rWins = hasRankedHistory ? rankedMatches.filter((m) => m.won).length : u.wins;
+      const rLosses = hasRankedHistory ? rankedMatches.filter((m) => !m.won).length : u.losses;
+      const rTotal = hasRankedHistory ? Math.max(rankedMatches.length, rWins + rLosses) : u.totalGames;
+      const winRate = rTotal > 0 ? Math.round((rWins / rTotal) * 100) : 0;
+
+      return {
+        rankPosition: idx + 1,
+        userId: u.id,
+        username: u.username,
+        avatarIcon: resolveAvatarId(u.avatarIcon),
+        equippedCardBack: resolveCardBackId(u.equippedCosmetics?.cardBack),
+        rankTier: u.rankTier,
+        rankPoints: u.rankPoints,
+        mmr: u.mmr || 1200,
+        wins: rWins,
+        losses: rLosses,
+        totalGames: rTotal,
+        rankedGames: rTotal,
+        winRate,
+        winStreak: u.winStreak || 0,
+        bestStreak: u.bestWinStreak || 0,
+      };
+    });
   }
 
   // --- COLLECTIBLE CARD PACKS, CARD BACKS & AVATARS ---

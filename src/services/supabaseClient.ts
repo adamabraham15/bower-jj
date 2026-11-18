@@ -642,7 +642,7 @@ class AuthService {
   }
 
   /**
-   * Fetch global leaderboard rankings directly from Supabase
+   * Fetch global leaderboard rankings directly from Supabase (Strictly Ranked Queue Players Only)
    */
   public async getLeaderboard(limit = 50): Promise<any[]> {
     if (!supabase) return [];
@@ -653,20 +653,30 @@ class AuthService {
           id,
           username,
           avatar_icon,
-          player_ranks (
+          player_ranks!inner (
             rank_tier,
             rank_points,
-            mmr
+            mmr,
+            placement_matches_remaining
           ),
           player_statistics (
             wins,
             losses,
-            total_games
+            total_games,
+            current_streak,
+            best_streak
+          ),
+          player_match_history (
+            won,
+            mode
           )
         `)
         .eq('is_banned', false)
         .not('username', 'like', 'Bench_%')
-        .limit(limit * 2);
+        .or('placement_matches_remaining.lt.5,rank_points.gt.0,rank_tier.neq.9,mmr.neq.1200', {
+          foreignTable: 'player_ranks',
+        })
+        .limit(200);
 
       if (error || !data) return [];
 
@@ -679,12 +689,38 @@ class AuthService {
         '9': 1,
       };
 
-      const formatted = data.map((p: any) => {
+      const isRankedMode = (mode?: string) =>
+        mode === 'ranked_solo' ||
+        mode === 'ranked_duo' ||
+        mode === 'ranked_rivals' ||
+        (typeof mode === 'string' && mode.toLowerCase().includes('ranked'));
+
+      // Filter strictly to players who have queued ranked games
+      const rankedPlayers = data.filter((p: any) => {
+        const r = Array.isArray(p.player_ranks) ? p.player_ranks[0] : p.player_ranks;
+        const mh = Array.isArray(p.player_match_history) ? p.player_match_history : [];
+        const hasRankedMatch = mh.some((m: any) => isRankedMode(m.mode));
+        if (hasRankedMatch) return true;
+        if (!r) return false;
+        return (
+          (typeof r.placement_matches_remaining === 'number' && r.placement_matches_remaining < 5) ||
+          (r.rank_points || 0) > 0 ||
+          (r.rank_tier && r.rank_tier !== '9') ||
+          (typeof r.mmr === 'number' && r.mmr !== 1200)
+        );
+      });
+
+      const formatted = rankedPlayers.map((p: any) => {
         const r = Array.isArray(p.player_ranks) ? p.player_ranks[0] : p.player_ranks;
         const s = Array.isArray(p.player_statistics) ? p.player_statistics[0] : p.player_statistics;
-        const totalGames = s?.total_games || 0;
-        const wins = s?.wins || 0;
-        const losses = s?.losses || 0;
+        const mh = Array.isArray(p.player_match_history)
+          ? p.player_match_history.filter((m: any) => isRankedMode(m.mode))
+          : [];
+
+        const hasRankedHist = mh.length > 0;
+        const wins = hasRankedHist ? mh.filter((m: any) => m.won).length : (s?.wins || 0);
+        const losses = hasRankedHist ? mh.filter((m: any) => !m.won).length : (s?.losses || 0);
+        const totalGames = hasRankedHist ? mh.length : (s?.total_games || 0);
         const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
         const tier = r?.rank_tier || '9';
         const points = r?.rank_points || 0;
@@ -700,7 +736,10 @@ class AuthService {
           wins,
           losses,
           totalGames,
+          rankedGames: totalGames,
           winRate,
+          winStreak: s?.current_streak || 0,
+          bestStreak: s?.best_streak || 0,
           tierWeight: tierWeights[tier] || 1,
         };
       });
@@ -723,6 +762,9 @@ class AuthService {
         losses: e.losses,
         winRate: e.winRate,
         totalGames: e.totalGames,
+        rankedGames: e.rankedGames,
+        winStreak: e.winStreak,
+        bestStreak: e.bestStreak,
       }));
     } catch (err) {
       console.warn('Could not query leaderboard from Supabase:', err);

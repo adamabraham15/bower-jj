@@ -273,6 +273,9 @@ export interface LeaderboardEntry {
   losses: number;
   winRate: number;
   totalGames: number;
+  rankedGames?: number;
+  winStreak?: number;
+  bestStreak?: number;
 }
 
 export interface PublicPlayerData {
@@ -360,6 +363,9 @@ export type ServerMessage =
       newMmr?: number;
       lobbyMmr?: number;
       lobbyRankLabel?: string;
+      promotionSealsAwarded?: number;
+      didDivisionUp?: boolean;
+      newDivision?: string;
     }
   | { type: 'PARTY_INVITE_RECEIVED'; fromUsername: string; fromAvatar: string; roomCode: string; mode?: string; expiresAt?: number }
   | { type: 'PROFILE_DATA'; profile: PublicPlayerData }
