@@ -381,14 +381,14 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
         {activeTab === 'standings' ? (
           <>
             {/* Column Headers */}
-            <div className="grid grid-cols-12 gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 bg-slate-950/60 border-b border-slate-800 text-[10px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-              <div className="col-span-2 sm:col-span-1 text-center">Rank</div>
-              <div className="col-span-5 sm:col-span-4">Competitor</div>
-              <div className="col-span-5 sm:col-span-4 text-right sm:text-center pr-1 sm:pr-0">
+            <div className="grid grid-cols-[34px_minmax(0,1fr)_144px] sm:grid-cols-[44px_minmax(0,1fr)_176px_130px] gap-1.5 sm:gap-2 px-4 sm:px-[22px] py-2 bg-slate-950/60 border-b border-slate-800 text-[10px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+              <div className="text-center">Rank</div>
+              <div className="text-left">Competitor</div>
+              <div className="text-left">
                 <span className="hidden sm:inline">Crest &amp; Division</span>
                 <span className="sm:hidden">Crest &amp; LP</span>
               </div>
-              <div className="hidden sm:block sm:col-span-3 text-right">
+              <div className="hidden sm:block text-right">
                 <span>Ranked Win %</span>
               </div>
             </div>
@@ -451,7 +451,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                         });
                       }}
                       title={`Click to view ${entry.username}'s profile`}
-                      className={`grid grid-cols-12 gap-1.5 sm:gap-2 items-center p-2 sm:p-2.5 rounded-2xl transition-all cursor-pointer group ${
+                      className={`grid grid-cols-[34px_minmax(0,1fr)_144px] sm:grid-cols-[44px_minmax(0,1fr)_176px_130px] gap-1.5 sm:gap-2 items-center p-2 sm:p-2.5 rounded-2xl transition-all cursor-pointer group ${
                         isCurrentUser
                           ? 'bg-amber-500/20 border border-amber-400/60 ring-1 ring-amber-400/40 hover:bg-amber-500/30'
                           : isTop1
@@ -464,12 +464,12 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                       }`}
                     >
                       {/* Rank Position */}
-                      <div className="col-span-2 sm:col-span-1 flex items-center justify-center font-black">
+                      <div className="flex items-center justify-center font-black">
                         <TopRankBadge position={pos} />
                       </div>
 
                       {/* Player Name, Avatar & MMR */}
-                      <div className="col-span-5 sm:col-span-4 flex items-center space-x-2 sm:space-x-2.5 min-w-0">
+                      <div className="flex items-center space-x-2 sm:space-x-2.5 min-w-0">
                         <AvatarPortrait avatarId={entry.avatarIcon} size="xs" showRarityGem />
                         <div className="min-w-0 truncate">
                           <div className="font-black text-white text-xs sm:text-sm truncate flex items-center space-x-1 sm:space-x-1.5">
@@ -499,16 +499,18 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Artistic Rank Badge, Full Rank Name, Division & LP */}
-                      <div className="col-span-5 sm:col-span-4 flex items-center justify-end sm:justify-center space-x-2 sm:space-x-2.5">
-                        <RankBadge
-                          tier={entry.rankTier}
-                          division={entry.rankDivision}
-                          points={entry.rankPoints}
-                          size="sm"
-                          showLabel={false}
-                          showDivisionPips={true}
-                        />
+                      {/* Artistic Rank Badge, Full Rank Name, Division & LP — Left-aligned in fixed column so every row starts at the exact same horizontal position */}
+                      <div className="flex items-center justify-start space-x-2 sm:space-x-2.5 min-w-0">
+                        <div className="flex-shrink-0">
+                          <RankBadge
+                            tier={entry.rankTier}
+                            division={entry.rankDivision}
+                            points={entry.rankPoints}
+                            size="sm"
+                            showLabel={false}
+                            showDivisionPips={true}
+                          />
+                        </div>
                         <div className="text-left leading-tight min-w-0">
                           <div
                             className="text-[11px] sm:text-xs font-black whitespace-nowrap"
@@ -526,7 +528,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                       </div>
 
                       {/* Ranked Win Rate / Ranked Games (Desktop Only) */}
-                      <div className="hidden sm:block sm:col-span-3 text-right">
+                      <div className="hidden sm:block text-right">
                         <div className="text-[11px] sm:text-xs font-black text-emerald-400">
                           {entry.winRate}% <span className="hidden sm:inline">Win</span>
                         </div>
