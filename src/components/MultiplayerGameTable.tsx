@@ -148,25 +148,43 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
     }
   }, [serverState.phase, serverState.dealer]);
 
-  // 15-Second Radial Turn Countdown Timer
+  // Turn Timer configuration:
+  // Ranked matches are strictly timed to 15s to maintain competitive pace.
+  // Custom lobbies and casual games are chill (no timer) by default,
+  // unless explicitly configured with a timer limit by the host.
+  const isRankedMatch =
+    serverState.queueMode === 'solo' ||
+    serverState.queueMode === 'duo' ||
+    (Boolean(serverState.isMatchmade || multiplayerClient.getCurrentRoom()?.isMatchmade) &&
+      serverState.queueMode !== 'casual' &&
+      serverState.queueMode !== 'custom' &&
+      serverState.queueMode !== 'rivals');
+
+  const turnTimeLimit = isRankedMatch
+    ? 15
+    : (serverState.rules?.turnTimeLimitSeconds ?? 0);
+
+  const isTimerEnabled = turnTimeLimit > 0;
+
+  // Turn Countdown Timer (15s for Ranked matches, custom/disabled for chill lobbies)
   useEffect(() => {
-    if (isActiveDecisionPhase(serverState.phase)) {
-      setTurnSecondsLeft(15);
+    if (isTimerEnabled && isActiveDecisionPhase(serverState.phase)) {
+      setTurnSecondsLeft(turnTimeLimit);
       turnStartTimeRef.current = Date.now();
     }
-  }, [serverState.currentTurn, serverState.phase, serverState.currentTrick?.cards?.length]);
+  }, [isTimerEnabled, turnTimeLimit, serverState.currentTurn, serverState.phase, serverState.currentTrick?.cards?.length]);
 
   useEffect(() => {
-    if (!isActiveDecisionPhase(serverState.phase) || serverState.phase === 'game_over' || serverState.phase === 'trick_resolving') {
+    if (!isTimerEnabled || !isActiveDecisionPhase(serverState.phase) || serverState.phase === 'game_over' || serverState.phase === 'trick_resolving') {
       return;
     }
 
     const interval = setInterval(() => {
       const elapsed = (Date.now() - turnStartTimeRef.current) / 1000;
-      const remaining = Math.max(0, 15 - elapsed);
+      const remaining = Math.max(0, turnTimeLimit - elapsed);
       setTurnSecondsLeft(remaining);
 
-      // Auto-play when 15 seconds expire on your turn in multiplayer
+      // Auto-play when turn timer expires on your turn in timed matches
       if (remaining <= 0) {
         clearInterval(interval);
         if (serverState.currentTurn === serverState.yourPosition) {
@@ -194,6 +212,8 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
 
     return () => clearInterval(interval);
   }, [
+    isTimerEnabled,
+    turnTimeLimit,
     serverState.currentTurn,
     serverState.phase,
     serverState.yourHand,
@@ -391,8 +411,8 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                     ${isCurrentTurn ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : isPlayerDealer ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/30' : 'opacity-90'}
                     ${isSlotBenched ? 'grayscale opacity-50' : ''}`}
                 >
-                  {/* 15-Second Radial Turn Countdown Progress Ring */}
-                  {isCurrentTurn && (
+                  {/* Turn Countdown Progress Ring (Rendered only when timer is enabled) */}
+                  {isTimerEnabled && isCurrentTurn && (
                     <div className="absolute -inset-1 sm:-inset-1.5 pointer-events-none z-20 flex items-center justify-center">
                       <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
                         <circle
@@ -416,7 +436,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                           }`}
                           strokeWidth="3.5"
                           strokeDasharray={169.65}
-                          strokeDashoffset={169.65 * (1 - Math.max(0, turnSecondsLeft) / 15)}
+                          strokeDashoffset={169.65 * (1 - Math.max(0, turnSecondsLeft) / turnTimeLimit)}
                           strokeLinecap="round"
                           fill="none"
                         />
@@ -993,14 +1013,6 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
 
         {/* Post-Match Progression & Accolades Screen */}
         {serverState.phase === 'game_over' && (() => {
-          const isRankedMatch =
-            serverState.queueMode === 'solo' ||
-            serverState.queueMode === 'duo' ||
-            (Boolean(serverState.isMatchmade || multiplayerClient.getCurrentRoom()?.isMatchmade) &&
-              serverState.queueMode !== 'casual' &&
-              serverState.queueMode !== 'custom' &&
-              serverState.queueMode !== 'rivals');
-
           const matchTypeLabel = isRankedMatch
             ? 'Ranked Solo Queue'
             : serverState.queueMode === 'casual'

@@ -377,25 +377,29 @@ export const GameTable: React.FC<GameTableProps> = ({
     setState(next);
   };
 
-  // 15-Second Radial Turn Countdown Timer
+  // Turn Timer configuration (Disabled / chill mode by default for practice against AI bots)
+  const turnTimeLimit = state.rules?.turnTimeLimitSeconds ?? 0;
+  const isTimerEnabled = turnTimeLimit > 0;
+
+  // Turn Countdown Timer
   useEffect(() => {
-    if (isActiveDecisionPhase(state.phase)) {
-      setTurnSecondsLeft(15);
+    if (isTimerEnabled && isActiveDecisionPhase(state.phase)) {
+      setTurnSecondsLeft(turnTimeLimit);
       turnStartTimeRef.current = Date.now();
     }
-  }, [state.currentTurn, state.phase, state.currentTrick.cards.length]);
+  }, [isTimerEnabled, turnTimeLimit, state.currentTurn, state.phase, state.currentTrick.cards.length]);
 
   useEffect(() => {
-    if (!isActiveDecisionPhase(state.phase) || state.phase === 'game_over' || state.phase === 'trick_resolving') {
+    if (!isTimerEnabled || !isActiveDecisionPhase(state.phase) || state.phase === 'game_over' || state.phase === 'trick_resolving') {
       return;
     }
 
     const interval = setInterval(() => {
       const elapsed = (Date.now() - turnStartTimeRef.current) / 1000;
-      const remaining = Math.max(0, 15 - elapsed);
+      const remaining = Math.max(0, turnTimeLimit - elapsed);
       setTurnSecondsLeft(remaining);
 
-      // Auto-play when 15 seconds expire on human player's turn
+      // Auto-play when turn timer expires on human player's turn in timed mode
       if (remaining <= 0) {
         clearInterval(interval);
         if (state.currentTurn === 0) {
@@ -427,6 +431,8 @@ export const GameTable: React.FC<GameTableProps> = ({
 
     return () => clearInterval(interval);
   }, [
+    isTimerEnabled,
+    turnTimeLimit,
     state.currentTurn,
     state.phase,
     state.hands,
@@ -527,8 +533,8 @@ export const GameTable: React.FC<GameTableProps> = ({
                     ${isCurrentTurn ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-105 shadow-lg shadow-amber-400/50' : isDealer ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/30' : 'opacity-90'}
                     ${isBenched ? 'grayscale opacity-50' : ''}`}
                 >
-                  {/* 15-Second Radial Turn Countdown Progress Ring */}
-                  {isCurrentTurn && (
+                  {/* Turn Countdown Progress Ring (Rendered only when timer is enabled) */}
+                  {isTimerEnabled && isCurrentTurn && (
                     <div className="absolute -inset-1 sm:-inset-1.5 pointer-events-none z-20 flex items-center justify-center">
                       <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
                         <circle

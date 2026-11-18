@@ -256,6 +256,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
         targetScore: currentRoom?.rules.targetScore || 10,
         stickTheDealer: currentRoom?.rules.stickTheDealer !== false,
         partnerOrderUpGoesAlone: currentRoom?.rules.partnerOrderUpGoesAlone !== false,
+        turnTimeLimitSeconds: currentRoom?.rules.turnTimeLimitSeconds ?? 0,
       };
       onStartAIMatch(aiFillDifficulty, fallbackRules);
       onClose();
@@ -651,6 +652,31 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                           }`}
                         >
                           {score} pts
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Turn Timer (Chill by default for custom lobbies) */}
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
+                    <span className="text-gray-300 font-bold text-[10px]">Turn Timer:</span>
+                    <div className="flex space-x-1">
+                      {[
+                        { val: 0, label: '☕ Chill' },
+                        { val: 30, label: '30s' },
+                        { val: 15, label: '15s' },
+                      ].map((t) => (
+                        <button
+                          key={t.val}
+                          disabled={!isHost}
+                          onClick={() => handleUpdateRule({ turnTimeLimitSeconds: t.val })}
+                          className={`px-2 py-0.5 rounded-lg font-bold text-[10px] transition-all ${
+                            (currentRoom?.rules.turnTimeLimitSeconds ?? 0) === t.val
+                              ? 'bg-amber-400 text-slate-950 font-black shadow-md'
+                              : 'bg-slate-800 text-gray-400 hover:bg-slate-700'
+                          }`}
+                        >
+                          {t.label}
                         </button>
                       ))}
                     </div>

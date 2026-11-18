@@ -99,6 +99,7 @@ export interface EuchreHouseRules {
   canCallTurnedDownSuit: boolean; // Default: false (cannot call turned-down suit in Round 2)
   partnerOrderUpGoesAlone: boolean; // Default: true (partner ordering up dealer forces alone)
   canadianLoner?: boolean;      // Canadian Loner alias
+  turnTimeLimitSeconds?: number; // 0 or undefined = No Timer (Chill mode). 15 for ranked matches.
 }
 
 export const DEFAULT_RULES: EuchreHouseRules = {
@@ -108,6 +109,7 @@ export const DEFAULT_RULES: EuchreHouseRules = {
   canCallTurnedDownSuit: false,
   partnerOrderUpGoesAlone: true,
   canadianLoner: true,
+  turnTimeLimitSeconds: 0,
 };
 
 export interface MatchStats {

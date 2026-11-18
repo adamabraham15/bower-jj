@@ -711,12 +711,21 @@ export class RoomManager {
       isReady: true,
     };
 
+    const effectiveRules: EuchreHouseRules = {
+      ...DEFAULT_RULES,
+      ...rules,
+      turnTimeLimitSeconds:
+        queueMode === 'solo' || queueMode === 'duo'
+          ? 15
+          : (rules?.turnTimeLimitSeconds ?? 0),
+    };
+
     const room: Room = {
       id: crypto.randomUUID(),
       code,
       hostUserId: userId,
       status: 'lobby',
-      rules: { ...DEFAULT_RULES, ...rules },
+      rules: effectiveRules,
       slots: [hostSlot, null, null, null],
       pendingInvites: {},
       isMatchmade: false,
