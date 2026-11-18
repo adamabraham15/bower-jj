@@ -802,6 +802,33 @@ export async function createMultiplayerServer(
             break;
           }
 
+          case 'CRAFT_CARD': {
+            const craftRes = await activeDb.craftCard(uid, msg.cardId);
+            if (!craftRes.success) {
+              sendError(ws, craftRes.error || 'Unable to craft card');
+              break;
+            }
+            const freshUser = await activeDb.getUserById(uid);
+            if (freshUser) {
+              activeRm.setCachedUser(freshUser);
+              ws.send(JSON.stringify({ type: 'USER_SYNC', user: freshUser }));
+            }
+            ws.send(JSON.stringify({
+              type: 'CARD_CRAFTED',
+              success: true,
+              cardId: craftRes.cardId || msg.cardId,
+              waxSeals: craftRes.waxSeals ?? 0,
+              collectionState: craftRes.collectionState,
+            }));
+            if (craftRes.collectionState) {
+              ws.send(JSON.stringify({
+                type: 'COLLECTION_STATE',
+                collection: craftRes.collectionState,
+              }));
+            }
+            break;
+          }
+
           case 'EQUIP_AVATAR': {
             const equipRes = await activeDb.equipAvatar(uid, msg.avatarId);
             if (!equipRes.success || !equipRes.avatarId) {

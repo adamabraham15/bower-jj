@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   is_admin BOOLEAN NOT NULL DEFAULT FALSE,
   is_suspended BOOLEAN NOT NULL DEFAULT FALSE,
   is_banned BOOLEAN NOT NULL DEFAULT FALSE,
+  wax_seals INT NOT NULL DEFAULT 150,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_active TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -249,6 +250,7 @@ CREATE TABLE IF NOT EXISTS public.card_drop_history (
   rarity TEXT NOT NULL,
   slot_index INT NOT NULL,
   was_duplicate BOOLEAN NOT NULL DEFAULT FALSE,
+  dust_awarded INT NOT NULL DEFAULT 0,
   unlocked_card_back_id TEXT,
   dropped_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

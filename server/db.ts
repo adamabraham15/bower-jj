@@ -21,8 +21,11 @@ import {
 import {
   AVATAR_CATALOG,
   CARD_BACK_CATALOG,
+  COLLECTIBLE_CARDS,
   DEFAULT_AVATAR_ID,
   DEFAULT_CARD_BACK_ID,
+  WAX_SEALS_CONFIG,
+  getCraftCost,
   getAvatarDefinition,
   getCardBackDefinition,
   getEligibleMilestoneAvatars,
@@ -353,6 +356,8 @@ class Database {
     user.collectionState.unlockedCardBacks = [...user.unlockedCardBacks];
     user.collectionState.unopenedPacksCount = user.collectionState.unopenedPacks.length;
     user.unopenedPacksCount = user.collectionState.unopenedPacks.length;
+    user.waxSeals = user.waxSeals ?? 150;
+    user.collectionState.waxSeals = user.waxSeals;
     user.unlockedCosmetics.hats = [...user.unlockedAvatars];
     user.unlockedCosmetics.cardBacks = [...user.unlockedCardBacks];
     return user.collectionState;
@@ -924,11 +929,17 @@ class Database {
     const drawnDefs = rollPackCards(PROGRESSION_CONFIG, rng);
     const drawnResults: DrawnCardResult[] = [];
     const affectedCollections = new Set<string>();
+    let packDustAwarded = 0;
 
     for (const card of drawnDefs) {
       affectedCollections.add(card.collectionId);
       const existing = colState.cards.find((c) => c.cardId === card.id);
       const wasDuplicate = Boolean(existing && existing.quantity > 0);
+      let dustAwarded = 0;
+      if (wasDuplicate) {
+        dustAwarded = WAX_SEALS_CONFIG.duplicateSeals[card.rarity] || 10;
+        packDustAwarded += dustAwarded;
+      }
       if (existing) {
         existing.quantity += 1;
         existing.lastAcquiredAt = openedAt;
@@ -954,8 +965,12 @@ class Database {
         imageUrl: card.imageUrl,
         wasDuplicate,
         newQuantity: qty,
+        dustAwarded: wasDuplicate ? dustAwarded : undefined,
       });
     }
+
+    user.waxSeals = (user.waxSeals ?? 150) + packDustAwarded;
+    colState.waxSeals = user.waxSeals;
 
     const newlyUnlockedCardBacks: string[] = [];
     for (const colId of affectedCollections) {
@@ -1010,9 +1025,95 @@ class Database {
         cards: drawnResults,
         newlyUnlockedCardBacks,
         newlyUnlockedAvatars,
+        waxSealsAwarded: packDustAwarded,
+        totalWaxSeals: user.waxSeals,
         remainingUnopenedPacks: colState.unopenedPacksCount,
         collectionState: colState,
       },
+    };
+  }
+
+  public craftCard(
+    userId: string,
+    cardId: string
+  ): {
+    success: boolean;
+    error?: string;
+    cardId?: string;
+    waxSeals?: number;
+    newlyUnlockedCardBacks?: string[];
+    newlyUnlockedAvatars?: string[];
+    collectionState?: PlayerCollectionState;
+  } {
+    const user = this.data.users[userId];
+    if (!user) return { success: false, error: 'User not found.' };
+    const colState = this.ensureProgressionState(user);
+
+    const cardDef = COLLECTIBLE_CARDS.find((c) => c.id === cardId);
+    if (!cardDef) return { success: false, error: `Card ${cardId} not found in catalog.` };
+
+    const cost = getCraftCost(cardDef.rarity);
+    const balance = user.waxSeals ?? 150;
+    if (balance < cost) {
+      return {
+        success: false,
+        error: `Insufficient Wax Seals (Dust). Required: ${cost}, Current balance: ${balance}.`,
+      };
+    }
+
+    user.waxSeals = balance - cost;
+    colState.waxSeals = user.waxSeals;
+
+    const existing = colState.cards.find((c) => c.cardId === cardId);
+    const now = Date.now();
+    if (existing) {
+      existing.quantity += 1;
+      existing.lastAcquiredAt = now;
+    } else {
+      colState.cards.push({
+        cardId: cardDef.id,
+        collectionId: cardDef.collectionId,
+        identity: cardDef.identity,
+        rarity: cardDef.rarity,
+        quantity: 1,
+        firstAcquiredAt: now,
+        lastAcquiredAt: now,
+      });
+    }
+
+    const newlyUnlockedCardBacks: string[] = [];
+    const ownedIdentities = new Set(
+      colState.cards.filter((c) => c.collectionId === cardDef.collectionId && c.quantity > 0).map((c) => c.identity)
+    );
+    if (ownedIdentities.size >= 5 && !colState.unlockedCardBacks.includes(cardDef.collectionId)) {
+      colState.unlockedCardBacks.push(cardDef.collectionId);
+      newlyUnlockedCardBacks.push(cardDef.collectionId);
+    }
+
+    const completedCols = colState.unlockedCardBacks.filter((cb) => !getCardBackDefinition(cb).isStarter);
+    const eligibleAvs = getEligibleMilestoneAvatars({
+      level: user.level,
+      wins: user.wins,
+      unlockedCollectionIds: completedCols,
+    });
+    const newlyUnlockedAvatars: string[] = [];
+    for (const av of eligibleAvs) {
+      if (!colState.unlockedAvatars.includes(av.id)) {
+        colState.unlockedAvatars.push(av.id);
+        newlyUnlockedAvatars.push(av.id);
+      }
+    }
+
+    this.ensureProgressionState(user);
+    this.save();
+
+    return {
+      success: true,
+      cardId: cardDef.id,
+      waxSeals: user.waxSeals,
+      newlyUnlockedCardBacks,
+      newlyUnlockedAvatars,
+      collectionState: colState,
     };
   }
 

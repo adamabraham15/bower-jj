@@ -120,6 +120,7 @@ export class MultiplayerClient {
   private onLeaderboardCallback?: (entries: LeaderboardEntry[], yourRank?: number) => void;
   private onCollectionCallback?: (collection: PlayerCollectionState) => void;
   private onPackOpenedCallback?: (result: PackOpenResult) => void;
+  private onCardCraftedCallback?: (data: { success: boolean; cardId: string; waxSeals: number; collectionState: PlayerCollectionState }) => void;
   private onPackEarnedCallback?: (info: { count: number; totalUnopened: number; reason: string; level?: number; unlockedAvatars?: string[] }) => void;
   private onRankUpdateCallback?: (update: {
     oldTier: RankTier;
@@ -172,6 +173,7 @@ export class MultiplayerClient {
     onLeaderboard?: (entries: LeaderboardEntry[], yourRank?: number) => void;
     onCollection?: (collection: PlayerCollectionState) => void;
     onPackOpened?: (result: PackOpenResult) => void;
+    onCardCrafted?: (data: { success: boolean; cardId: string; waxSeals: number; collectionState: PlayerCollectionState }) => void;
     onPackEarned?: (info: { count: number; totalUnopened: number; reason: string; level?: number; unlockedAvatars?: string[] }) => void;
     onRankUpdate?: (update: {
       oldTier: RankTier;
@@ -497,6 +499,10 @@ export class MultiplayerClient {
         });
         break;
 
+      case 'CARD_CRAFTED':
+        this.onCardCraftedCallback?.(msg);
+        break;
+
       case 'PACK_EARNED':
         this.onPackEarnedCallback?.(msg);
         break;
@@ -748,6 +754,10 @@ export class MultiplayerClient {
 
   public openCardPack(packId?: string) {
     this.send({ type: 'OPEN_CARD_PACK', packId });
+  }
+
+  public craftCard(cardId: string) {
+    this.send({ type: 'CRAFT_CARD', cardId });
   }
 
   public equipAvatar(avatarId: string) {

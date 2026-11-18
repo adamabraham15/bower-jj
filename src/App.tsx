@@ -858,6 +858,15 @@ export const App: React.FC = () => {
       },
       onCollection: (cs) => {
         setCollectionState(cs);
+        if (typeof cs.waxSeals === 'number') {
+          setProfile(prev => ({
+            ...prev,
+            waxSeals: cs.waxSeals,
+          }));
+          try {
+            localStorage.setItem('bower_jj_wax_seals', String(cs.waxSeals));
+          } catch {}
+        }
       },
       onPackOpened: (result) => {
         setIsOpeningPack(false);
@@ -865,8 +874,31 @@ export const App: React.FC = () => {
         if (result.collectionState) {
           setCollectionState(result.collectionState);
         }
+        if (typeof result.totalWaxSeals === 'number') {
+          setProfile(prev => ({
+            ...prev,
+            waxSeals: result.totalWaxSeals,
+          }));
+          try {
+            localStorage.setItem('bower_jj_wax_seals', String(result.totalWaxSeals));
+          } catch {}
+        }
         if (authUserRef.current?.id) {
           syncAuthoritativeProfile(authUserRef.current.id);
+        }
+      },
+      onCardCrafted: (data) => {
+        if (data.success) {
+          setProfile(prev => ({
+            ...prev,
+            waxSeals: data.waxSeals,
+          }));
+          if (data.collectionState) {
+            setCollectionState(data.collectionState);
+          }
+          try {
+            localStorage.setItem('bower_jj_wax_seals', String(data.waxSeals));
+          } catch {}
         }
       },
       onPackEarned: (info) => {
@@ -1268,6 +1300,7 @@ export const App: React.FC = () => {
   };
 
   const handleCardCrafted = (cardId: string) => {
+    multiplayerClient.craftCard(cardId);
     setCollectionState(prev => {
       if (!prev) return prev;
       const existingIdx = prev.cards.findIndex(c => c.cardId === cardId);

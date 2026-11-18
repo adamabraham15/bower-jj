@@ -71,6 +71,7 @@ export interface DrawnCardResult {
   imageUrl: string;
   wasDuplicate: boolean;
   newQuantity: number;
+  dustAwarded?: number;
 }
 
 export interface PlayerCollectionState {
@@ -157,6 +158,7 @@ export interface UserAccount {
   recentPlayers: { userId: string; username: string; avatarIcon: string; timestamp: number }[];
 
   // Progression & Cosmetics
+  waxSeals?: number;
   unopenedPacksCount?: number;
   unlockedAvatars?: string[];
   unlockedCardBacks?: string[];
@@ -316,6 +318,7 @@ export type ClientMessage =
   | { type: 'GET_LEADERBOARD' }
   | { type: 'GET_COLLECTION_STATE' }
   | { type: 'OPEN_CARD_PACK'; packId?: string }
+  | { type: 'CRAFT_CARD'; cardId: string }
   | { type: 'EQUIP_AVATAR'; avatarId: string }
   | { type: 'EQUIP_CARD_BACK'; cardBackId: string }
   | { type: 'EQUIP_COSMETIC'; category: 'hat' | 'cardBack' | 'banner' | 'title' | 'tableFelt'; itemId?: string }
@@ -343,6 +346,7 @@ export type ServerMessage =
   | { type: 'LEADERBOARD_DATA'; entries: LeaderboardEntry[]; yourRank?: number }
   | { type: 'COLLECTION_STATE'; collection: PlayerCollectionState }
   | { type: 'PACK_OPENED'; result: PackOpenResult }
+  | { type: 'CARD_CRAFTED'; success: boolean; cardId: string; waxSeals: number; collectionState: PlayerCollectionState; error?: string }
   | { type: 'PACK_EARNED'; count: number; totalUnopened: number; reason: string; level?: number; unlockedAvatars?: string[] }
   | {
       type: 'RANK_UPDATE';

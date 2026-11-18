@@ -34,6 +34,8 @@ import {
   DEFAULT_CARD_BACK_ID,
   CardIdentity,
   RarityTier,
+  WAX_SEALS_CONFIG,
+  getCraftCost,
   getAvatarDefinition,
   getCardBackDefinition,
   getEligibleMilestoneAvatars,
@@ -180,6 +182,14 @@ export class PostgresDatabaseRepository {
         }
         await client.query(sql);
       }
+
+      // Ensure incremental columns exist on existing tables
+      try {
+        await client.query(`ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS wax_seals INT NOT NULL DEFAULT 150;`);
+      } catch {}
+      try {
+        await client.query(`ALTER TABLE public.card_drop_history ADD COLUMN IF NOT EXISTS dust_awarded INT NOT NULL DEFAULT 0;`);
+      } catch {}
 
       // Fast-path skip if schema + catalogs + 4.6.0/4.6.1 migrations are already cleanly applied
       const migRes = await client.query(
@@ -724,7 +734,7 @@ export class PostgresDatabaseRepository {
     const res = await this.queryWithRetry(
       `
       SELECT
-        p.id, p.player_id as "playerId", p.username, p.avatar_icon as "avatarIcon",
+        p.id, p.player_id as "playerId", p.username, p.avatar_icon as "avatarIcon", p.wax_seals as "waxSeals",
         p.created_at as "createdAt", p.last_active as "lastActive",
         r.rank_tier as "rankTier", r.rank_points as "rankPoints", r.mmr,
         r.placement_matches_remaining as "placementMatchesRemaining",
@@ -783,7 +793,7 @@ export class PostgresDatabaseRepository {
     const res = await this.queryWithRetry(
       `
       SELECT
-        p.id, p.player_id as "playerId", p.username, p.avatar_icon as "avatarIcon",
+        p.id, p.player_id as "playerId", p.username, p.avatar_icon as "avatarIcon", p.wax_seals as "waxSeals",
         p.created_at as "createdAt", p.last_active as "lastActive",
         r.rank_tier as "rankTier", r.rank_points as "rankPoints", r.mmr,
         r.placement_matches_remaining as "placementMatchesRemaining",
@@ -1726,7 +1736,7 @@ export class PostgresDatabaseRepository {
   // --- COLLECTIBLE CARD PACKS, CARD BACKS & AVATARS ---
 
   public async getCollectionState(userId: string): Promise<PlayerCollectionState> {
-    const [packsRes, invRes, cbRes, avRes, dropsRes] = await Promise.all([
+    const [packsRes, invRes, cbRes, avRes, dropsRes, profRes] = await Promise.all([
       this.queryWithRetry(
         `
         SELECT id, source, source_ref, earned_level, earned_at
@@ -1763,6 +1773,10 @@ export class PostgresDatabaseRepository {
         ORDER BY d.dropped_at DESC, d.slot_index ASC
         LIMIT 50;
         `,
+        [userId]
+      ),
+      this.queryWithRetry(
+        `SELECT wax_seals FROM public.profiles WHERE id = $1 LIMIT 1;`,
         [userId]
       ),
     ]);
@@ -1872,12 +1886,15 @@ export class PostgresDatabaseRepository {
       }
     }
 
+    const waxSeals = profRes.rows[0]?.wax_seals ?? 150;
+
     return {
       unopenedPacksCount: unopenedPacks.length,
       unopenedPacks,
       cards,
       unlockedCardBacks,
       unlockedAvatars,
+      waxSeals,
       recentDrops: Array.from(packHistoryMap.values()).slice(0, 10),
       dropRates: { ...PROGRESSION_CONFIG.rarityDropRates },
     };
@@ -1964,6 +1981,7 @@ export class PostgresDatabaseRepository {
       const drawnDefs = rollPackCards(PROGRESSION_CONFIG, rng);
       const drawnResults: DrawnCardResult[] = [];
       const affectedCollections = new Set<string>();
+      let packDustAwarded = 0;
 
       // Track pre-existing card ownership before and across all 5 slots
       const existingInvRes = await client.query(
@@ -1982,6 +2000,12 @@ export class PostgresDatabaseRepository {
         const wasDuplicate = prevQty > 0;
         const newQuantity = prevQty + 1;
         qtyMap.set(card.id, newQuantity);
+
+        let dustAwarded = 0;
+        if (wasDuplicate) {
+          dustAwarded = WAX_SEALS_CONFIG.duplicateSeals[card.rarity] || 10;
+          packDustAwarded += dustAwarded;
+        }
 
         if (prevQty === 0) {
           await client.query(
@@ -2018,6 +2042,7 @@ export class PostgresDatabaseRepository {
           imageUrl: card.imageUrl,
           wasDuplicate,
           newQuantity,
+          dustAwarded: wasDuplicate ? dustAwarded : undefined,
         });
       }
 
@@ -2058,15 +2083,35 @@ export class PostgresDatabaseRepository {
       const curWins = xpStatsRes.rows[0]?.wins || 0;
       const newlyUnlockedAvatars = await this.evaluateMilestoneAvatarsTx(client, userId, curLevel, curWins);
 
+      // Award collected dust from duplicates to player profile
+      let totalWaxSeals = 150;
+      if (packDustAwarded > 0) {
+        const dustRes = await client.query(
+          `
+          UPDATE public.profiles
+          SET wax_seals = wax_seals + $2, updated_at = NOW()
+          WHERE id = $1
+          RETURNING wax_seals;
+          `,
+          [userId, packDustAwarded]
+        );
+        if (dustRes.rows.length > 0) {
+          totalWaxSeals = dustRes.rows[0].wax_seals;
+        }
+      } else {
+        const curDustRes = await client.query(`SELECT wax_seals FROM public.profiles WHERE id = $1 LIMIT 1`, [userId]);
+        totalWaxSeals = curDustRes.rows[0]?.wax_seals ?? 150;
+      }
+
       // Write authoritative audit log entries for all 5 card drops
       for (let slotIndex = 0; slotIndex < drawnResults.length; slotIndex++) {
         const dr = drawnResults[slotIndex];
         await client.query(
           `
           INSERT INTO public.card_drop_history (
-            id, pack_id, user_id, card_id, collection_id, identity, rarity, slot_index, was_duplicate, unlocked_card_back_id, dropped_at
+            id, pack_id, user_id, card_id, collection_id, identity, rarity, slot_index, was_duplicate, dust_awarded, unlocked_card_back_id, dropped_at
           ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW()
           );
           `,
           [
@@ -2079,6 +2124,7 @@ export class PostgresDatabaseRepository {
             dr.rarity,
             slotIndex,
             dr.wasDuplicate,
+            dr.dustAwarded || 0,
             unlockedByCol.get(dr.collectionId) || null,
           ]
         );
@@ -2096,9 +2142,132 @@ export class PostgresDatabaseRepository {
           cards: drawnResults,
           newlyUnlockedCardBacks,
           newlyUnlockedAvatars,
+          waxSealsAwarded: packDustAwarded,
+          totalWaxSeals: collectionState.waxSeals ?? totalWaxSeals,
           remainingUnopenedPacks: collectionState.unopenedPacksCount,
           collectionState,
         },
+      };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  public async craftCard(
+    userId: string,
+    cardId: string
+  ): Promise<{
+    success: boolean;
+    error?: string;
+    cardId?: string;
+    waxSeals?: number;
+    newlyUnlockedCardBacks?: string[];
+    newlyUnlockedAvatars?: string[];
+    collectionState?: PlayerCollectionState;
+  }> {
+    const cardDef = COLLECTIBLE_CARDS.find((c) => c.id === cardId);
+    if (!cardDef) {
+      return { success: false, error: `Card ${cardId} not found in catalog.` };
+    }
+
+    const craftCost = getCraftCost(cardDef.rarity);
+
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const profRes = await client.query(
+        `SELECT wax_seals FROM public.profiles WHERE id = $1 LIMIT 1 FOR UPDATE;`,
+        [userId]
+      );
+      if (profRes.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return { success: false, error: 'User profile not found.' };
+      }
+
+      const currentSeals = profRes.rows[0]?.wax_seals ?? 0;
+      if (currentSeals < craftCost) {
+        await client.query('ROLLBACK');
+        return {
+          success: false,
+          error: `Insufficient Wax Seals (Dust). Required: ${craftCost}, Current balance: ${currentSeals}.`,
+        };
+      }
+
+      // Deduct seals
+      const updProfRes = await client.query(
+        `
+        UPDATE public.profiles
+        SET wax_seals = wax_seals - $2, updated_at = NOW()
+        WHERE id = $1
+        RETURNING wax_seals;
+        `,
+        [userId, craftCost]
+      );
+      const newWaxSeals = updProfRes.rows[0]?.wax_seals ?? (currentSeals - craftCost);
+
+      // Add or increment card in inventory
+      await client.query(
+        `
+        INSERT INTO public.player_card_inventory (
+          id, user_id, card_id, collection_id, identity, rarity, quantity, first_acquired_at, last_acquired_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, 1, NOW(), NOW()
+        )
+        ON CONFLICT (user_id, card_id) DO UPDATE SET
+          quantity = public.player_card_inventory.quantity + 1,
+          last_acquired_at = NOW();
+        `,
+        [crypto.randomUUID(), userId, cardDef.id, cardDef.collectionId, cardDef.identity, cardDef.rarity]
+      );
+
+      // Check collection completion (5/5 unique identities in this collection)
+      const newlyUnlockedCardBacks: string[] = [];
+      const uniqRes = await client.query(
+        `
+        SELECT DISTINCT identity
+        FROM public.player_card_inventory
+        WHERE user_id = $1 AND collection_id = $2 AND quantity > 0;
+        `,
+        [userId, cardDef.collectionId]
+      );
+      const ownedIdentities = new Set(uniqRes.rows.map((r) => r.identity as string));
+      if (ownedIdentities.size >= 5) {
+        const addedCb = await this.grantCardBackTx(client, userId, cardDef.collectionId, cardDef.collectionId, 'collection');
+        if (addedCb) {
+          newlyUnlockedCardBacks.push(cardDef.collectionId);
+        }
+      }
+
+      // Check milestone avatars
+      const xpStatsRes = await client.query(
+        `
+        SELECT COALESCE(x.level, 1) AS level, COALESCE(s.wins, 0) AS wins
+        FROM public.profiles p
+        LEFT JOIN public.player_xp x ON p.id = x.user_id
+        LEFT JOIN public.player_statistics s ON p.id = s.user_id
+        WHERE p.id = $1 LIMIT 1;
+        `,
+        [userId]
+      );
+      const curLevel = xpStatsRes.rows[0]?.level || 1;
+      const curWins = xpStatsRes.rows[0]?.wins || 0;
+      const newlyUnlockedAvatars = await this.evaluateMilestoneAvatarsTx(client, userId, curLevel, curWins);
+
+      await client.query('COMMIT');
+
+      const collectionState = await this.getCollectionState(userId);
+
+      return {
+        success: true,
+        cardId: cardDef.id,
+        waxSeals: newWaxSeals,
+        newlyUnlockedCardBacks,
+        newlyUnlockedAvatars,
+        collectionState,
       };
     } catch (err) {
       await client.query('ROLLBACK');
