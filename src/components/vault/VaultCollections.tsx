@@ -226,7 +226,7 @@ export const VaultCollections: React.FC<VaultCollectionsProps> = ({
           <div>
             <div className="text-[10px] font-bold text-amber-300/80 uppercase leading-none">Wax Seals (Dust)</div>
             <div className="text-sm font-black text-amber-300 leading-tight">
-              {waxSealsBalance} <span className="text-xs text-slate-400 font-semibold">• Forging Costs: 10 (40) • Q/K (100) • Bower/Ace (350)</span>
+              {waxSealsBalance} <span className="text-xs text-slate-400 font-semibold">• Forging Costs: Common (40) • Rare (100) • Epic (200) • Legendary (350)</span>
             </div>
           </div>
         </div>
