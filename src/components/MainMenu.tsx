@@ -328,14 +328,14 @@ export const MainMenu: React.FC<MainMenuProps> = ({
         <div className="w-full max-w-lg lg:max-w-3xl xl:max-w-4xl lg:bg-[#111726]/95 lg:border lg:border-slate-800/90 lg:rounded-3xl lg:shadow-[0_24px_80px_rgba(0,0,0,0.75)] p-3.5 sm:p-5 lg:p-6 flex flex-col justify-between flex-1 my-auto">
           {/* Top Header Bar: BOWER JJ Emblem Logo & Controls (Play removed) */}
           <div>
-            <header className="relative flex items-center justify-between py-1 min-h-[44px] sm:min-h-[52px]">
+            <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 py-1 min-h-[44px] sm:min-h-[52px]">
               {/* Left: Prominent Account & Profile Button */}
               <button
                 onClick={() => {
                   sounds.playUiClick();
                   onOpenProfile();
                 }}
-                className="flex items-center gap-2 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-2xl bg-gradient-to-r from-[#1d2840] to-[#151e30] hover:from-[#24324f] hover:to-[#1a253b] border-2 border-amber-400/75 hover:border-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.28)] active:scale-95 transition-all cursor-pointer group z-10"
+                className="justify-self-start flex items-center gap-1.5 sm:gap-2 px-2 py-1 sm:px-3 sm:py-1.5 rounded-2xl bg-gradient-to-r from-[#1d2840] to-[#151e30] hover:from-[#24324f] hover:to-[#1a253b] border-2 border-amber-400/75 hover:border-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.28)] active:scale-95 transition-all cursor-pointer group z-10"
                 title="Open My Account, Stats & Wardrobe"
               >
                 <div className="relative flex-shrink-0">
@@ -343,30 +343,30 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                   <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-950" />
                 </div>
                 <div className="flex flex-col text-left leading-tight pr-0.5">
-                  <span className="text-[10px] sm:text-xs font-black text-amber-300 group-hover:text-amber-200 uppercase tracking-wider flex items-center gap-1">
-                    <span>Account</span>
+                  <span className="text-[10px] sm:text-xs font-black text-amber-300 group-hover:text-amber-200 uppercase tracking-wider">
+                    Account
                   </span>
-                  <span className="text-[9px] sm:text-[10px] font-bold text-white truncate max-w-[68px] sm:max-w-[95px]">
+                  <span className="hidden lg:block text-[10px] font-bold text-white truncate max-w-[95px]">
                     {profile.username} • L{profile.level}
                   </span>
                 </div>
               </button>
 
-              {/* Center: BOWER JJ 3D Embossed Gold Foil Logo (Centered on top of name/level/rank button) */}
+              {/* Center: BOWER JJ 3D Embossed Gold Foil Logo (Grid-centered so it never overlaps) */}
               <div
                 onClick={handleLogoClick}
                 title="BOWER JJ — Home of Competitive Euchre"
-                className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex items-center justify-center select-none cursor-pointer group py-0.5 z-20 pointer-events-auto"
+                className="justify-self-center flex items-center justify-center select-none cursor-pointer group py-0.5 z-10"
               >
                 <img
                   src="/assets/bower_jj_pack_logo.png?v=pack_crest"
                   alt="BOWER JJ"
-                  className="h-10 sm:h-12 md:h-14 w-auto max-w-[190px] sm:max-w-[240px] object-contain select-none group-hover:scale-105 active:scale-95 transition-transform duration-200 drop-shadow-[0_4px_16px_rgba(245,158,11,0.45)]"
+                  className="h-8 sm:h-11 md:h-13 w-auto max-w-[135px] sm:max-w-[200px] md:max-w-[230px] object-contain select-none group-hover:scale-105 active:scale-95 transition-transform duration-200 drop-shadow-[0_4px_16px_rgba(245,158,11,0.45)]"
                 />
               </div>
 
               {/* Right: Audio Popover & Cloud / Sign Out Status */}
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#161f30] border border-slate-700/80 shadow-inner z-10">
+              <div className="justify-self-end flex items-center gap-1 px-2 py-1 rounded-full bg-[#161f30] border border-slate-700/80 shadow-inner z-10">
                 <AudioControlsPopover />
                 {isAuthenticated ? (
                   <div className="flex items-center gap-0.5">
