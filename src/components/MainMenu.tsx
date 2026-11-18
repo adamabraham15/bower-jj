@@ -354,20 +354,32 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 />
               </div>
 
-              {/* Right: Audio Popover & Cloud Status */}
+              {/* Right: Audio Popover & Cloud / Sign Out Status */}
               <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#161f30] border border-slate-700/80 shadow-inner z-10">
                 <AudioControlsPopover />
                 {isAuthenticated ? (
-                  <button
-                    onClick={() => {
-                      sounds.playUiClick();
-                      onOpenProfile();
-                    }}
-                    className="p-1 rounded-full text-emerald-400 hover:bg-slate-800 transition-colors cursor-pointer"
-                    title="Cloud Saved"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-0.5">
+                    <button
+                      onClick={() => {
+                        sounds.playUiClick();
+                        onOpenProfile();
+                      }}
+                      className="p-1 rounded-full text-emerald-400 hover:bg-slate-800 transition-colors cursor-pointer"
+                      title="Cloud Saved — Tap to View Profile"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        sounds.playUiClick();
+                        onLogout?.();
+                      }}
+                      className="p-1 rounded-full text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors cursor-pointer flex items-center justify-center"
+                      title="Sign Out"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 ) : (
                   <button
                     onClick={() => {

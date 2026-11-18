@@ -21,6 +21,7 @@ import { GameTable } from '../GameTable';
 import { MultiplayerGameTable } from '../MultiplayerGameTable';
 import { TrumpBanner } from '../TrumpBanner';
 import { MainMenu } from '../MainMenu';
+import { ProfileModal } from '../ProfileModal';
 import { GameLobbyModal } from '../GameLobbyModal';
 import { initializeGame } from '../../engine/game';
 import { DEFAULT_RULES, Player } from '../../engine/types';
@@ -534,5 +535,86 @@ describe('Table UI & Tutorial Helpers', () => {
     expect(htmlMulti).toContain('flex-1 min-w-0 flex items-center justify-center px-1 overflow-hidden');
     // Caller name is present and truncated safely
     expect(htmlMulti).toContain('OpponentExtremeCaller');
+  });
+
+  it('renders mobile Sign Out button in MainMenu header and ProfileModal footer when authenticated', () => {
+    const mockProfile = {
+      username: 'Brojo',
+      playerId: 'test-user-brojo',
+      avatarIcon: 'the_outlaw',
+      level: 10,
+      xp: 1500,
+      nextLevelXp: 2000,
+      rankTier: 'BOWER_JJ' as const,
+      rankPoints: 1200,
+      totalGames: 85,
+      wins: 65,
+      losses: 20,
+      tricksWon: 300,
+      euchres: 20,
+      marches: 30,
+      successfulLoners: 12,
+      currentStreak: 5,
+      bestStreak: 12,
+      favTrumpSuit: 'spades',
+    };
+
+    // 1. MainMenu with isAuthenticated=true renders mobile header Sign Out button
+    const htmlAuthMenu = renderToStaticMarkup(
+      React.createElement(MainMenu, {
+        profile: mockProfile,
+        onStartAIMatch: () => {},
+        onOpenMatchmaking: () => {},
+        onOpenTutorial: () => {},
+        onOpenRules: () => {},
+        onOpenProfile: () => {},
+        onOpenFriends: () => {},
+        onOpenLeaderboard: () => {},
+        onOpenCollection: () => {},
+        onOpenPackOpener: () => {},
+        onOpenRivalryInvite: () => {},
+        onOpenAchievements: () => {},
+        isMuted: false,
+        onToggleMute: () => {},
+        isAuthenticated: true,
+        onLogout: () => {},
+      })
+    );
+
+    // In top header pill, Sign Out button is present for mobile/desktop
+    expect(htmlAuthMenu).toContain('title="Sign Out"');
+    expect(htmlAuthMenu).toContain('title="Cloud Saved — Tap to View Profile"');
+
+    // 2. ProfileModal with isAuthenticated=true renders Sign Out footer
+    const htmlAuthProfile = renderToStaticMarkup(
+      React.createElement(ProfileModal, {
+        isOpen: true,
+        onClose: () => {},
+        profile: mockProfile,
+        onUpdateAvatar: () => {},
+        onUpdateUsername: () => {},
+        isAuthenticated: true,
+        onLogout: () => {},
+      })
+    );
+
+    expect(htmlAuthProfile).toContain('Signed in as <strong class="text-white">Brojo</strong>');
+    expect(htmlAuthProfile).toContain('Sign Out');
+
+    // 3. ProfileModal with isAuthenticated=false renders Guest Mode & Sign In / Cloud Save
+    const htmlGuestProfile = renderToStaticMarkup(
+      React.createElement(ProfileModal, {
+        isOpen: true,
+        onClose: () => {},
+        profile: mockProfile,
+        onUpdateAvatar: () => {},
+        onUpdateUsername: () => {},
+        isAuthenticated: false,
+        onOpenAuth: () => {},
+      })
+    );
+
+    expect(htmlGuestProfile).toContain('Guest Mode (Local Progress)');
+    expect(htmlGuestProfile).toContain('Sign In / Cloud Save');
   });
 });

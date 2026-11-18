@@ -10,6 +10,8 @@ import {
   Star,
   Award,
   Shield,
+  ShieldCheck,
+  LogOut,
   User,
   Palette,
   History,
@@ -82,6 +84,9 @@ interface ProfileModalProps {
   unlockedAvatars?: string[];
   unlockedCardBacks?: string[];
   onOpenCollection?: () => void;
+  onLogout?: () => void;
+  isAuthenticated?: boolean;
+  onOpenAuth?: () => void;
 }
 
 export const BANNER_THEMES: Record<string, { name: string; bgClass: string }> = {
@@ -111,6 +116,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   unlockedAvatars,
   unlockedCardBacks,
   onOpenCollection,
+  onLogout,
+  isAuthenticated,
+  onOpenAuth,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'wardrobe' | 'history'>('overview');
   const [selectedBanner, setSelectedBanner] = useState(profile.equippedCosmetics?.banner || 'default_navy');
@@ -619,6 +627,55 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             )}
           </div>
         )}
+
+        {/* Modal Footer: Account & Sign Out Bar (Optimized for Mobile & Desktop) */}
+        <div className="p-3 bg-slate-950/95 border-t border-slate-800/90 flex items-center justify-between flex-shrink-0">
+          {isAuthenticated ? (
+            <>
+              <div className="flex items-center gap-2 text-xs text-emerald-400 font-bold px-1 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+                <span className="truncate">
+                  Signed in as <strong className="text-white">{profile.username}</strong>
+                </span>
+              </div>
+              {onLogout && (
+                <button
+                  onClick={() => {
+                    sounds.playUiClick();
+                    onClose();
+                    onLogout();
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 hover:text-rose-100 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 flex-shrink-0"
+                  title="Sign out of current account"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign Out</span>
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 text-xs text-slate-400 font-bold px-1 min-w-0">
+                <ShieldCheck className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <span className="truncate">Guest Mode (Local Progress)</span>
+              </div>
+              {onOpenAuth && (
+                <button
+                  onClick={() => {
+                    sounds.playUiClick();
+                    onClose();
+                    onOpenAuth();
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 hover:text-amber-100 text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 flex-shrink-0"
+                  title="Sign in or register to save your rank and card packs across devices"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Sign In / Cloud Save</span>
+                </button>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

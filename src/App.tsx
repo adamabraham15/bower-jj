@@ -1621,6 +1621,14 @@ export const App: React.FC = () => {
           multiplayerClient.fetchCollectionState();
           setIsCollectionOpen(true);
         }}
+        onLogout={handleLogout}
+        isAuthenticated={Boolean(authUser)}
+        onOpenAuth={() => {
+          setIsProfileOpen(false);
+          setAuthModalInitialTab('login');
+          setAuthModalReason('Sign in to save your rank, card packs, and collections across devices.');
+          setIsAuthOpen(true);
+        }}
       />
 
       <FriendsModal
