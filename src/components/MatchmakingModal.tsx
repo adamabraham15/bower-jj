@@ -60,6 +60,25 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
   const [localPendingInvites, setLocalPendingInvites] = useState<Record<string, number>>({});
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
   const [aiFillDifficulty, setAiFillDifficulty] = useState<AIDifficulty>('medium');
+  const [duoPreference, setDuoPreference] = useState<'teammates' | 'opponents' | 'random'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('bowerjj_duo_pref');
+      if (saved === 'teammates' || saved === 'opponents' || saved === 'random') return saved;
+    }
+    return 'teammates';
+  });
+
+  const handleDuoPreferenceChange = (pref: 'teammates' | 'opponents' | 'random') => {
+    sounds.playUiClick();
+    setDuoPreference(pref);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bowerjj_duo_pref', pref);
+    }
+    const mode = (queueType === 'ranked_rivals' || queueType === 'ranked_duo')
+      ? 'rivals'
+      : (queueType === 'unranked' ? 'casual' : 'solo');
+    multiplayerClient.enterQueue(mode, pref);
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -157,7 +176,7 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
       const mode = (queueType === 'ranked_rivals' || queueType === 'ranked_duo')
         ? 'rivals'
         : (queueType === 'unranked' ? 'casual' : 'solo');
-      multiplayerClient.enterQueue(mode);
+      multiplayerClient.enterQueue(mode, duoPreference);
     }
 
     return () => {
@@ -274,7 +293,7 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
                     const mode = (queueType === 'ranked_rivals' || queueType === 'ranked_duo')
                       ? 'rivals'
                       : (queueType === 'unranked' ? 'casual' : 'solo');
-                    multiplayerClient.enterQueue(mode);
+                    multiplayerClient.enterQueue(mode, duoPreference);
                   }
                 }
               });
@@ -799,6 +818,57 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
                 <span className="text-xs font-bold text-white mt-1">Red</span>
               </div>
             </div>
+
+            {/* 2-Player Match Format Preference (When only 2 players in queue pool) */}
+            {(queueType === 'ranked_solo' || queueType === 'unranked') && (
+              <div className="p-2.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1.5 text-left">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-gray-300">If 2 Players in Queue:</span>
+                  <span className="text-[10px] text-amber-400 font-bold">
+                    {duoPreference === 'teammates'
+                      ? '🤝 Same Team vs Bots'
+                      : duoPreference === 'opponents'
+                      ? '⚔️ Head-to-Head Rivals'
+                      : '🎲 50/50 Coin Flip'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleDuoPreferenceChange('teammates')}
+                    className={`py-1.5 px-1.5 rounded-xl text-[10px] font-black transition-all text-center ${
+                      duoPreference === 'teammates'
+                        ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-md ring-1 ring-amber-400'
+                        : 'bg-slate-900 border border-slate-800 text-gray-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    🤝 Same Team
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDuoPreferenceChange('opponents')}
+                    className={`py-1.5 px-1.5 rounded-xl text-[10px] font-black transition-all text-center ${
+                      duoPreference === 'opponents'
+                        ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md ring-1 ring-red-400'
+                        : 'bg-slate-900 border border-slate-800 text-gray-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    ⚔️ Opponents
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDuoPreferenceChange('random')}
+                    className={`py-1.5 px-1.5 rounded-xl text-[10px] font-black transition-all text-center ${
+                      duoPreference === 'random'
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md ring-1 ring-cyan-400'
+                        : 'bg-slate-900 border border-slate-800 text-gray-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    🎲 50/50 Random
+                  </button>
+                </div>
+              </div>
+            )}
 
             <button
               onClick={() => {

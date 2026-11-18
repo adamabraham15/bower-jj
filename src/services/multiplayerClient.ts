@@ -691,8 +691,11 @@ export class MultiplayerClient {
     return this.username;
   }
 
-  public enterQueue(mode: 'solo' | 'rivals' | 'duo' | 'casual' = 'solo') {
-    this.send({ type: 'QUEUE_ENTER', mode });
+  public enterQueue(
+    mode: 'solo' | 'rivals' | 'duo' | 'casual' = 'solo',
+    duoPreference?: 'teammates' | 'opponents' | 'random'
+  ) {
+    this.send({ type: 'QUEUE_ENTER', mode, duoPreference });
   }
 
   public leaveQueue() {

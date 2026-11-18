@@ -301,7 +301,7 @@ export type ClientMessage =
   | { type: 'ROOM_START' }
   | { type: 'ROOM_RETURN_TO_LOBBY'; mode?: 'custom' | 'rivals' }
   | { type: 'ROOM_LEAVE' }
-  | { type: 'QUEUE_ENTER'; mode: 'solo' | 'rivals' | 'duo' | 'casual' }
+  | { type: 'QUEUE_ENTER'; mode: 'solo' | 'rivals' | 'duo' | 'casual'; duoPreference?: 'teammates' | 'opponents' | 'random' }
   | { type: 'QUEUE_LEAVE' }
   | { type: 'GAME_BID'; bidType: 'pass' | 'order_up' | 'pick_up' | 'call_trump'; suit?: Suit; alone: boolean }
   | { type: 'GAME_DISCARD'; cardId: string }

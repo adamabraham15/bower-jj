@@ -656,7 +656,7 @@ export async function createMultiplayerServer(
               sendError(ws, 'Ranked queue requires a registered account. Please sign in or create an account to play Ranked!');
               break;
             }
-            activeRm.enterQueue(uid, msg.mode);
+            activeRm.enterQueue(uid, msg.mode, msg.duoPreference);
             break;
           }
 

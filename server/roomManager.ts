@@ -75,6 +75,7 @@ export interface ClientConnection {
   equippedTableFelt?: string;
   roomCode?: string;
   inQueue?: 'solo' | 'rivals' | 'duo' | 'casual';
+  duoPreference?: 'teammates' | 'opponents' | 'random';
   queueEnterTime?: number;
 }
 
@@ -1332,7 +1333,11 @@ export class RoomManager {
 
   // --- MATCHMAKING QUEUE (REAL PLAYERS FIRST, TIER-COMPENSATED BOTS SECOND) ---
 
-  public enterQueue(userId: string, mode: 'solo' | 'rivals' | 'duo' | 'casual' = 'solo') {
+  public enterQueue(
+    userId: string,
+    mode: 'solo' | 'rivals' | 'duo' | 'casual' = 'solo',
+    duoPreference?: 'teammates' | 'opponents' | 'random'
+  ) {
     const conn = this.connections.get(userId);
     if (!conn) return;
 
@@ -1340,6 +1345,7 @@ export class RoomManager {
       this.soloQueue.push(userId);
     }
     conn.inQueue = mode;
+    conn.duoPreference = duoPreference;
     conn.queueEnterTime = Date.now();
 
     this.sendToUser(userId, {
@@ -1355,6 +1361,7 @@ export class RoomManager {
     const conn = this.connections.get(userId);
     if (conn) {
       conn.inQueue = undefined;
+      conn.duoPreference = undefined;
       conn.queueEnterTime = undefined;
     }
     this.soloQueue = this.soloQueue.filter(id => id !== userId);
@@ -1494,25 +1501,73 @@ export class RoomManager {
       room.isMatchmade = true;
       room.queueMode = qMode;
 
-      // Distribute humans across opposing teams (Seat 0 Team Blue, Seat 1 Team Red)
-      for (let i = 1; i < humanCount; i++) {
-        const uid = matchedUserIds[i];
-        const conn = this.connections.get(uid);
-        if (conn) {
-          const userAcc = this.getCachedUser(uid);
-          room.slots[i] = {
-            position: i as PlayerPosition,
+      const hostConn = this.connections.get(hostId);
+      if (hostConn) {
+        hostConn.inQueue = undefined;
+      }
+
+      if (humanCount === 2) {
+        const secondId = matchedUserIds[1];
+        const secondConn = this.connections.get(secondId);
+
+        const hostPref = hostConn?.duoPreference;
+        const secondPref = secondConn?.duoPreference;
+
+        // When exactly 2 humans match in queue:
+        // By default (or if either explicitly requests 'teammates'), seat them together as partners
+        // on Team Blue (Seat 0 & Seat 2) against 2 Bots on Team Red (Seat 1 & Seat 3).
+        // If both explicitly chose 'opponents', seat them as Rivals on opposing teams (Seat 0 & Seat 1).
+        // If 'random' or conflicting explicit choices, 50/50 coin flip.
+        let asTeammates = true;
+        if (hostPref === 'opponents' && secondPref === 'opponents') {
+          asTeammates = false;
+        } else if (
+          (hostPref === 'opponents' && secondPref === 'teammates') ||
+          (hostPref === 'teammates' && secondPref === 'opponents')
+        ) {
+          asTeammates = Math.random() < 0.5;
+        } else if (hostPref === 'random' || secondPref === 'random') {
+          asTeammates = Math.random() < 0.5;
+        }
+
+        const secondSeat: PlayerPosition = asTeammates ? 2 : 1;
+        if (secondConn) {
+          const userAcc = this.getCachedUser(secondId);
+          room.slots[secondSeat] = {
+            position: secondSeat,
             isAI: false,
-            userId: uid,
-            username: conn.username,
-            avatarIcon: conn.avatarIcon,
-            equippedCardBack: resolveCardBackId(userAcc?.equippedCosmetics?.cardBack || conn.equippedCardBack),
+            userId: secondId,
+            username: secondConn.username,
+            avatarIcon: secondConn.avatarIcon,
+            equippedCardBack: resolveCardBackId(userAcc?.equippedCosmetics?.cardBack || secondConn.equippedCardBack),
             rankTier: userAcc?.rankTier || targetTier,
             connected: true,
             isReady: true,
           };
-          conn.roomCode = room.code;
-          conn.inQueue = undefined;
+          secondConn.roomCode = room.code;
+          secondConn.inQueue = undefined;
+        }
+      } else {
+        // 3 humans: Distribute across opposing teams (Seat 0 Team Blue, Seat 1 Team Red, Seat 2 Team Blue)
+        for (let i = 1; i < humanCount; i++) {
+          const uid = matchedUserIds[i];
+          const conn = this.connections.get(uid);
+          if (conn) {
+            const userAcc = this.getCachedUser(uid);
+            room.slots[i] = {
+              position: i as PlayerPosition,
+              isAI: false,
+              userId: uid,
+              username: conn.username,
+              avatarIcon: conn.avatarIcon,
+              equippedCardBack: resolveCardBackId(userAcc?.equippedCosmetics?.cardBack || conn.equippedCardBack),
+              rankTier: userAcc?.rankTier || targetTier,
+              connected: true,
+              isReady: true,
+            };
+            conn.roomCode = room.code;
+            conn.inQueue = undefined;
+          }
         }
       }
 
