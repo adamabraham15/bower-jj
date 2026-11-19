@@ -63,6 +63,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [isUsernameValidating, setIsUsernameValidating] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'available' | 'taken' | 'invalid' | null>(null);
 
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
+    if (isOpen) {
+      setTab(initialTab === 'login' ? 'login' : 'register');
+      if (initialEmail) setUsername(initialEmail);
+      setErrorMessage(null);
+      setSuccessMessage(null);
+    }
+  }
+
   // Sync initial tab & username when modal opens
   useEffect(() => {
     if (isOpen) {
