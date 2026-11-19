@@ -1546,11 +1546,16 @@ export const App: React.FC = () => {
             }
           }}
           onExitGame={(forfeit = false) => {
-            if (forfeit) {
+            const isMatchOver = multiplayerState?.phase === 'game_over';
+            if (forfeit || isMatchOver) {
               try {
                 sessionStorage.removeItem('bower_match_minimized');
               } catch {}
-              multiplayerClient.forfeitGame();
+              if (forfeit) {
+                multiplayerClient.forfeitGame();
+              } else {
+                multiplayerClient.leaveRoom();
+              }
               multiplayerClient.leaveQueue();
               setMultiplayerState(null);
               setCurrentView('menu');
