@@ -9,7 +9,7 @@ import { Card, Suit, PlayerPosition, getPlayerTeam, getPlayerPartner } from '../
 import { getWinningTeam, isCanadianLonerForced, isHandCardInteractive } from '../engine/game';
 import { isCardPlayLegal, formatCardName, sortCardsBySuit, ALL_SUITS } from '../engine/cards';
 import { CardView, SuitIcon } from './CardView';
-import { TrumpBanner, MakerBadge } from './TrumpBanner';
+import { TrumpBanner, TableCenterTrump, MakerBadge } from './TrumpBanner';
 import {
   DealerAvatarBadge,
   DealerDeckStack,
@@ -343,10 +343,10 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
     const emote = activeEmotes[pos];
 
     const positionStyle = customStyle || {
-      bottom: 'bottom-1.5 sm:bottom-2.5 left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-28 md:left-32 lg:left-36',
-      left: 'left-1 sm:left-3 top-1/2 -translate-y-1/2',
-      top: 'top-1.5 sm:top-3 left-1/2 -translate-x-1/2',
-      right: 'right-1 sm:right-3 top-1/2 -translate-y-1/2',
+      bottom: 'bottom-1 left-2 xs:left-3 sm:bottom-2.5 sm:left-24 md:left-28 lg:left-36',
+      left: 'left-1.5 sm:left-3 top-1/2 -translate-y-1/2',
+      top: 'top-1 sm:top-2 left-1/2 -translate-x-1/2',
+      right: 'right-1.5 sm:right-3 top-1/2 -translate-y-1/2',
     }[relPos];
 
     const isMutedPlayer = slot ? mutedUsernames.has(slot.username) : false;
@@ -626,17 +626,11 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
           })()}
         </div>
 
-        {/* Center Section: Trump Banner (Flexes and centers, strictly bounded to prevent pushing into scores or audio) */}
-        <div className="flex-1 min-w-0 flex items-center justify-center px-1 overflow-hidden">
-          {serverState.trumpSuit && (
-            <TrumpBanner
-              trumpSuit={serverState.trumpSuit}
-              callerName={callerName}
-              callerTeam={callerTeam}
-              isAlone={serverState.isAlone}
-              isUserTeam={callerTeam === getPlayerTeam(serverState.yourPosition)}
-            />
-          )}
+        {/* Center Section: Spacious Brand / Arena Title (Trump Suit is moved to table center felt) */}
+        <div className="flex-1 min-w-0 flex items-center justify-center px-1">
+          <span className="text-[10px] sm:text-xs font-black tracking-[0.25em] text-slate-500 uppercase select-none">
+            BOWER JJ
+          </span>
         </div>
 
         {/* Top Header Sound Controls (Emotes moved to bottom hand bar, question mark removed) */}
@@ -703,7 +697,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
 
         {/* Center Trick Arena */}
         <div
-          className="relative w-[292px] h-[292px] xs:w-[310px] xs:h-[310px] sm:w-[350px] sm:h-[350px] md:w-[380px] md:h-[380px] rounded-full border-2 backdrop-blur-xs flex items-center justify-center"
+          className="relative w-[240px] h-[240px] xs:w-[260px] xs:h-[260px] sm:w-[320px] sm:h-[320px] md:w-[360px] md:h-[360px] lg:w-[390px] lg:h-[390px] rounded-full border-2 backdrop-blur-xs flex items-center justify-center"
           style={{
             borderColor: `${equippedFelt.feltBorder}85`,
             backgroundColor: `${equippedFelt.feltColor}90`,
@@ -717,9 +711,17 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             canCallTurnedDownSuit={serverState.rules?.canCallTurnedDownSuit ?? false}
           />
 
-          {/* Lead Suit Banner */}
-          {serverState.phase === 'playing' && !isTrickResolving && leadSuit && (
-            <LeadSuitBadge leadSuit={leadSuit} />
+          {/* Active Trump Suit & Maker Emblem in the Middle of the Table Felt */}
+          {serverState.trumpSuit && (serverState.phase === 'playing' || isTrickResolving) && (
+            <TableCenterTrump
+              trumpSuit={serverState.trumpSuit}
+              callerName={callerName}
+              callerTeam={callerTeam}
+              isAlone={serverState.isAlone}
+              isUserTeam={callerTeam === getPlayerTeam(serverState.yourPosition)}
+              leadSuit={leadSuit}
+              isTrickResolving={isTrickResolving}
+            />
           )}
 
           {/* Played Cards in Trick Arena (Spaced out diamond formation so all cards & names are clear) */}
@@ -735,17 +737,17 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 const tagVariant = isYou ? 'you' : isTeammate ? 'teammate' : 'opponent';
 
                 const positionStyle = {
-                  bottom: 'bottom-2.5 sm:bottom-3.5 left-1/2 -translate-x-1/2',
-                  left: 'left-2.5 sm:left-3.5 top-1/2 -translate-y-1/2',
-                  top: 'top-3 sm:top-4 left-1/2 -translate-x-1/2',
-                  right: 'right-2.5 sm:right-3.5 top-1/2 -translate-y-1/2',
+                  bottom: 'bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2',
+                  left: 'left-3 sm:left-4 top-1/2 -translate-y-1/2',
+                  top: 'top-4 sm:top-5 left-1/2 -translate-x-1/2',
+                  right: 'right-3 sm:right-4 top-1/2 -translate-y-1/2',
                 }[relPos];
 
                 return (
                   <div
                     key={pc.card.id}
                     className={`absolute transition-all duration-300 flex flex-col items-center ${positionStyle} ${
-                      isWinningCard ? 'scale-115 z-30' : 'z-20'
+                      isWinningCard ? 'scale-105 z-30' : 'z-20'
                     }`}
                   >
                     <CardView
@@ -764,10 +766,10 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             </div>
           )}
 
-          {/* Trick Resolving Banner: Floating at top of arena to keep bottom cards completely visible! */}
+          {/* Trick Resolving Banner: Floating in center of arena during resolution */}
           {isTrickResolving && serverState.currentTrick.winner !== undefined && serverState.currentTrick.winningCard && (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 bg-slate-950/95 border-2 border-amber-400 rounded-2xl px-3.5 py-1.5 text-center shadow-2xl animate-in zoom-in-95 duration-200 whitespace-nowrap max-w-[94%] pointer-events-none">
-              <div className="text-xs font-black text-amber-300 flex items-center justify-center space-x-1.5">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 bg-slate-950/95 border-2 border-amber-400 rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2 text-center shadow-2xl animate-in zoom-in-95 duration-200 whitespace-nowrap max-w-[92%] pointer-events-none">
+              <div className="text-[11px] sm:text-xs font-black text-amber-300 flex items-center justify-center space-x-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
                 <span>
                   {getSlot(serverState.currentTrick.winner)?.username || `Player ${serverState.currentTrick.winner}`} WON THE TRICK with {formatCardName(serverState.currentTrick.winningCard, serverState.trumpSuit)}!

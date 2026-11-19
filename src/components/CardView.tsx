@@ -226,9 +226,9 @@ export const CardView: React.FC<CardViewProps> = ({
               : 'bg-slate-900/90 text-amber-300 border-amber-400/50 shadow-md'
           }`}
         >
-          {playerTagVariant === 'you' && <span className="w-1.5 h-1.5 rounded-full bg-slate-950" />}
-          {playerTagVariant === 'teammate' && <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />}
-          <span>{playerTag}</span>
+          {playerTagVariant === 'you' && <span className="w-1.5 h-1.5 rounded-full bg-slate-950 flex-shrink-0" />}
+          {playerTagVariant === 'teammate' && <span className="w-1.5 h-1.5 rounded-full bg-sky-400 flex-shrink-0" />}
+          <span className="truncate max-w-[100px] sm:max-w-[130px]">{playerTag}</span>
         </span>
       )}
 

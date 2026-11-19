@@ -110,7 +110,7 @@ describe('Table UI & Tutorial Helpers', () => {
     const leadHtml = renderToStaticMarkup(<LeadSuitBadge leadSuit="hearts" showFollowHint />);
     expect(leadHtml).toContain('Lead:');
     expect(leadHtml).toContain('hearts');
-    expect(leadHtml).toContain('z-30');
+    expect(leadHtml).toContain('z-10');
     expect(leadHtml).toContain('Follow');
 
     const dotHtml = renderToStaticMarkup(<TurnActiveDot />);
@@ -531,9 +531,11 @@ describe('Table UI & Tutorial Helpers', () => {
     // Scores are rendered
     expect(htmlMulti).toContain('9');
     expect(htmlMulti).toContain('8');
-    // Trump banner is isolated in flex-1 min-w-0 px-1 overflow-hidden center container
-    expect(htmlMulti).toContain('flex-1 min-w-0 flex items-center justify-center px-1 overflow-hidden');
-    // Caller name is present and truncated safely
+    // Trump suit is prominently displayed in the middle of the table felt in TableCenterTrump
+    expect(htmlMulti).toContain('data-testid="table-center-trump"');
+    expect(htmlMulti).toContain('TRUMP:');
+    expect(htmlMulti).toContain('spades');
+    // Caller name is present and truncated safely in the center table emblem
     expect(htmlMulti).toContain('OpponentExtremeCaller');
   });
 

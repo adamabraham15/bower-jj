@@ -41,7 +41,7 @@ import {
   startNextHand,
 } from '../engine/game';
 import { CardView, SuitIcon } from './CardView';
-import { TrumpBanner, MakerBadge } from './TrumpBanner';
+import { TrumpBanner, TableCenterTrump, MakerBadge } from './TrumpBanner';
 import {
   DealerAvatarBadge,
   DealerDeckStack,
@@ -742,17 +742,11 @@ export const GameTable: React.FC<GameTableProps> = ({
           </div>
         </div>
 
-        {/* Center Section: Trump Banner (Flexes and centers, strictly bounded to prevent pushing into scores or audio) */}
-        <div className="flex-1 min-w-0 flex items-center justify-center px-1 overflow-hidden">
-          {state.trumpSuit && (
-            <TrumpBanner
-              trumpSuit={state.trumpSuit}
-              callerName={callerName}
-              callerTeam={callerTeam}
-              isAlone={state.isAlone}
-              isUserTeam={callerTeam === 0}
-            />
-          )}
+        {/* Center Section: Spacious Brand / Arena Title (Trump Suit is moved to table center felt) */}
+        <div className="flex-1 min-w-0 flex items-center justify-center px-1">
+          <span className="text-[10px] sm:text-xs font-black tracking-[0.25em] text-slate-500 uppercase select-none">
+            BOWER JJ
+          </span>
         </div>
 
         {/* Action Controls (Emotes moved to bottom hand bar, question mark removed) */}
@@ -812,17 +806,17 @@ export const GameTable: React.FC<GameTableProps> = ({
 
         {/* Player Pods on Table Felt:
             - Partner North at top
-            - Opponent West at left (pushed close to edge to eliminate avatar-trick overlap)
-            - Opponent East at right (pushed close to edge to eliminate avatar-trick overlap)
-            - You South at bottom */}
-        {renderPlayerPod(2, 'top-1.5 sm:top-3 left-1/2 -translate-x-1/2')} {/* Partner (North) */}
-        {renderPlayerPod(1, 'left-1 sm:left-3 top-1/2 -translate-y-1/2')} {/* Opponent 1 (West) */}
-        {renderPlayerPod(3, 'right-1 sm:right-3 top-1/2 -translate-y-1/2')} {/* Opponent 2 (East) */}
-        {renderPlayerPod(0, 'bottom-1.5 sm:bottom-2.5 left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-28 md:left-32 lg:left-36')} {/* You (South) */}
+            - Opponent West at left
+            - Opponent East at right
+            - You South at bottom-left (cleared from center cards) */}
+        {renderPlayerPod(2, 'top-1 sm:top-2 left-1/2 -translate-x-1/2')} {/* Partner (North) */}
+        {renderPlayerPod(1, 'left-1.5 sm:left-3 top-1/2 -translate-y-1/2')} {/* Opponent 1 (West) */}
+        {renderPlayerPod(3, 'right-1.5 sm:right-3 top-1/2 -translate-y-1/2')} {/* Opponent 2 (East) */}
+        {renderPlayerPod(0, 'bottom-1 left-2 xs:left-3 sm:bottom-2.5 sm:left-24 md:left-28 lg:left-36')} {/* You (South) */}
 
         {/* Center Trick Arena & Table Hub */}
         <div
-          className="relative w-[292px] h-[292px] xs:w-[310px] xs:h-[310px] sm:w-[350px] sm:h-[350px] md:w-[380px] md:h-[380px] rounded-full border-2 backdrop-blur-xs flex items-center justify-center"
+          className="relative w-[240px] h-[240px] xs:w-[260px] xs:h-[260px] sm:w-[320px] sm:h-[320px] md:w-[360px] md:h-[360px] lg:w-[390px] lg:h-[390px] rounded-full border-2 backdrop-blur-xs flex items-center justify-center"
           style={{
             borderColor: `${equippedFelt.feltBorder}85`,
             backgroundColor: `${equippedFelt.feltColor}90`,
@@ -836,9 +830,17 @@ export const GameTable: React.FC<GameTableProps> = ({
             canCallTurnedDownSuit={state.rules.canCallTurnedDownSuit}
           />
 
-          {/* Active Lead Suit Indicator in center */}
-          {state.phase === 'playing' && !isTrickResolving && leadSuit && (
-            <LeadSuitBadge leadSuit={leadSuit} showFollowHint />
+          {/* Active Trump Suit & Maker Emblem in the Middle of the Table Felt */}
+          {state.trumpSuit && (state.phase === 'playing' || isTrickResolving) && (
+            <TableCenterTrump
+              trumpSuit={state.trumpSuit}
+              callerName={callerName}
+              callerTeam={callerTeam}
+              isAlone={state.isAlone}
+              isUserTeam={callerTeam === 0}
+              leadSuit={leadSuit}
+              isTrickResolving={isTrickResolving}
+            />
           )}
 
           {/* Played Cards in Trick Arena (Spaced out diamond formation so all cards & names are clear) */}
@@ -855,18 +857,18 @@ export const GameTable: React.FC<GameTableProps> = ({
                 // Spread out inside the felt arena towards each player's edge
                 const positionStyle =
                   pc.player === 0
-                    ? 'bottom-2.5 sm:bottom-3.5 left-1/2 -translate-x-1/2'
+                    ? 'bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2'
                     : pc.player === 2
-                    ? 'top-3 sm:top-4 left-1/2 -translate-x-1/2'
+                    ? 'top-4 sm:top-5 left-1/2 -translate-x-1/2'
                     : pc.player === 1
-                    ? 'left-2.5 sm:left-3.5 top-1/2 -translate-y-1/2'
-                    : 'right-2.5 sm:right-3.5 top-1/2 -translate-y-1/2';
+                    ? 'left-3 sm:left-4 top-1/2 -translate-y-1/2'
+                    : 'right-3 sm:right-4 top-1/2 -translate-y-1/2';
 
                 return (
                   <div
                     key={pc.card.id}
                     className={`absolute transition-all duration-300 flex flex-col items-center ${positionStyle} ${
-                      isWinningCard ? 'scale-115 z-30' : 'z-20'
+                      isWinningCard ? 'scale-105 z-30' : 'z-20'
                     }`}
                   >
                     <CardView
@@ -885,10 +887,10 @@ export const GameTable: React.FC<GameTableProps> = ({
             </div>
           )}
 
-          {/* Trick Resolving Banner: Floating at top of arena to keep bottom cards completely visible! */}
+          {/* Trick Resolving Banner: Floating in center of arena during resolution */}
           {isTrickResolving && state.currentTrick.winner !== undefined && state.currentTrick.winningCard && (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 bg-slate-950/95 border-2 border-amber-400 rounded-2xl px-3.5 py-1.5 text-center shadow-2xl animate-in zoom-in-95 duration-200 whitespace-nowrap max-w-[94%] pointer-events-none">
-              <div className="text-xs font-black text-amber-300 flex items-center justify-center space-x-1.5">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 bg-slate-950/95 border-2 border-amber-400 rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2 text-center shadow-2xl animate-in zoom-in-95 duration-200 whitespace-nowrap max-w-[92%] pointer-events-none">
+              <div className="text-[11px] sm:text-xs font-black text-amber-300 flex items-center justify-center space-x-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
                 <span>
                   {state.players[state.currentTrick.winner].name} WON THE TRICK with {formatCardName(state.currentTrick.winningCard, state.trumpSuit)}!

@@ -103,3 +103,104 @@ export const MakerBadge: React.FC<MakerBadgeProps> = ({ trumpSuit, isBlueTeam, i
     </div>
   );
 };
+
+export interface TableCenterTrumpProps {
+  trumpSuit: Suit;
+  callerName?: string;
+  callerTeam?: Team;
+  isAlone?: boolean;
+  isUserTeam?: boolean;
+  leadSuit?: Suit;
+  isTrickResolving?: boolean;
+}
+
+/**
+ * Centered table felt emblem displaying the active Trump Suit, caller, alone status,
+ * and active trick lead suit right in the middle of the table arena.
+ */
+export const TableCenterTrump: React.FC<TableCenterTrumpProps> = ({
+  trumpSuit,
+  callerName,
+  callerTeam,
+  isAlone,
+  isUserTeam,
+  leadSuit,
+  isTrickResolving,
+}) => {
+  const isRedSuit = trumpSuit === 'hearts' || trumpSuit === 'diamonds';
+  const isTeam = isUserTeam !== undefined ? isUserTeam : callerTeam === 0;
+
+  return (
+    <div
+      data-testid="table-center-trump"
+      className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none z-10 flex flex-col items-center justify-center transition-all duration-300 ${
+        isTrickResolving ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'
+      }`}
+    >
+      <div className="flex flex-col items-center justify-center px-2.5 xs:px-3 sm:px-4 py-1 sm:py-1.5 rounded-2xl bg-slate-950/90 border border-amber-400/60 shadow-[0_0_30px_rgba(0,0,0,0.85)] backdrop-blur-sm max-w-[135px] xs:max-w-[155px] sm:max-w-[190px] text-center">
+        {/* Main Trump Row */}
+        <div className="flex items-center justify-center space-x-1 sm:space-x-1.5 leading-none">
+          <span className="text-[9px] sm:text-[10px] font-black tracking-widest text-amber-400 uppercase">
+            TRUMP:
+          </span>
+          <SuitIcon
+            suit={trumpSuit}
+            className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 drop-shadow-sm"
+            overrideColor={trumpSuit === 'spades' ? '#f8fafc' : undefined}
+          />
+          <span
+            className={`text-xs sm:text-sm font-black uppercase tracking-wider ${
+              isRedSuit
+                ? 'text-red-400'
+                : trumpSuit === 'clubs'
+                ? 'text-emerald-400'
+                : 'text-slate-100'
+            }`}
+          >
+            {trumpSuit}
+          </span>
+        </div>
+
+        {/* Caller row */}
+        {callerName && (
+          <div className="mt-0.5 sm:mt-1 flex items-center justify-center space-x-1 text-[9px] sm:text-[10px] font-bold text-gray-300">
+            <span
+              className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                isTeam
+                  ? 'bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.9)]'
+                  : 'bg-rose-400 shadow-[0_0_6px_rgba(251,113,133,0.9)]'
+              }`}
+            />
+            <span className="truncate max-w-[70px] xs:max-w-[95px] sm:max-w-[125px] text-slate-200">
+              {callerName}
+            </span>
+            {isAlone && (
+              <span className="text-[8px] bg-red-600 text-white font-black px-1 py-0.2 rounded shadow-xs uppercase tracking-wider animate-pulse flex-shrink-0">
+                ALONE
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Active Lead Suit Chip (if trick is ongoing) */}
+        {leadSuit && (
+          <div className="mt-1 flex items-center space-x-1 px-1.5 py-0.5 rounded-full bg-slate-900/90 border border-slate-700/80 text-[8px] sm:text-[9px] font-bold text-gray-300">
+            <span className="text-gray-400 uppercase text-[7px] sm:text-[8px]">Lead:</span>
+            <SuitIcon suit={leadSuit} className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+            <span
+              className={`uppercase font-black ${
+                leadSuit === 'hearts' || leadSuit === 'diamonds'
+                  ? 'text-red-400'
+                  : leadSuit === 'clubs'
+                  ? 'text-emerald-400'
+                  : 'text-white'
+              }`}
+            >
+              {leadSuit}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
