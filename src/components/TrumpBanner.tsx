@@ -44,7 +44,7 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
         overrideColor={trumpSuit === 'spades' ? '#e2e8f0' : undefined}
       />
       <span
-        className={`hidden min-[380px]:inline text-[10px] sm:text-xs font-black uppercase tracking-wider flex-shrink-0 ${
+        className={`hidden md:inline text-[10px] sm:text-xs font-black uppercase tracking-wider flex-shrink-0 ${
           isRedSuit ? 'text-red-400' : trumpSuit === 'clubs' ? 'text-emerald-400' : 'text-slate-100'
         }`}
       >
@@ -68,7 +68,7 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
               }`}
             />
           )}
-          <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold hidden sm:inline flex-shrink-0">by</span>
+          <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold flex-shrink-0">by</span>
           <span className="truncate max-w-[45px] xs:max-w-[70px] sm:max-w-[110px] md:max-w-[160px]">{callerName}</span>
           {teamLabel && <span className="hidden md:inline text-[9px] sm:text-[10px] text-slate-400 font-semibold flex-shrink-0">({teamLabel})</span>}
         </span>
