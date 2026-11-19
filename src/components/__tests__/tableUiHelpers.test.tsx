@@ -479,7 +479,7 @@ describe('Table UI & Tutorial Helpers', () => {
     expect(htmlBanner).toContain('min-w-0 flex-shrink max-w-full overflow-hidden');
     expect(htmlBanner).not.toContain('min-w-0 flex-shrink-0');
     // Caller name container truncates and restricts max-width
-    expect(htmlBanner).toContain('truncate max-w-[45px] xs:max-w-[70px] sm:max-w-[110px]');
+    expect(htmlBanner).toContain('truncate max-w-[75px] xs:max-w-[95px] sm:max-w-[130px]');
     expect(htmlBanner).toContain('VeryLongEuchreChampionUsername');
     expect(htmlBanner).toContain('ALONE');
   });

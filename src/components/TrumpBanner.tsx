@@ -53,7 +53,7 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
 
       {callerName && (
         <span
-          className={`flex items-center space-x-1 text-[9px] sm:text-[11px] font-black px-1.5 sm:px-2 py-0.5 rounded-full border shadow-sm min-w-0 flex-shrink max-w-[85px] xs:max-w-[110px] sm:max-w-[180px] overflow-hidden ${
+          className={`flex items-center space-x-1 text-[9px] sm:text-[11px] font-black px-1.5 sm:px-2 py-0.5 rounded-full border shadow-sm min-w-0 flex-shrink ${
             callerTeam === undefined
               ? 'bg-slate-800 border-slate-700 text-gray-200'
               : isTeam
@@ -69,7 +69,7 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
             />
           )}
           <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold flex-shrink-0">by</span>
-          <span className="truncate max-w-[45px] xs:max-w-[70px] sm:max-w-[110px] md:max-w-[160px]">{callerName}</span>
+          <span className="truncate max-w-[75px] xs:max-w-[95px] sm:max-w-[130px] md:max-w-[160px]">{callerName}</span>
           {teamLabel && <span className="hidden md:inline text-[9px] sm:text-[10px] text-slate-400 font-semibold flex-shrink-0">({teamLabel})</span>}
         </span>
       )}

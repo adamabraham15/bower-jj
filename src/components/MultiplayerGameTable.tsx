@@ -595,7 +595,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             const oppTricks = serverState.tricksWon[oppTeamIdx] || 0;
 
             return (
-              <div className="flex items-center space-x-1.5 xs:space-x-2 sm:space-x-3 bg-slate-950/95 px-2 xs:px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-2xl border border-slate-700/80 shadow-md flex-shrink-0">
+              <div className="flex items-center space-x-1.5 xs:space-x-2 sm:space-x-2.5 bg-slate-950/95 px-2 xs:px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-2xl border border-slate-700/80 shadow-md flex-shrink-0">
                 {/* Your Team Score */}
                 <div className="flex items-center space-x-1 xs:space-x-1.5 sm:space-x-2 flex-shrink-0">
                   <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.7)] flex-shrink-0" />
