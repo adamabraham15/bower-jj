@@ -711,6 +711,64 @@ class SoundEngine {
   }
 
   /**
+   * Warm, velvet casino-lounge Match Found chime (mellow Rhodes-style major-9th arpeggio + soft card table pulse)
+   */
+  public playMatchFound() {
+    if (this.prefs.sfxMuted) return;
+    this.initContext();
+    const dest = this.getSfxDestination();
+    if (!this.ctx || !dest) return;
+
+    const now = this.ctx.currentTime;
+
+    // 1. Soft felt table sub-bass thrum
+    const sub = this.ctx.createOscillator();
+    const subGain = this.ctx.createGain();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(110.0, now);
+    sub.frequency.exponentialRampToValueAtTime(65.41, now + 0.32);
+    subGain.gain.setValueAtTime(0.001, now);
+    subGain.gain.linearRampToValueAtTime(0.14, now + 0.02);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    sub.connect(subGain);
+    subGain.connect(dest);
+    sub.start(now);
+    sub.stop(now + 0.36);
+
+    // 2. Warm low-pass filtered electric-piano / marimba major-9th chord chime (Fmaj9: F4 - A4 - C5 - E5 - G5)
+    const warmNotes = [
+      { f: 349.23, t: 0.02, d: 0.48, g: 0.11 },
+      { f: 440.00, t: 0.08, d: 0.46, g: 0.11 },
+      { f: 523.25, t: 0.14, d: 0.48, g: 0.12 },
+      { f: 659.25, t: 0.20, d: 0.52, g: 0.11 },
+      { f: 783.99, t: 0.26, d: 0.65, g: 0.13 },
+    ];
+
+    warmNotes.forEach(({ f, t, d, g }) => {
+      const osc = this.ctx!.createOscillator();
+      const filter = this.ctx!.createBiquadFilter();
+      const gain = this.ctx!.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, now + t);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(1600, now + t);
+
+      gain.gain.setValueAtTime(0.0001, now + t);
+      gain.gain.linearRampToValueAtTime(g, now + t + 0.022);
+      gain.gain.exponentialRampToValueAtTime(0.0008, now + t + d);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(dest);
+
+      osc.start(now + t);
+      osc.stop(now + t + d + 0.04);
+    });
+  }
+
+  /**
    * Victory fanfare
    */
   public playVictoryFanfare() {

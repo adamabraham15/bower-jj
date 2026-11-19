@@ -130,8 +130,14 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
   const xpProgressPercent = Math.min(100, Math.round((playerXp / nextLevelXp) * 100));
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-black/90 backdrop-blur-lg animate-in zoom-in-95 duration-200">
-      <div className="relative w-full max-w-lg bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border-2 border-amber-500/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center p-2.5 sm:p-5 bg-black/90 backdrop-blur-lg animate-in zoom-in-95 duration-200"
+      style={{
+        paddingTop: 'max(0.625rem, calc(env(safe-area-inset-top, 0px) + 0.5rem))',
+        paddingBottom: 'max(0.625rem, calc(env(safe-area-inset-bottom, 0px) + 0.5rem))',
+      }}
+    >
+      <div className="relative w-full max-w-lg bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border-2 border-amber-500/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-1.5rem)] sm:max-h-[92vh]">
         {/* Banner Glow */}
         <div
           className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-48 rounded-full pointer-events-none opacity-20"
@@ -143,12 +149,12 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
         />
 
         {/* Header Title */}
-        <div className="p-5 text-center space-y-1 border-b border-slate-800 bg-slate-950/60">
-          <div className="text-4xl animate-bounce">
+        <div className="p-3 sm:p-4 text-center space-y-0.5 border-b border-slate-800 bg-slate-950/60 flex-shrink-0">
+          <div className="text-2xl sm:text-3xl animate-bounce">
             {isVictory ? '👑' : '💀'}
           </div>
           <h2
-            className={`text-2xl sm:text-3xl font-black uppercase tracking-wider ${
+            className={`text-xl sm:text-2xl font-black uppercase tracking-wider ${
               isVictory ? 'text-amber-400 drop-shadow-md' : 'text-red-400'
             }`}
           >
@@ -165,7 +171,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
         </div>
 
         {/* Scrollable Stats & Progression Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-5 space-y-3 sm:space-y-4">
           {/* 1. Competitive LP & MMR Delta or Match Type */}
           {isRanked || (lpDelta !== undefined && lpDelta !== 0) ? (
             <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5">
@@ -353,13 +359,13 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 bg-slate-950 border-t border-slate-800 flex space-x-3">
+        <div className="p-3 sm:p-4 bg-slate-950 border-t border-slate-800 flex space-x-3 flex-shrink-0">
           <button
             onClick={() => {
               sounds.playUiClick();
               onExit();
             }}
-            className="flex-1 py-3 rounded-2xl bg-slate-800 hover:bg-slate-750 text-gray-300 font-bold text-xs flex items-center justify-center space-x-1.5 transition-colors"
+            className="flex-1 py-2.5 sm:py-3 rounded-2xl bg-slate-800 hover:bg-slate-750 text-gray-300 font-bold text-xs sm:text-sm flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
           >
             <Home className="w-4 h-4" />
             <span>Main Menu</span>
@@ -370,7 +376,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
               sounds.playVictoryFanfare();
               onPlayAgain();
             }}
-            className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 text-slate-950 font-black text-xs sm:text-sm shadow-xl shadow-amber-500/25 flex items-center justify-center space-x-1.5 active:scale-95 transition-all"
+            className="flex-1 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 text-slate-950 font-black text-xs sm:text-sm shadow-xl shadow-amber-500/25 flex items-center justify-center space-x-1.5 active:scale-95 transition-all cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
             <span>Play Again</span>

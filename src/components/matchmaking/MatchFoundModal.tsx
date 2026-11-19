@@ -43,7 +43,7 @@ export const MatchFoundModal: React.FC<MatchFoundModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    sounds.playVictoryFanfare();
+    sounds.playMatchFound();
     try {
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate([60, 40, 100]);

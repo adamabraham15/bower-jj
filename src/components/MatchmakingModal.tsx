@@ -137,7 +137,6 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
           });
         }
         if (room.status === 'playing') {
-          sounds.playVictoryFanfare();
           onMatchFound();
         }
       },
@@ -642,28 +641,12 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
                       </button>
                     </div>
 
-                    {/* Turn Timer: Chill (No Timer) by default for custom rooms */}
+                    {/* Turn Timer: Strictly Chill (No Timer) for custom rooms */}
                     <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-700/60">
                       <span className="text-gray-300 font-bold">Turn Timer:</span>
-                      <div className="flex space-x-1.5">
-                        {[
-                          { val: 0, label: '☕ Chill' },
-                          { val: 30, label: '⏱️ 30s' },
-                          { val: 15, label: '⚡ 15s' },
-                        ].map((t) => (
-                          <button
-                            key={t.val}
-                            onClick={() => handleUpdateRule({ turnTimeLimitSeconds: t.val })}
-                            className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all ${
-                              (currentRoom?.rules.turnTimeLimitSeconds ?? 0) === t.val
-                                ? 'bg-amber-400 text-slate-950 font-black shadow-md'
-                                : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
-                            }`}
-                          >
-                            {t.label}
-                          </button>
-                        ))}
-                      </div>
+                      <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-black text-xs">
+                        ☕ Chill (No Timer)
+                      </span>
                     </div>
                   </div>
                 )}
@@ -828,11 +811,11 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
                 {queueType === 'ranked_rivals' || queueType === 'ranked_duo' ? (
                   <span>⚔️ <strong>Friendly Rivalry:</strong> You and your friend compete on opposing teams with random/AI partners to guarantee zero collusion!</span>
                 ) : seconds < 15 ? (
-                  <span>🔍 Prioritizing real humans: Searching for opponents within your competitive rank tier...</span>
-                ) : seconds < 30 ? (
-                  <span>🌐 Expanding matchmaking search radius to nearby competitive divisions...</span>
+                  <span>🔍 <strong>First 15s:</strong> Prioritizing players near your rank tier...</span>
+                ) : seconds < 25 ? (
+                  <span>🌐 <strong>Expanded Matchmaking:</strong> Open to players of any rank across all tiers (closest rank prioritized)...</span>
                 ) : (
-                  <span>⚡ Final search phase: Pairing available players (AI difficulty compensated to {userRank} Tier).</span>
+                  <span>⚡ <strong>Final Search Phase:</strong> Pairing available players of any rank (AI difficulty compensated to lobby).</span>
                 )}
               </div>
             </div>

@@ -275,7 +275,7 @@ export class MultiplayerClient {
     if (avatarIcon) this.avatarIcon = avatarIcon;
     if (accessToken) this.accessToken = accessToken;
 
-    if (!this.accessToken) {
+    if (!accessToken) {
       try {
         const freshToken = await authService.getFreshAccessToken();
         if (freshToken) this.accessToken = freshToken;

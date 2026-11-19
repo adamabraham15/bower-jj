@@ -936,8 +936,20 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 const isReady =
                   isLocallyReadyForNextHand ||
                   Boolean(profile?.playerId && readyList.includes(profile.playerId)) ||
-                  Boolean(profile?.username && readyList.includes(profile.username));
-                const readyCount = Math.max(isReady ? 1 : 0, readyList.length);
+                  Boolean(profile?.username && readyList.includes(profile.username)) ||
+                  readyList.includes(`seat_${serverState.yourPosition}`);
+
+                const uniqueReadySlots = serverState.slots.filter((slot, idx) => {
+                  if (!slot) return false;
+                  return (
+                    slot.isAI ||
+                    (slot.userId && readyList.includes(slot.userId)) ||
+                    (slot.username && readyList.includes(slot.username)) ||
+                    readyList.includes(`seat_${idx}`) ||
+                    (idx === serverState.yourPosition && isReady)
+                  );
+                });
+                const readyCount = Math.min(4, Math.max(isReady ? 1 : 0, uniqueReadySlots.length));
 
                 return (
                   <>
@@ -963,7 +975,9 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                           if (!slot) return null;
                           const isSlotReady =
                             slot.isAI ||
-                            readyList.includes(slot.userId || slot.username) ||
+                            (slot.userId && readyList.includes(slot.userId)) ||
+                            (slot.username && readyList.includes(slot.username)) ||
+                            readyList.includes(`seat_${idx}`) ||
                             (idx === serverState.yourPosition && isReady);
                           return (
                             <span

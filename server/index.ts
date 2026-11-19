@@ -508,8 +508,7 @@ export async function createMultiplayerServer(
           }
 
           if (authenticatedUserId && authenticatedUserId !== user.id) {
-            activeRm.leaveRoom(authenticatedUserId);
-            activeRm.handleDisconnect(authenticatedUserId, ws);
+            activeRm.migrateConnectionIdentity(authenticatedUserId, user, ws);
           }
 
           authenticatedUserId = user.id;

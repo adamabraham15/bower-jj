@@ -489,15 +489,80 @@ export class RoomManager {
     }
   }
 
+  public migrateConnectionIdentity(oldUserId: string, newUser: UserAccount, ws: WebSocket): void {
+    const oldConn = this.connections.get(oldUserId);
+    if (!oldConn || oldConn.ws !== ws) {
+      this.leaveRoom(oldUserId);
+      this.handleDisconnect(oldUserId, ws);
+      return;
+    }
+
+    // Seamlessly transfer queue membership from oldUserId to newUser.id
+    const qIdx = this.soloQueue.indexOf(oldUserId);
+    if (qIdx !== -1) {
+      if (this.soloQueue.includes(newUser.id)) {
+        this.soloQueue.splice(qIdx, 1);
+      } else {
+        this.soloQueue[qIdx] = newUser.id;
+      }
+    }
+
+    // Seamlessly transfer any active room seat & host ownership without forfeiting
+    if (oldConn.roomCode) {
+      const room = this.rooms.get(oldConn.roomCode);
+      if (room) {
+        if (room.hostUserId === oldUserId) {
+          room.hostUserId = newUser.id;
+        }
+        room.slots.forEach((slot) => {
+          if (slot && !slot.isAI && slot.userId === oldUserId) {
+            slot.userId = newUser.id;
+            slot.username = newUser.username || slot.username;
+            slot.avatarIcon = resolveAvatarId(newUser.avatarIcon || slot.avatarIcon);
+            slot.rankTier = newUser.rankTier || slot.rankTier;
+            slot.connected = true;
+            slot.abandoned = false;
+          }
+        });
+      }
+    }
+
+    this.connections.delete(oldUserId);
+    this.connections.set(newUser.id, {
+      ...oldConn,
+      ws,
+      userId: newUser.id,
+      username: newUser.username,
+      avatarIcon: newUser.avatarIcon,
+      equippedCardBack: newUser.equippedCosmetics?.cardBack || oldConn.equippedCardBack,
+      equippedTableFelt: newUser.equippedCosmetics?.tableFelt || oldConn.equippedTableFelt,
+    });
+  }
+
   public registerConnection(userId: string, conn: ClientConnection) {
+    const existingConn = this.connections.get(userId);
+    if (existingConn) {
+      if (!conn.roomCode && existingConn.roomCode) conn.roomCode = existingConn.roomCode;
+      if (!conn.inQueue && existingConn.inQueue) conn.inQueue = existingConn.inQueue;
+      if (!conn.duoPreference && existingConn.duoPreference) conn.duoPreference = existingConn.duoPreference;
+      if (!conn.queueEnterTime && existingConn.queueEnterTime) conn.queueEnterTime = existingConn.queueEnterTime;
+    }
     this.connections.set(userId, conn);
 
     let reconnected = false;
 
-    // 1. Reconnection check against in-memory active rooms
-    for (const [code, room] of this.rooms.entries()) {
+    // 1. Reconnection check against in-memory active rooms (prioritize active 'playing' matches over 'lobby' rooms)
+    const candidateRooms = Array.from(this.rooms.entries()).sort(([, a], [, b]) => {
+      if (a.status === 'playing' && b.status !== 'playing') return -1;
+      if (b.status === 'playing' && a.status !== 'playing') return 1;
+      return (b.lastActionAt || b.createdAt) - (a.lastActionAt || a.createdAt);
+    });
+
+    for (const [code, room] of candidateRooms) {
       if (room.status === 'finished') continue;
       if (room.abandonedUserIds?.includes(userId)) continue;
+      // Never pull a queued player back into an old custom lobby room
+      if (room.status === 'lobby' && conn.inQueue) continue;
       const slotIdx = room.slots.findIndex(s => s && s.userId === userId);
       if (slotIdx !== -1) {
         const slot = room.slots[slotIdx]!;
@@ -518,10 +583,12 @@ export class RoomManager {
           this.disconnectTimers.delete(timerKey);
         }
 
-        this.broadcastRoom(code, {
-          type: 'ROOM_UPDATE',
-          room,
-        });
+        if (!room.isMatchmade || room.status === 'playing') {
+          this.broadcastRoom(code, {
+            type: 'ROOM_UPDATE',
+            room,
+          });
+        }
 
         if (room.status === 'playing') {
           this.sendStateToPlayer(code, slotIdx as PlayerPosition);
@@ -956,10 +1023,15 @@ export class RoomManager {
     room.slots[emptyIdx] = slot;
     conn.roomCode = room.code;
 
-    this.broadcastRoom(room.code, {
-      type: 'ROOM_UPDATE',
-      room,
-    });
+    // Only broadcast lobby ROOM_UPDATE for non-matchmade custom/rivals rooms.
+    // Matchmade rooms immediately transition to startGame() ('playing'), so broadcasting
+    // an intermediate 'lobby' ROOM_UPDATE would prematurely trigger the client's custom lobby view.
+    if (!room.isMatchmade) {
+      this.broadcastRoom(room.code, {
+        type: 'ROOM_UPDATE',
+        room,
+      });
+    }
 
     return room;
   }
@@ -1014,10 +1086,15 @@ export class RoomManager {
       };
     });
 
-    this.broadcastRoom(room.code, {
-      type: 'ROOM_UPDATE',
-      room,
-    });
+    // Only broadcast lobby ROOM_UPDATE for non-matchmade custom/rivals rooms.
+    // Matchmade rooms immediately transition to startGame() ('playing'), so broadcasting
+    // an intermediate 'lobby' ROOM_UPDATE would prematurely trigger the client's custom lobby view.
+    if (!room.isMatchmade) {
+      this.broadcastRoom(room.code, {
+        type: 'ROOM_UPDATE',
+        room,
+      });
+    }
 
     return room;
   }
@@ -1058,10 +1135,15 @@ export class RoomManager {
       };
     }
 
-    this.broadcastRoom(room.code, {
-      type: 'ROOM_UPDATE',
-      room,
-    });
+    // Only broadcast lobby ROOM_UPDATE for non-matchmade custom/rivals rooms.
+    // Matchmade rooms immediately transition to startGame() ('playing'), so broadcasting
+    // an intermediate 'lobby' ROOM_UPDATE would prematurely trigger the client's custom lobby view.
+    if (!room.isMatchmade) {
+      this.broadcastRoom(room.code, {
+        type: 'ROOM_UPDATE',
+        room,
+      });
+    }
 
     return room;
   }
@@ -1132,10 +1214,15 @@ export class RoomManager {
 
     room.rules = { ...room.rules, ...rules };
 
-    this.broadcastRoom(room.code, {
-      type: 'ROOM_UPDATE',
-      room,
-    });
+    // Only broadcast lobby ROOM_UPDATE for non-matchmade custom/rivals rooms.
+    // Matchmade rooms immediately transition to startGame() ('playing'), so broadcasting
+    // an intermediate 'lobby' ROOM_UPDATE would prematurely trigger the client's custom lobby view.
+    if (!room.isMatchmade) {
+      this.broadcastRoom(room.code, {
+        type: 'ROOM_UPDATE',
+        room,
+      });
+    }
 
     return room;
   }
@@ -1150,11 +1237,18 @@ export class RoomManager {
     if (room.status !== 'lobby') throw new Error('Mode cannot be changed once game has started');
 
     room.queueMode = mode;
+    if (mode === 'custom' || mode === 'rivals' || mode === 'casual') {
+      room.rules = { ...room.rules, turnTimeLimitSeconds: 0 };
+    } else if (mode === 'solo' || mode === 'duo') {
+      room.rules = { ...room.rules, turnTimeLimitSeconds: 15 };
+    }
 
-    this.broadcastRoom(room.code, {
-      type: 'ROOM_UPDATE',
-      room,
-    });
+    if (!room.isMatchmade) {
+      this.broadcastRoom(room.code, {
+        type: 'ROOM_UPDATE',
+        room,
+      });
+    }
 
     return room;
   }
@@ -1192,10 +1286,15 @@ export class RoomManager {
 
     room.slots[targetPosition] = null;
 
-    this.broadcastRoom(room.code, {
-      type: 'ROOM_UPDATE',
-      room,
-    });
+    // Only broadcast lobby ROOM_UPDATE for non-matchmade custom/rivals rooms.
+    // Matchmade rooms immediately transition to startGame() ('playing'), so broadcasting
+    // an intermediate 'lobby' ROOM_UPDATE would prematurely trigger the client's custom lobby view.
+    if (!room.isMatchmade) {
+      this.broadcastRoom(room.code, {
+        type: 'ROOM_UPDATE',
+        room,
+      });
+    }
 
     return room;
   }
@@ -1350,6 +1449,14 @@ export class RoomManager {
     const conn = this.connections.get(userId);
     if (!conn) return;
 
+    // Cleanly leave any stale lobby or finished room before entering matchmaking queue
+    if (conn.roomCode) {
+      const existingRoom = this.rooms.get(conn.roomCode);
+      if (!existingRoom || existingRoom.status === 'lobby' || existingRoom.status === 'finished') {
+        this.leaveRoom(userId);
+      }
+    }
+
     if (!this.soloQueue.includes(userId)) {
       this.soloQueue.push(userId);
     }
@@ -1390,57 +1497,79 @@ export class RoomManager {
     return idx !== -1 ? idx : 0;
   }
 
+  private getRankDistance(u1: string, u2: string): number {
+    const tierDiff = Math.abs(this.getUserTierIndex(u1) - this.getUserTierIndex(u2));
+    const mmr1 = this.getCachedUser(u1)?.mmr ?? 1200;
+    const mmr2 = this.getCachedUser(u2)?.mmr ?? 1200;
+    return tierDiff * 1000 + Math.abs(mmr1 - mmr2);
+  }
+
   private processMatchmakingQueue() {
     if (this.soloQueue.length === 0) return;
 
     const now = Date.now();
 
-    // Helper to get allowed tier distance based on wait duration
+    // First 15s: prioritize players near your rank (+-1 tier).
+    // Expanded matchmaking (>= 15s): allow matching with players of ANY rank across all 6 tiers!
     const getMaxTierDiff = (waitMs: number): number => {
-      if (waitMs < 15000) return 1; // Strict: +-1 tier
-      if (waitMs < 30000) return 2; // Expanded: +-2 tiers
-      return 5; // Wide: any tier
+      if (waitMs < 15000) return 1; // First 15s: prioritize near your rank (+-1 tier)
+      return TIER_ORDER.length; // >= 15s Expanded: any rank allowed!
     };
 
-    // PRIORITY 1: 4 Humans in Queue -> Search for compatible 4-human cluster
+    // PRIORITY 1: 4 Humans in Queue -> Search for compatible 4-human cluster (prioritizing closest rank first)
     if (this.soloQueue.length >= 4) {
-      // Find 4 players whose mutual tier distance matches their allowed expansion
       let candidateIndices: number[] | null = null;
 
-      for (let i = 0; i <= this.soloQueue.length - 4; i++) {
+      for (let i = 0; i < this.soloQueue.length; i++) {
         const u1 = this.soloQueue[i];
         const conn1 = this.connections.get(u1);
+        const isCasual1 = conn1?.inQueue === 'casual';
         const wait1 = now - (conn1?.queueEnterTime || now);
         const maxDiff1 = getMaxTierDiff(wait1);
         const tier1 = this.getUserTierIndex(u1);
 
-        const group: number[] = [i];
-        for (let j = 0; j < this.soloQueue.length && group.length < 4; j++) {
+        const compatiblePeers: { idx: number; dist: number }[] = [];
+        for (let j = 0; j < this.soloQueue.length; j++) {
           if (j === i) continue;
           const u2 = this.soloQueue[j];
           const conn2 = this.connections.get(u2);
+          const isCasual2 = conn2?.inQueue === 'casual';
+          // Never force a Casual (chill) player into a Ranked match with a 15s timer
+          if (isCasual1 !== isCasual2) continue;
+
           const wait2 = now - (conn2?.queueEnterTime || now);
           const maxDiff2 = getMaxTierDiff(wait2);
           const allowedDiff = Math.max(maxDiff1, maxDiff2);
           const tier2 = this.getUserTierIndex(u2);
 
           if (Math.abs(tier1 - tier2) <= allowedDiff) {
-            group.push(j);
+            compatiblePeers.push({ idx: j, dist: this.getRankDistance(u1, u2) });
           }
         }
 
-        if (group.length === 4) {
-          candidateIndices = group;
+        if (compatiblePeers.length >= 3) {
+          compatiblePeers.sort((a, b) => a.dist - b.dist || a.idx - b.idx);
+          candidateIndices = [i, compatiblePeers[0].idx, compatiblePeers[1].idx, compatiblePeers[2].idx];
           break;
         }
       }
 
       if (candidateIndices) {
-        // Extract matched users in reverse index order
-        const matchedUserIds = candidateIndices
+        // Extract matched users in reverse index order, then restore queue order
+        const matchedUserIds = [...candidateIndices]
           .sort((a, b) => b - a)
           .map(idx => this.soloQueue.splice(idx, 1)[0])
           .reverse();
+
+        matchedUserIds.forEach(uid => {
+          const c = this.connections.get(uid);
+          if (c?.roomCode) {
+            const oldR = this.rooms.get(c.roomCode);
+            if (!oldR || oldR.status === 'lobby' || oldR.status === 'finished') {
+              this.leaveRoom(uid);
+            }
+          }
+        });
 
         const hostId = matchedUserIds[0];
         const avgWait = matchedUserIds.reduce((sum, uid) => {
@@ -1450,11 +1579,16 @@ export class RoomManager {
 
         db.recordMatchmakingComposition(4, avgWait);
 
-        const isAllCasual = matchedUserIds.every(uid => this.connections.get(uid)?.inQueue === 'casual');
-        const qMode = isAllCasual ? 'casual' : 'solo';
+        const isAnyCasual = matchedUserIds.some(uid => this.connections.get(uid)?.inQueue === 'casual');
+        const qMode = isAnyCasual ? 'casual' : 'solo';
         const room = this.createRoom(hostId, DEFAULT_RULES, qMode);
         room.isMatchmade = true;
         room.queueMode = qMode;
+
+        const hostConn = this.connections.get(hostId);
+        if (hostConn) {
+          hostConn.inQueue = undefined;
+        }
 
         for (let i = 1; i < 4; i++) {
           const uid = matchedUserIds[i];
@@ -1482,107 +1616,142 @@ export class RoomManager {
       }
     }
 
-    // PRIORITY 2: 2 or 3 Humans Waiting (>= PARTIAL_HUMAN_FALLBACK_MS, 25s) -> Pair humans against each other and fill with bots
-    const hasLongWaitingHuman = this.soloQueue.some(uid => {
+    // PRIORITY 2: 2 or 3 Humans Waiting (>= PARTIAL_HUMAN_FALLBACK_MS, 25s) -> Pair humans (of any rank in expanded matchmaking, prioritizing closest rank) and fill with bots
+    const anchorIdx = this.soloQueue.findIndex(uid => {
       const conn = this.connections.get(uid);
       const isCasual = conn?.inQueue === 'casual';
       const threshold = isCasual ? CASUAL_BOT_FALLBACK_MS : PARTIAL_HUMAN_FALLBACK_MS;
-      return conn && conn.queueEnterTime && (now - conn.queueEnterTime >= threshold);
+      return Boolean(conn && conn.queueEnterTime && (now - conn.queueEnterTime >= threshold));
     });
 
-    if (this.soloQueue.length >= 2 && hasLongWaitingHuman) {
-      const humanCount = Math.min(this.soloQueue.length, 3);
-      const matchedUserIds = this.soloQueue.splice(0, humanCount);
-      const hostId = matchedUserIds[0];
-      const hostAcc = this.getCachedUser(hostId);
-      const targetTier = hostAcc?.rankTier || '9';
+    if (this.soloQueue.length >= 2 && anchorIdx !== -1) {
+      const anchorUid = this.soloQueue[anchorIdx];
+      const anchorConn = this.connections.get(anchorUid);
+      const isAnchorCasual = anchorConn?.inQueue === 'casual';
+      const anchorWait = now - (anchorConn?.queueEnterTime || now);
+      const anchorMaxDiff = getMaxTierDiff(anchorWait);
+      const anchorTier = this.getUserTierIndex(anchorUid);
 
-      const avgWait = matchedUserIds.reduce((sum, uid) => {
-        const c = this.connections.get(uid);
-        return sum + (now - (c?.queueEnterTime || now));
-      }, 0) / humanCount;
+      const compatiblePeers: { uid: string; dist: number }[] = [];
+      for (let j = 0; j < this.soloQueue.length; j++) {
+        if (j === anchorIdx) continue;
+        const peerUid = this.soloQueue[j];
+        const peerConn = this.connections.get(peerUid);
+        const isPeerCasual = peerConn?.inQueue === 'casual';
+        if (isAnchorCasual !== isPeerCasual) continue;
 
-      db.recordMatchmakingComposition(humanCount, avgWait);
+        const peerWait = now - (peerConn?.queueEnterTime || now);
+        const allowedDiff = Math.max(anchorMaxDiff, getMaxTierDiff(peerWait));
+        const peerTier = this.getUserTierIndex(peerUid);
 
-      const isAllCasual = matchedUserIds.every(uid => this.connections.get(uid)?.inQueue === 'casual');
-      const qMode = isAllCasual ? 'casual' : 'solo';
-      const room = this.createRoom(hostId, DEFAULT_RULES, qMode);
-      room.isMatchmade = true;
-      room.queueMode = qMode;
-
-      const hostConn = this.connections.get(hostId);
-      if (hostConn) {
-        hostConn.inQueue = undefined;
+        if (Math.abs(anchorTier - peerTier) <= allowedDiff) {
+          compatiblePeers.push({ uid: peerUid, dist: this.getRankDistance(anchorUid, peerUid) });
+        }
       }
 
-      if (humanCount === 2) {
-        const secondId = matchedUserIds[1];
-        const secondConn = this.connections.get(secondId);
+      if (compatiblePeers.length >= 1) {
+        compatiblePeers.sort((a, b) => a.dist - b.dist);
+        const selectedPeers = compatiblePeers.slice(0, 2).map(p => p.uid);
+        const matchedUserIds = [anchorUid, ...selectedPeers];
+        this.soloQueue = this.soloQueue.filter(id => !matchedUserIds.includes(id));
 
-        const hostPref = hostConn?.duoPreference;
-        const secondPref = secondConn?.duoPreference;
+        matchedUserIds.forEach(uid => {
+          const c = this.connections.get(uid);
+          if (c?.roomCode) {
+            const oldR = this.rooms.get(c.roomCode);
+            if (!oldR || oldR.status === 'lobby' || oldR.status === 'finished') {
+              this.leaveRoom(uid);
+            }
+          }
+        });
 
-        // When exactly 2 humans match in queue:
-        // By default (or if either explicitly requests 'teammates'), seat them together as partners
-        // on Team Blue (Seat 0 & Seat 2) against 2 Bots on Team Red (Seat 1 & Seat 3).
-        // If both explicitly chose 'opponents', seat them as Rivals on opposing teams (Seat 0 & Seat 1).
-        // If 'random' or conflicting explicit choices, 50/50 coin flip.
-        let asTeammates = true;
-        if (hostPref === 'opponents' && secondPref === 'opponents') {
-          asTeammates = false;
-        } else if (
-          (hostPref === 'opponents' && secondPref === 'teammates') ||
-          (hostPref === 'teammates' && secondPref === 'opponents')
-        ) {
-          asTeammates = Math.random() < 0.5;
-        } else if (hostPref === 'random' || secondPref === 'random') {
-          asTeammates = Math.random() < 0.5;
+        const humanCount = matchedUserIds.length;
+        const hostId = matchedUserIds[0];
+        const hostAcc = this.getCachedUser(hostId);
+        const targetTier = hostAcc?.rankTier || '9';
+
+        const avgWait = matchedUserIds.reduce((sum, uid) => {
+          const c = this.connections.get(uid);
+          return sum + (now - (c?.queueEnterTime || now));
+        }, 0) / humanCount;
+
+        db.recordMatchmakingComposition(humanCount, avgWait);
+
+        const isAnyCasual = matchedUserIds.some(uid => this.connections.get(uid)?.inQueue === 'casual');
+        const qMode = isAnyCasual ? 'casual' : 'solo';
+        const room = this.createRoom(hostId, DEFAULT_RULES, qMode);
+        room.isMatchmade = true;
+        room.queueMode = qMode;
+
+        const hostConn = this.connections.get(hostId);
+        if (hostConn) {
+          hostConn.inQueue = undefined;
         }
 
-        const secondSeat: PlayerPosition = asTeammates ? 2 : 1;
-        if (secondConn) {
-          const userAcc = this.getCachedUser(secondId);
-          room.slots[secondSeat] = {
-            position: secondSeat,
-            isAI: false,
-            userId: secondId,
-            username: secondConn.username,
-            avatarIcon: secondConn.avatarIcon,
-            equippedCardBack: resolveCardBackId(userAcc?.equippedCosmetics?.cardBack || secondConn.equippedCardBack),
-            rankTier: userAcc?.rankTier || targetTier,
-            connected: true,
-            isReady: true,
-          };
-          secondConn.roomCode = room.code;
-          secondConn.inQueue = undefined;
-        }
-      } else {
-        // 3 humans: Distribute across opposing teams (Seat 0 Team Blue, Seat 1 Team Red, Seat 2 Team Blue)
-        for (let i = 1; i < humanCount; i++) {
-          const uid = matchedUserIds[i];
-          const conn = this.connections.get(uid);
-          if (conn) {
-            const userAcc = this.getCachedUser(uid);
-            room.slots[i] = {
-              position: i as PlayerPosition,
+        if (humanCount === 2) {
+          const secondId = matchedUserIds[1];
+          const secondConn = this.connections.get(secondId);
+
+          const hostPref = hostConn?.duoPreference;
+          const secondPref = secondConn?.duoPreference;
+
+          let asTeammates = true;
+          if (hostPref === 'opponents' && secondPref === 'opponents') {
+            asTeammates = false;
+          } else if (
+            (hostPref === 'opponents' && secondPref === 'teammates') ||
+            (hostPref === 'teammates' && secondPref === 'opponents')
+          ) {
+            asTeammates = Math.random() < 0.5;
+          } else if (hostPref === 'random' || secondPref === 'random') {
+            asTeammates = Math.random() < 0.5;
+          }
+
+          const secondSeat: PlayerPosition = asTeammates ? 2 : 1;
+          if (secondConn) {
+            const userAcc = this.getCachedUser(secondId);
+            room.slots[secondSeat] = {
+              position: secondSeat,
               isAI: false,
-              userId: uid,
-              username: conn.username,
-              avatarIcon: conn.avatarIcon,
-              equippedCardBack: resolveCardBackId(userAcc?.equippedCosmetics?.cardBack || conn.equippedCardBack),
+              userId: secondId,
+              username: secondConn.username,
+              avatarIcon: secondConn.avatarIcon,
+              equippedCardBack: resolveCardBackId(userAcc?.equippedCosmetics?.cardBack || secondConn.equippedCardBack),
               rankTier: userAcc?.rankTier || targetTier,
               connected: true,
               isReady: true,
             };
-            conn.roomCode = room.code;
-            conn.inQueue = undefined;
+            secondConn.roomCode = room.code;
+            secondConn.inQueue = undefined;
+          }
+        } else {
+          // 3 humans: Distribute across opposing teams (Seat 0 Team Blue, Seat 1 Team Red, Seat 2 Team Blue)
+          for (let i = 1; i < humanCount; i++) {
+            const uid = matchedUserIds[i];
+            const conn = this.connections.get(uid);
+            if (conn) {
+              const userAcc = this.getCachedUser(uid);
+              room.slots[i] = {
+                position: i as PlayerPosition,
+                isAI: false,
+                userId: uid,
+                username: conn.username,
+                avatarIcon: conn.avatarIcon,
+                equippedCardBack: resolveCardBackId(userAcc?.equippedCosmetics?.cardBack || conn.equippedCardBack),
+                rankTier: userAcc?.rankTier || targetTier,
+                connected: true,
+                isReady: true,
+              };
+              conn.roomCode = room.code;
+              conn.inQueue = undefined;
+            }
           }
         }
-      }
 
-      this.fillWithAI(hostId, undefined, targetTier);
-      this.startGame(hostId);
-      return;
+        this.fillWithAI(hostId, undefined, targetTier);
+        this.startGame(hostId);
+        return;
+      }
     }
 
     // PRIORITY 3: Solo human waited past bot fallback threshold (35s for ranked, 15s for casual)
@@ -1697,6 +1866,10 @@ export class RoomManager {
     }
   }
 
+  private getSlotReadyKey(slot: PlayerSlot, idx: number): string {
+    return slot.userId || slot.username || `seat_${idx}`;
+  }
+
   public handleClientNextHand(userId: string) {
     const conn = this.connections.get(userId);
     if (!conn || !conn.roomCode) return;
@@ -1710,12 +1883,41 @@ export class RoomManager {
       readySet = new Set<string>();
       this.nextHandReady.set(room.code, readySet);
     }
-    readySet.add(userId);
-    if (conn.username) readySet.add(conn.username);
 
-    // Require all seated human players to click Deal Next Hand before next deal
-    const humanSlots = room.slots.filter((s): s is PlayerSlot => Boolean(s && !s.isAI && (s.userId || s.username)));
-    const allHumansReady = humanSlots.every(s => (s.userId && readySet!.has(s.userId)) || (s.username && readySet!.has(s.username)));
+    // Add ONLY ONE canonical ready key per seat so ready count is strictly 1, 2, 3, then 4 out of 4 (never 8/4)
+    const seatIdx = room.slots.findIndex(
+      s =>
+        s &&
+        !s.isAI &&
+        (s.userId === userId ||
+          (conn.username && s.username.toLowerCase() === conn.username.toLowerCase()))
+    );
+    if (seatIdx !== -1 && room.slots[seatIdx]) {
+      // Remove any duplicate alias before adding the canonical key
+      const slot = room.slots[seatIdx]!;
+      if (slot.userId) readySet.delete(slot.userId);
+      if (slot.username) readySet.delete(slot.username);
+      readySet.delete(userId);
+      if (conn.username) readySet.delete(conn.username);
+      readySet.add(this.getSlotReadyKey(slot, seatIdx));
+    } else {
+      readySet.add(userId);
+    }
+
+    // Require all active connected human players to click Deal Next Hand before next deal
+    const activeHumanSlots = room.slots
+      .map((s, idx) => ({ s, idx }))
+      .filter(({ s }) => Boolean(s && !s.isAI && !s.abandoned && s.connected !== false && (s.userId || s.username)));
+
+    const allHumansReady = activeHumanSlots.every(({ s, idx }) => {
+      if (!s) return true;
+      const key = this.getSlotReadyKey(s, idx);
+      return (
+        readySet!.has(key) ||
+        Boolean(s.userId && readySet!.has(s.userId)) ||
+        Boolean(s.username && readySet!.has(s.username))
+      );
+    });
 
     if (allHumansReady) {
       const timer = this.handScoredTimers.get(room.code);
@@ -1731,7 +1933,7 @@ export class RoomManager {
       this.broadcastGameSync(room.code);
       this.triggerAITurn(room.code);
     } else {
-      // Sync readiness count to all clients
+      // Sync readiness count (1/4, 2/4, 3/4) to all clients
       this.broadcastGameSync(room.code);
     }
   }
@@ -1751,19 +1953,28 @@ export class RoomManager {
       this.persistActiveMatch(roomCode);
     }
 
-    this.broadcastGameSync(roomCode);
-
-    if (nextState.phase === 'playing') {
-      this.triggerAITurn(roomCode);
-    } else if (nextState.phase === 'hand_scored') {
-      // Mark AI bot slots as automatically ready for the next deal
+    if (nextState.phase === 'hand_scored') {
+      // Start with empty readySet and stagger AI bot readiness 1 -> 2 -> 3 out of 4
       const readySet = new Set<string>();
-      for (const slot of room.slots) {
-        if (slot && slot.isAI) {
-          readySet.add(slot.username);
-        }
-      }
       this.nextHandReady.set(roomCode, readySet);
+      this.broadcastGameSync(roomCode);
+
+      const aiSlots = room.slots
+        .map((slot, idx) => ({ slot, idx }))
+        .filter(({ slot }) => Boolean(slot && (slot.isAI || slot.abandoned || slot.connected === false)));
+
+      aiSlots.forEach(({ slot, idx }, stepIdx) => {
+        const delayMs = (stepIdx + 1) * 320;
+        const t = setTimeout(() => {
+          const curState = this.gameStates.get(roomCode);
+          const curRoom = this.rooms.get(roomCode);
+          const curSet = this.nextHandReady.get(roomCode);
+          if (!curState || !curRoom || curState.phase !== 'hand_scored' || !curSet || !slot) return;
+          curSet.add(this.getSlotReadyKey(slot, idx));
+          this.broadcastGameSync(roomCode);
+        }, delayMs);
+        if (typeof t.unref === 'function') t.unref();
+      });
 
       // Failsafe 60s timeout in case a player completely disconnects / goes AFK
       const autoTimer = setTimeout(() => {
@@ -1779,6 +1990,13 @@ export class RoomManager {
       }, 60000);
       if (typeof autoTimer.unref === 'function') autoTimer.unref();
       this.handScoredTimers.set(roomCode, autoTimer);
+      return;
+    }
+
+    this.broadcastGameSync(roomCode);
+
+    if (nextState.phase === 'playing') {
+      this.triggerAITurn(roomCode);
     }
   }
 

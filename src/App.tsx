@@ -769,8 +769,16 @@ export const App: React.FC = () => {
         applyAuthoritativeUser(user);
       },
       onRoom: (room) => {
-        // When receiving a lobby room update (invite accept, invite link, code), bring player directly into the unified lobby
-        if (room.status === 'lobby') {
+        // When receiving a lobby room update (invite accept, invite link, code), bring player directly into the unified lobby.
+        // Never intercept matchmade games (solo/duo/casual) or interrupt an active multiplayer match!
+        if (
+          room.status === 'lobby' &&
+          !room.isMatchmade &&
+          room.queueMode !== 'solo' &&
+          room.queueMode !== 'duo' &&
+          room.queueMode !== 'casual' &&
+          currentViewRef.current !== 'multiplayer_game'
+        ) {
           setLobbyInitialMode(room.queueMode === 'rivals' ? 'rivals' : 'custom');
           setIsFriendsOpen(false);
           setMatchmakingQueue(null);
@@ -1014,6 +1022,9 @@ export const App: React.FC = () => {
   };
 
   const handleOpenMatchmaking = (queue: QueueType, autoFillBots = false) => {
+    try {
+      sessionStorage.removeItem('bower_match_minimized');
+    } catch {}
     if (queue === 'private') {
       setLobbyInitialMode('custom');
       setLobbyAutoFillBots(Boolean(autoFillBots));
@@ -1357,6 +1368,9 @@ export const App: React.FC = () => {
   };
 
   const triggerMatchFound = (modeTitle: string) => {
+    try {
+      sessionStorage.removeItem('bower_match_minimized');
+    } catch {}
     setIsLobbyOpen(false);
     setLobbyAutoFillBots(false);
     setMatchmakingQueue(null);
