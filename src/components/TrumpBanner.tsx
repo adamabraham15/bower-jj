@@ -133,37 +133,33 @@ export const TableCenterTrump: React.FC<TableCenterTrumpProps> = ({
   return (
     <div
       data-testid="table-center-trump"
-      className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none z-10 flex flex-col items-center justify-center transition-all duration-300 ${
-        isTrickResolving ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'
-      }`}
+      className="absolute -top-3.5 sm:-top-4.5 left-1/2 -translate-x-1/2 pointer-events-none select-none z-30 flex items-center justify-center transition-all duration-300"
     >
-      <div className="flex flex-col items-center justify-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-xl bg-slate-950/90 border border-amber-400/60 shadow-[0_0_20px_rgba(0,0,0,0.85)] backdrop-blur-sm max-w-[90px] sm:max-w-[115px] text-center">
+      <div className="flex items-center justify-center space-x-1.5 px-3 py-1 rounded-full bg-slate-950/95 border-2 border-amber-400/80 shadow-[0_0_20px_rgba(0,0,0,0.8)] backdrop-blur-sm max-w-[220px] text-center leading-none">
         {/* Main Trump Row */}
-        <div className="flex items-center justify-center space-x-1 leading-none">
-          <span className="text-[9px] sm:text-[10px] font-black tracking-widest text-amber-400 uppercase">
-            TRUMP:
-          </span>
-          <SuitIcon
-            suit={trumpSuit}
-            className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 drop-shadow-sm"
-            overrideColor={trumpSuit === 'spades' ? '#f8fafc' : undefined}
-          />
-          <span
-            className={`text-[11px] sm:text-xs font-black uppercase tracking-wider ${
-              isRedSuit
-                ? 'text-red-400'
-                : trumpSuit === 'clubs'
-                ? 'text-emerald-400'
-                : 'text-slate-100'
-            }`}
-          >
-            {trumpSuit}
-          </span>
-        </div>
+        <span className="text-[9px] sm:text-[10px] font-black tracking-widest text-amber-400 uppercase">
+          TRUMP:
+        </span>
+        <SuitIcon
+          suit={trumpSuit}
+          className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 drop-shadow-sm"
+          overrideColor={trumpSuit === 'spades' ? '#f8fafc' : undefined}
+        />
+        <span
+          className={`text-[11px] sm:text-xs font-black uppercase tracking-wider ${
+            isRedSuit
+              ? 'text-red-400'
+              : trumpSuit === 'clubs'
+              ? 'text-emerald-400'
+              : 'text-slate-100'
+          }`}
+        >
+          {trumpSuit}
+        </span>
 
         {/* Caller row */}
         {callerName && (
-          <div className="mt-0.5 flex items-center justify-center space-x-1 text-[8px] sm:text-[9px] font-bold text-gray-300">
+          <span className="flex items-center space-x-1 text-[8px] sm:text-[9px] font-bold text-gray-300 pl-1 border-l border-slate-700/80">
             <span
               className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
                 isTeam
@@ -171,15 +167,16 @@ export const TableCenterTrump: React.FC<TableCenterTrumpProps> = ({
                   : 'bg-rose-400 shadow-[0_0_4px_rgba(251,113,133,0.9)]'
               }`}
             />
-            <span className="truncate max-w-[60px] sm:max-w-[80px] text-slate-200">
+            <span className="truncate max-w-[55px] sm:max-w-[80px] text-slate-200">
               {callerName}
             </span>
-            {isAlone && (
-              <span className="text-[7px] bg-red-600 text-white font-black px-1 py-0.2 rounded shadow-xs uppercase tracking-wider animate-pulse flex-shrink-0">
-                ALONE
-              </span>
-            )}
-          </div>
+          </span>
+        )}
+
+        {isAlone && (
+          <span className="text-[7px] bg-red-600 text-white font-black px-1 py-0.2 rounded shadow-xs uppercase tracking-wider animate-pulse flex-shrink-0">
+            ALONE
+          </span>
         )}
       </div>
     </div>
