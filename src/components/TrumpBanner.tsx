@@ -137,7 +137,7 @@ export const TableCenterTrump: React.FC<TableCenterTrumpProps> = ({
         isTrickResolving ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'
       }`}
     >
-      <div className="flex flex-col items-center justify-center px-2.5 xs:px-3 sm:px-4 py-1 sm:py-1.5 rounded-2xl bg-slate-950/90 border border-amber-400/60 shadow-[0_0_30px_rgba(0,0,0,0.85)] backdrop-blur-sm max-w-[135px] xs:max-w-[155px] sm:max-w-[190px] text-center">
+      <div className="flex flex-col items-center justify-center px-2 sm:px-3 py-1 sm:py-1.5 rounded-2xl bg-slate-950/90 border border-amber-400/60 shadow-[0_0_25px_rgba(0,0,0,0.85)] backdrop-blur-sm max-w-[115px] sm:max-w-[140px] text-center">
         {/* Main Trump Row */}
         <div className="flex items-center justify-center space-x-1 sm:space-x-1.5 leading-none">
           <span className="text-[9px] sm:text-[10px] font-black tracking-widest text-amber-400 uppercase">
@@ -145,7 +145,7 @@ export const TableCenterTrump: React.FC<TableCenterTrumpProps> = ({
           </span>
           <SuitIcon
             suit={trumpSuit}
-            className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 drop-shadow-sm"
+            className="w-4 h-4 sm:w-4.5 sm:h-4.5 flex-shrink-0 drop-shadow-sm"
             overrideColor={trumpSuit === 'spades' ? '#f8fafc' : undefined}
           />
           <span
@@ -171,11 +171,11 @@ export const TableCenterTrump: React.FC<TableCenterTrumpProps> = ({
                   : 'bg-rose-400 shadow-[0_0_6px_rgba(251,113,133,0.9)]'
               }`}
             />
-            <span className="truncate max-w-[70px] xs:max-w-[95px] sm:max-w-[125px] text-slate-200">
+            <span className="truncate max-w-[65px] sm:max-w-[95px] text-slate-200">
               {callerName}
             </span>
             {isAlone && (
-              <span className="text-[8px] bg-red-600 text-white font-black px-1 py-0.2 rounded shadow-xs uppercase tracking-wider animate-pulse flex-shrink-0">
+              <span className="text-[7px] sm:text-[8px] bg-red-600 text-white font-black px-1 py-0.2 rounded shadow-xs uppercase tracking-wider animate-pulse flex-shrink-0">
                 ALONE
               </span>
             )}
@@ -184,7 +184,7 @@ export const TableCenterTrump: React.FC<TableCenterTrumpProps> = ({
 
         {/* Active Lead Suit Chip (if trick is ongoing) */}
         {leadSuit && (
-          <div className="mt-1 flex items-center space-x-1 px-1.5 py-0.5 rounded-full bg-slate-900/90 border border-slate-700/80 text-[8px] sm:text-[9px] font-bold text-gray-300">
+          <div className="mt-0.5 sm:mt-1 flex items-center space-x-1 px-1.5 py-0.5 rounded-full bg-slate-900/90 border border-slate-700/80 text-[8px] sm:text-[9px] font-bold text-gray-300">
             <span className="text-gray-400 uppercase text-[7px] sm:text-[8px]">Lead:</span>
             <SuitIcon suit={leadSuit} className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
             <span

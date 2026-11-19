@@ -697,7 +697,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
 
         {/* Center Trick Arena */}
         <div
-          className="relative w-[240px] h-[240px] xs:w-[260px] xs:h-[260px] sm:w-[320px] sm:h-[320px] md:w-[360px] md:h-[360px] lg:w-[390px] lg:h-[390px] rounded-full border-2 backdrop-blur-xs flex items-center justify-center"
+          className="relative w-[280px] h-[280px] xs:w-[295px] xs:h-[295px] sm:w-[340px] sm:h-[340px] md:w-[370px] md:h-[370px] lg:w-[390px] lg:h-[390px] rounded-full border-2 backdrop-blur-xs flex items-center justify-center"
           style={{
             borderColor: `${equippedFelt.feltBorder}85`,
             backgroundColor: `${equippedFelt.feltColor}90`,
@@ -737,10 +737,10 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 const tagVariant = isYou ? 'you' : isTeammate ? 'teammate' : 'opponent';
 
                 const positionStyle = {
-                  bottom: 'bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2',
-                  left: 'left-3 sm:left-4 top-1/2 -translate-y-1/2',
-                  top: 'top-4 sm:top-5 left-1/2 -translate-x-1/2',
-                  right: 'right-3 sm:right-4 top-1/2 -translate-y-1/2',
+                  bottom: 'bottom-1 sm:bottom-2 left-1/2 -translate-x-1/2',
+                  left: 'left-1 sm:left-2 top-1/2 -translate-y-1/2',
+                  top: 'top-1 sm:top-2 left-1/2 -translate-x-1/2',
+                  right: 'right-1 sm:right-2 top-1/2 -translate-y-1/2',
                 }[relPos];
 
                 return (
