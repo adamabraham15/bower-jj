@@ -243,7 +243,13 @@ export const CardView: React.FC<CardViewProps> = ({
               ? 'cursor-default opacity-100'
               : 'opacity-60 cursor-not-allowed'
           }
-          ${isSelected ? '-translate-y-3 ring-4 ring-amber-400 shadow-amber-500/60 scale-105' : ''}
+          ${
+            isSelected
+              ? playerTag
+                ? 'ring-4 ring-amber-400 shadow-amber-500/60 scale-105'
+                : '-translate-y-3 ring-4 ring-amber-400 shadow-amber-500/60 scale-105'
+              : ''
+          }
           ${isPlayable && !isSelected ? 'hover:shadow-amber-500/30 hover:ring-2 hover:ring-amber-400/70' : ''}
           border-2 ${isRight ? 'border-amber-400 ring-2 ring-amber-400/70' : isLeft ? 'border-amber-300 ring-2 ring-amber-300/60' : 'border-slate-300'}
           bg-gradient-to-b from-white via-stone-50 to-stone-100 shadow-xl overflow-hidden`}

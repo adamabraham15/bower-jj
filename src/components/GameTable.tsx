@@ -837,7 +837,7 @@ export const GameTable: React.FC<GameTableProps> = ({
           />
 
           {/* Active Lead Suit Indicator in center */}
-          {(state.phase === 'playing' || isTrickResolving) && leadSuit && (
+          {state.phase === 'playing' && !isTrickResolving && leadSuit && (
             <LeadSuitBadge leadSuit={leadSuit} showFollowHint />
           )}
 
@@ -855,12 +855,12 @@ export const GameTable: React.FC<GameTableProps> = ({
                 // Spread out inside the felt arena towards each player's edge
                 const positionStyle =
                   pc.player === 0
-                    ? 'bottom-1.5 xs:bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2'
+                    ? 'bottom-2.5 sm:bottom-3.5 left-1/2 -translate-x-1/2'
                     : pc.player === 2
-                    ? 'top-1.5 xs:top-2 sm:top-3 left-1/2 -translate-x-1/2'
+                    ? 'top-3 sm:top-4 left-1/2 -translate-x-1/2'
                     : pc.player === 1
-                    ? 'left-1.5 xs:left-2 sm:left-3 top-1/2 -translate-y-1/2'
-                    : 'right-1.5 xs:right-2 sm:right-3 top-1/2 -translate-y-1/2';
+                    ? 'left-2.5 sm:left-3.5 top-1/2 -translate-y-1/2'
+                    : 'right-2.5 sm:right-3.5 top-1/2 -translate-y-1/2';
 
                 return (
                   <div
@@ -887,9 +887,9 @@ export const GameTable: React.FC<GameTableProps> = ({
 
           {/* Trick Resolving Banner: Floating at top of arena to keep bottom cards completely visible! */}
           {isTrickResolving && state.currentTrick.winner !== undefined && state.currentTrick.winningCard && (
-            <div className="absolute -top-3 sm:-top-4 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 border-2 border-amber-400 rounded-2xl px-3.5 py-1 sm:py-1.5 text-center shadow-2xl animate-in zoom-in-95 duration-200 whitespace-nowrap max-w-[94%]">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 bg-slate-950/95 border-2 border-amber-400 rounded-2xl px-3.5 py-1.5 text-center shadow-2xl animate-in zoom-in-95 duration-200 whitespace-nowrap max-w-[94%] pointer-events-none">
               <div className="text-xs font-black text-amber-300 flex items-center justify-center space-x-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
                 <span>
                   {state.players[state.currentTrick.winner].name} WON THE TRICK with {formatCardName(state.currentTrick.winningCard, state.trumpSuit)}!
                   {state.completedTricks.length === 4 && ' • Hand Completed!'}
