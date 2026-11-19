@@ -712,13 +712,13 @@ export const GameTable: React.FC<GameTableProps> = ({
             ← Exit
           </button>
 
-          {/* Team Scores Pill (Prominent & Responsive) */}
-          <div className="flex items-center space-x-1.5 sm:space-x-2.5 bg-slate-950/95 px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-2xl border border-slate-700/80 shadow-md flex-shrink-0">
+          {/* Team Scores Pill (Prominent, Wide & Responsive) */}
+          <div className="flex items-center space-x-2 xs:space-x-2.5 sm:space-x-3.5 bg-slate-950/95 px-2.5 xs:px-3 sm:px-4 py-1 sm:py-1.5 rounded-2xl border border-slate-700/80 shadow-md flex-shrink-0">
             {/* Your Team Score */}
-            <div className="flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0">
+            <div className="flex items-center space-x-1 xs:space-x-1.5 sm:space-x-2 flex-shrink-0">
               <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.7)] flex-shrink-0" />
-              <span className="hidden sm:inline text-xs font-black text-slate-300 uppercase tracking-wider">
-                TEAM:
+              <span className="text-[10px] xs:text-xs font-black text-slate-300 uppercase tracking-wider">
+                YOU
               </span>
               <span className="text-base sm:text-lg font-black text-cyan-300 tabular-nums">
                 {state.scores[0]}
@@ -726,15 +726,15 @@ export const GameTable: React.FC<GameTableProps> = ({
               <span className="hidden lg:inline text-[10px] text-slate-400 font-mono">({state.tricksWon[0]})</span>
             </div>
 
-            <span className="text-slate-600 font-black text-sm sm:text-base px-0.5">•</span>
+            <span className="text-slate-600 font-black text-xs sm:text-sm px-0.5">•</span>
 
             {/* Opponents Score */}
-            <div className="flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0">
+            <div className="flex items-center space-x-1 xs:space-x-1.5 sm:space-x-2 flex-shrink-0">
               <span className="text-base sm:text-lg font-black text-rose-300 tabular-nums">
                 {state.scores[1]}
               </span>
-              <span className="hidden sm:inline text-xs font-black text-slate-300 uppercase tracking-wider">
-                OPP:
+              <span className="text-[10px] xs:text-xs font-black text-slate-300 uppercase tracking-wider">
+                OPP
               </span>
               <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.7)] flex-shrink-0" />
               <span className="hidden lg:inline text-[10px] text-slate-400 font-mono">({state.tricksWon[1]})</span>
@@ -742,11 +742,21 @@ export const GameTable: React.FC<GameTableProps> = ({
           </div>
         </div>
 
-        {/* Center Section: Spacious Brand / Arena Title (Trump Suit is moved to table center felt) */}
+        {/* Center Section: Trump Banner with Maker & Alone when trump is active, else BOWER JJ */}
         <div className="flex-1 min-w-0 flex items-center justify-center px-1">
-          <span className="text-[10px] sm:text-xs font-black tracking-[0.25em] text-slate-500 uppercase select-none">
-            BOWER JJ
-          </span>
+          {state.trumpSuit && state.phase !== 'bidding_round_1' && state.phase !== 'bidding_round_2' && state.phase !== 'dealing' ? (
+            <TrumpBanner
+              trumpSuit={state.trumpSuit}
+              callerName={callerName}
+              callerTeam={callerTeam}
+              isAlone={state.isAlone}
+              isUserTeam={callerTeam === 0}
+            />
+          ) : (
+            <span className="text-[10px] sm:text-xs font-black tracking-[0.25em] text-slate-500 uppercase select-none">
+              BOWER JJ
+            </span>
+          )}
         </div>
 
         {/* Action Controls (Emotes moved to bottom hand bar, question mark removed) */}

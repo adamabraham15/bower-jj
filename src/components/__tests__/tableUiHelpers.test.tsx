@@ -528,19 +528,22 @@ describe('Table UI & Tutorial Helpers', () => {
 
     // Score pill section is guaranteed flex-shrink-0 z-20 so it is never compressed
     expect(htmlMulti).toContain('flex items-center space-x-1 xs:space-x-1.5 sm:space-x-3 flex-shrink-0 z-20');
-    // Scores are rendered
+    // Scores are rendered with wide team labels
+    expect(htmlMulti).toContain('YOU');
+    expect(htmlMulti).toContain('OPP');
     expect(htmlMulti).toContain('9');
     expect(htmlMulti).toContain('8');
-    // Trump suit symbol is cleanly displayed in the middle of the table felt in TableCenterTrump (symbols only, no text words)
+    // Center of top header features the prominent TrumpBanner with TRUMP:, suit and caller name
+    expect(htmlMulti).toContain('TRUMP:');
+    expect(htmlMulti).toContain('spades');
+    expect(htmlMulti).toContain('OpponentExtremeCaller');
+    // Trump suit symbol puck is cleanly displayed in the middle of the table felt in TableCenterTrump
     expect(htmlMulti).toContain('data-testid="table-center-trump"');
     expect(htmlMulti).toContain('title="Trump: SPADES"');
-    expect(htmlMulti).not.toContain('TRUMP:');
-    // Caller name is present in player pod
-    expect(htmlMulti).toContain('OpponentExtremeCaller');
   });
 
-  it('renders TableCenterTrump with pure suit symbols for Trump and Lead (no text words) and hides during resolution', () => {
-    // 1. Single Trump Puck (no lead suit yet)
+  it('renders TableCenterTrump with pure Trump suit symbol only (lead suit excluded from center) and hides during resolution', () => {
+    // 1. Single Trump Puck
     const htmlSingle = renderToStaticMarkup(
       React.createElement(TableCenterTrump, {
         trumpSuit: 'hearts',
@@ -552,19 +555,17 @@ describe('Table UI & Tutorial Helpers', () => {
     expect(htmlSingle).not.toContain('TRUMP:');
     expect(htmlSingle).not.toContain('hearts');
 
-    // 2. Dual Trump + Lead Puck (lead suit established)
-    const htmlDual = renderToStaticMarkup(
+    // 2. Only Trump is in center even if leadSuit is passed (lead suit excluded from center)
+    const htmlWithLead = renderToStaticMarkup(
       React.createElement(TableCenterTrump, {
         trumpSuit: 'spades',
         leadSuit: 'diamonds',
       })
     );
-    expect(htmlDual).toContain('data-testid="table-center-trump"');
-    expect(htmlDual).toContain('Trump: SPADES');
-    expect(htmlDual).toContain('Lead: DIAMONDS');
-    // Pure symbol, no text words
-    expect(htmlDual).not.toContain('TRUMP:');
-    expect(htmlDual).not.toContain('LEAD:');
+    expect(htmlWithLead).toContain('data-testid="table-center-trump"');
+    expect(htmlWithLead).toContain('title="Trump: SPADES"');
+    expect(htmlWithLead).not.toContain('diamonds');
+    expect(htmlWithLead).not.toContain('Lead:');
 
     // 3. Hides cleanly during trick resolution
     const htmlResolving = renderToStaticMarkup(

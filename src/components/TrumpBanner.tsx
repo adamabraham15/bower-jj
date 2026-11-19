@@ -28,23 +28,23 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
 
   return (
     <div
-      className="flex items-center space-x-1 sm:space-x-1.5 px-1.5 xs:px-2.5 sm:px-3.5 py-0.5 sm:py-1.5 rounded-full bg-slate-950/95 border-2 border-amber-400/90 shadow-[0_0_15px_rgba(245,158,11,0.3)] min-w-0 flex-shrink max-w-full overflow-hidden"
+      className="flex items-center space-x-1 sm:space-x-1.5 px-2 xs:px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-slate-950/95 border-2 border-amber-400/90 shadow-[0_0_15px_rgba(245,158,11,0.3)] min-w-0 flex-shrink max-w-full overflow-hidden"
       title={
         callerName
           ? `Trump: ${trumpSuit.toUpperCase()} — Called by ${callerName}${teamLabel ? ` (${teamLabel})` : ''}`
           : `Trump: ${trumpSuit.toUpperCase()}`
       }
     >
-      <span className="hidden md:inline text-xs text-amber-400 uppercase font-black tracking-wider flex-shrink-0">
+      <span className="text-[9px] xs:text-[10px] sm:text-xs text-amber-400 uppercase font-black tracking-wider flex-shrink-0">
         TRUMP:
       </span>
       <SuitIcon
         suit={trumpSuit}
-        className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0"
+        className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 flex-shrink-0"
         overrideColor={trumpSuit === 'spades' ? '#e2e8f0' : undefined}
       />
       <span
-        className={`hidden xs:inline text-xs sm:text-sm font-black uppercase tracking-wider flex-shrink-0 ${
+        className={`hidden min-[380px]:inline text-[10px] sm:text-xs font-black uppercase tracking-wider flex-shrink-0 ${
           isRedSuit ? 'text-red-400' : trumpSuit === 'clubs' ? 'text-emerald-400' : 'text-slate-100'
         }`}
       >
@@ -53,7 +53,7 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
 
       {callerName && (
         <span
-          className={`flex items-center space-x-1 text-[10px] sm:text-xs font-black px-1.5 sm:px-2 py-0.5 rounded-full border shadow-sm min-w-0 flex-shrink max-w-[100px] xs:max-w-[140px] sm:max-w-[220px] overflow-hidden ${
+          className={`flex items-center space-x-1 text-[9px] sm:text-[11px] font-black px-1.5 sm:px-2 py-0.5 rounded-full border shadow-sm min-w-0 flex-shrink max-w-[85px] xs:max-w-[110px] sm:max-w-[180px] overflow-hidden ${
             callerTeam === undefined
               ? 'bg-slate-800 border-slate-700 text-gray-200'
               : isTeam
@@ -68,14 +68,14 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
               }`}
             />
           )}
-          <span className="text-[10px] sm:text-xs text-slate-400 font-bold hidden sm:inline flex-shrink-0">by</span>
+          <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold hidden sm:inline flex-shrink-0">by</span>
           <span className="truncate max-w-[45px] xs:max-w-[70px] sm:max-w-[110px] md:max-w-[160px]">{callerName}</span>
-          {teamLabel && <span className="hidden md:inline text-[10px] sm:text-xs text-slate-400 font-semibold flex-shrink-0">({teamLabel})</span>}
+          {teamLabel && <span className="hidden md:inline text-[9px] sm:text-[10px] text-slate-400 font-semibold flex-shrink-0">({teamLabel})</span>}
         </span>
       )}
 
       {isAlone && (
-        <span className="text-[8px] sm:text-[9px] bg-red-600 text-white font-black px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0 shadow-sm animate-pulse tracking-wide">
+        <span className="text-[7px] sm:text-[8px] bg-red-600 text-white font-black px-1.5 py-0.5 rounded-full flex-shrink-0 shadow-sm animate-pulse tracking-wide">
           ALONE
         </span>
       )}
@@ -115,14 +115,11 @@ export interface TableCenterTrumpProps {
 }
 
 /**
- * Centered table felt emblem displaying ONLY the suit symbols in the middle of the table arena:
- * - Active Trump Suit symbol (gold accented puck)
- * - Active Lead Suit symbol (silver/slate accented puck) when a trick lead is established
- * Pure symbol design with no text labels, ensuring full visibility even when 3 cards are played.
+ * Centered table felt emblem displaying ONLY the Trump suit symbol in the middle of the table arena.
+ * Pure symbol design with no text labels, ensuring full visibility even when 3 or 4 cards are played.
  */
 export const TableCenterTrump: React.FC<TableCenterTrumpProps> = ({
   trumpSuit,
-  leadSuit,
   isTrickResolving,
 }) => {
   if (isTrickResolving) return null;
@@ -132,52 +129,16 @@ export const TableCenterTrump: React.FC<TableCenterTrumpProps> = ({
       data-testid="table-center-trump"
       className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none z-10 flex items-center justify-center transition-all duration-200"
     >
-      {!leadSuit ? (
-        /* Single Trump Token in Center */
-        <div
-          title={`Trump: ${trumpSuit.toUpperCase()}`}
-          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-950/95 border-2 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.5)] flex items-center justify-center backdrop-blur-xs transition-transform duration-150"
-        >
-          <SuitIcon
-            suit={trumpSuit}
-            className="w-5 h-5 sm:w-5.5 sm:h-5.5 drop-shadow-sm"
-            overrideColor={trumpSuit === 'spades' ? '#f8fafc' : undefined}
-          />
-        </div>
-      ) : (
-        /* Dual Trump + Lead Suit Symbols in Center */
-        <div
-          title={`Trump: ${trumpSuit.toUpperCase()} | Lead: ${leadSuit.toUpperCase()}`}
-          className="flex items-center space-x-1 sm:space-x-1.5 px-2 py-1 rounded-full bg-slate-950/95 border-2 border-amber-400/90 shadow-[0_0_18px_rgba(0,0,0,0.85)] backdrop-blur-xs transition-transform duration-150"
-        >
-          {/* Trump Symbol Puck */}
-          <div
-            title={`Trump: ${trumpSuit.toUpperCase()}`}
-            className="w-6 h-6 sm:w-6.5 sm:h-6.5 rounded-full bg-amber-400/20 border border-amber-400 flex items-center justify-center shadow-xs"
-          >
-            <SuitIcon
-              suit={trumpSuit}
-              className="w-4 h-4 sm:w-4.5 sm:h-4.5 drop-shadow-sm"
-              overrideColor={trumpSuit === 'spades' ? '#f8fafc' : undefined}
-            />
-          </div>
-
-          {/* Divider Dot */}
-          <span className="text-[8px] font-black text-slate-500 select-none">•</span>
-
-          {/* Lead Suit Symbol Puck */}
-          <div
-            title={`Lead Suit: ${leadSuit.toUpperCase()}`}
-            className="w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-full bg-slate-800/90 border border-slate-500/80 flex items-center justify-center shadow-xs"
-          >
-            <SuitIcon
-              suit={leadSuit}
-              className="w-3.5 h-3.5 sm:w-4 sm:h-4 drop-shadow-sm"
-              overrideColor={leadSuit === 'spades' ? '#f8fafc' : undefined}
-            />
-          </div>
-        </div>
-      )}
+      <div
+        title={`Trump: ${trumpSuit.toUpperCase()}`}
+        className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-950/95 border-2 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.5)] flex items-center justify-center backdrop-blur-xs transition-transform duration-150"
+      >
+        <SuitIcon
+          suit={trumpSuit}
+          className="w-5 h-5 sm:w-5.5 sm:h-5.5 drop-shadow-sm"
+          overrideColor={trumpSuit === 'spades' ? '#f8fafc' : undefined}
+        />
+      </div>
     </div>
   );
 };
