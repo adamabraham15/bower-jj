@@ -857,12 +857,12 @@ export const GameTable: React.FC<GameTableProps> = ({
                 // Spread out inside the felt arena towards each player's edge
                 const positionStyle =
                   pc.player === 0
-                    ? 'bottom-2 sm:bottom-2.5 left-1/2 -translate-x-1/2'
+                    ? 'bottom-1.5 sm:bottom-2 left-1/2 -translate-x-1/2'
                     : pc.player === 2
-                    ? 'top-2.5 sm:top-3 left-1/2 -translate-x-1/2'
+                    ? 'top-1.5 sm:top-2 left-1/2 -translate-x-1/2'
                     : pc.player === 1
-                    ? 'left-1.5 sm:left-2 top-1/2 -translate-y-1/2'
-                    : 'right-1.5 sm:right-2 top-1/2 -translate-y-1/2';
+                    ? 'left-1 sm:left-1.5 top-1/2 -translate-y-1/2'
+                    : 'right-1 sm:right-1.5 top-1/2 -translate-y-1/2';
 
                 return (
                   <div

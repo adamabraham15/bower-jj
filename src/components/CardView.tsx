@@ -239,97 +239,104 @@ export const CardView: React.FC<CardViewProps> = ({
       {playerTagPosition !== 'bottom' && tagPill}
 
       {/* Card Body */}
-      <div
-        onClick={isPlayable ? onClick : undefined}
-        className={`relative rounded-xl transition-all duration-200 ease-out flex-shrink-0 ${cfg.wClass} ${cfg.hClass}
-          ${
-            isPlayable
-              ? 'cursor-pointer hover:-translate-y-2 active:scale-95'
-              : isTableCard || playerTag
-              ? 'cursor-default opacity-100'
-              : 'opacity-60 cursor-not-allowed'
-          }
-          ${
-            isSelected
-              ? playerTag
-                ? 'ring-4 ring-amber-400 shadow-amber-500/60 scale-105'
-                : '-translate-y-3 ring-4 ring-amber-400 shadow-amber-500/60 scale-105'
-              : ''
-          }
-          ${isPlayable && !isSelected ? 'hover:shadow-amber-500/30 hover:ring-2 hover:ring-amber-400/70' : ''}
-          border-2 ${isRight ? 'border-amber-400 ring-2 ring-amber-400/70' : isLeft ? 'border-amber-300 ring-2 ring-amber-300/60' : 'border-slate-300'}
-          bg-gradient-to-b from-white via-stone-50 to-stone-100 shadow-xl overflow-hidden`}
-        style={{
-          ...(cfg.wStyle !== undefined
-            ? {
-                width: `${cfg.wStyle}px`,
-                height: `${cfg.hStyle}px`,
-                minWidth: `${cfg.wStyle}px`,
-                minHeight: `${cfg.hStyle}px`,
-                maxWidth: `${cfg.wStyle}px`,
-                maxHeight: `${cfg.hStyle}px`,
+      {(() => {
+        const cardWidthClass = isTableCard ? 'w-[56px] xs:w-[60px] sm:w-[64px]' : cfg.wClass;
+        const cardHeightClass = isTableCard ? 'h-[80px] xs:h-[86px] sm:h-[92px]' : cfg.hClass;
+
+        return (
+          <div
+            onClick={isPlayable ? onClick : undefined}
+            className={`relative rounded-xl transition-all duration-200 ease-out flex-shrink-0 ${cardWidthClass} ${cardHeightClass}
+              ${
+                isPlayable
+                  ? 'cursor-pointer hover:-translate-y-2 active:scale-95'
+                  : isTableCard || playerTag
+                  ? 'cursor-default opacity-100'
+                  : 'opacity-60 cursor-not-allowed'
               }
-            : {}),
-          ...(rotation !== 0 || elevated
-            ? { transform: `rotate(${rotation}deg) ${elevated ? 'translateY(-14px)' : ''}`.trim() }
-            : {}),
-          boxShadow: isRight
-            ? '0 0 20px rgba(245, 158, 11, 0.7), 0 8px 16px rgba(0,0,0,0.5)'
-            : isLeft
-            ? '0 0 16px rgba(245, 158, 11, 0.45), 0 8px 16px rgba(0,0,0,0.5)'
-            : '0 4px 12px rgba(0,0,0,0.3)',
-        }}
-      >
-        {/* Bower Ribbons */}
-        {isRight && (
-          <div className={`absolute top-0 right-0 left-0 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 font-black ${cfg.ribbonClass} text-center tracking-wider uppercase z-10 shadow-sm leading-none`}>
-            RIGHT BOWER
+              ${
+                isSelected
+                  ? playerTag
+                    ? 'ring-4 ring-amber-400 shadow-amber-500/60 scale-105'
+                    : '-translate-y-3 ring-4 ring-amber-400 shadow-amber-500/60 scale-105'
+                  : ''
+              }
+              ${isPlayable && !isSelected ? 'hover:shadow-amber-500/30 hover:ring-2 hover:ring-amber-400/70' : ''}
+              border-2 ${isRight ? 'border-amber-400 ring-2 ring-amber-400/70' : isLeft ? 'border-amber-300 ring-2 ring-amber-300/60' : 'border-slate-300'}
+              bg-gradient-to-b from-white via-stone-50 to-stone-100 shadow-xl overflow-hidden`}
+            style={{
+              ...(cfg.wStyle !== undefined && !isTableCard
+                ? {
+                    width: `${cfg.wStyle}px`,
+                    height: `${cfg.hStyle}px`,
+                    minWidth: `${cfg.wStyle}px`,
+                    minHeight: `${cfg.hStyle}px`,
+                    maxWidth: `${cfg.wStyle}px`,
+                    maxHeight: `${cfg.hStyle}px`,
+                  }
+                : {}),
+              ...(rotation !== 0 || elevated
+                ? { transform: `rotate(${rotation}deg) ${elevated ? 'translateY(-14px)' : ''}`.trim() }
+                : {}),
+              boxShadow: isRight
+                ? '0 0 20px rgba(245, 158, 11, 0.7), 0 8px 16px rgba(0,0,0,0.5)'
+                : isLeft
+                ? '0 0 16px rgba(245, 158, 11, 0.45), 0 8px 16px rgba(0,0,0,0.5)'
+                : '0 4px 12px rgba(0,0,0,0.3)',
+            }}
+          >
+            {/* Bower Ribbons */}
+            {isRight && (
+              <div className={`absolute top-0 right-0 left-0 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 font-black ${cfg.ribbonClass} text-center tracking-wider uppercase z-10 shadow-sm leading-none`}>
+                RIGHT BOWER
+              </div>
+            )}
+            {isLeft && (
+              <div className={`absolute top-0 right-0 left-0 bg-gradient-to-r from-amber-200 via-yellow-200 to-amber-400 text-slate-950 font-black ${cfg.ribbonClass} text-center tracking-wider uppercase z-10 shadow-sm leading-none`}>
+                {trumpSuit ? `LEFT BOWER • ${trumpSuit.toUpperCase()}` : 'LEFT BOWER'}
+              </div>
+            )}
+            {badge && !isRight && !isLeft && (
+              <div className={`absolute top-0 right-0 left-0 bg-slate-800 text-amber-300 font-bold ${cfg.ribbonClass} text-center tracking-wider uppercase z-10 leading-none`}>
+                {badge}
+              </div>
+            )}
+
+            {/* Modern Faint Card Face Watermark */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.04] select-none">
+              <span className="text-[10px] sm:text-[12px] font-black tracking-[0.2em] text-slate-900 rotate-45 uppercase font-sans">
+                BOWER JJ
+              </span>
+            </div>
+
+            {/* Top Left Corner */}
+            <div className={`absolute left-1 sm:left-1.5 flex flex-col items-center leading-none ${isRight || isLeft || badge ? 'top-3.5 sm:top-4' : 'top-1 sm:top-1.5'}`}>
+              <span className={`${cfg.rankClass} ${rankColorClass}`}>
+                {card.rank}
+              </span>
+              <SuitIcon suit={card.suit} className={cfg.cornerIconClass} />
+            </div>
+
+            {/* Center Suit Pip (Clean, Proportional, No text collisions!) */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-1">
+              <SuitIcon suit={card.suit} className={cfg.centerIconClass} />
+            </div>
+
+            {/* Bottom Right Corner (Inverted) */}
+            <div className="absolute bottom-1 sm:bottom-1.5 right-1 sm:right-1.5 flex flex-col items-center leading-none rotate-180">
+              <span className={`${cfg.rankClass} ${rankColorClass}`}>
+                {card.rank}
+              </span>
+              <SuitIcon suit={card.suit} className={cfg.cornerIconClass} />
+            </div>
+
+            {/* Playable Border Subtle Golden Sheen */}
+            {isPlayable && (
+              <div className="absolute inset-0 border border-amber-400/30 rounded-xl pointer-events-none" />
+            )}
           </div>
-        )}
-        {isLeft && (
-          <div className={`absolute top-0 right-0 left-0 bg-gradient-to-r from-amber-200 via-yellow-200 to-amber-400 text-slate-950 font-black ${cfg.ribbonClass} text-center tracking-wider uppercase z-10 shadow-sm leading-none`}>
-            {trumpSuit ? `LEFT BOWER • ${trumpSuit.toUpperCase()}` : 'LEFT BOWER'}
-          </div>
-        )}
-        {badge && !isRight && !isLeft && (
-          <div className={`absolute top-0 right-0 left-0 bg-slate-800 text-amber-300 font-bold ${cfg.ribbonClass} text-center tracking-wider uppercase z-10 leading-none`}>
-            {badge}
-          </div>
-        )}
-
-        {/* Modern Faint Card Face Watermark */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.04] select-none">
-          <span className="text-[10px] sm:text-[12px] font-black tracking-[0.2em] text-slate-900 rotate-45 uppercase font-sans">
-            BOWER JJ
-          </span>
-        </div>
-
-        {/* Top Left Corner */}
-        <div className={`absolute left-1 sm:left-1.5 flex flex-col items-center leading-none ${isRight || isLeft || badge ? 'top-3.5 sm:top-4' : 'top-1 sm:top-1.5'}`}>
-          <span className={`${cfg.rankClass} ${rankColorClass}`}>
-            {card.rank}
-          </span>
-          <SuitIcon suit={card.suit} className={cfg.cornerIconClass} />
-        </div>
-
-        {/* Center Suit Pip (Clean, Proportional, No text collisions!) */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-1">
-          <SuitIcon suit={card.suit} className={cfg.centerIconClass} />
-        </div>
-
-        {/* Bottom Right Corner (Inverted) */}
-        <div className="absolute bottom-1 sm:bottom-1.5 right-1 sm:right-1.5 flex flex-col items-center leading-none rotate-180">
-          <span className={`${cfg.rankClass} ${rankColorClass}`}>
-            {card.rank}
-          </span>
-          <SuitIcon suit={card.suit} className={cfg.cornerIconClass} />
-        </div>
-
-        {/* Playable Border Subtle Golden Sheen */}
-        {isPlayable && (
-          <div className="absolute inset-0 border border-amber-400/30 rounded-xl pointer-events-none" />
-        )}
-      </div>
+        );
+      })()}
 
       {/* Player Tag (Bottom position) */}
       {playerTagPosition === 'bottom' && tagPill}

@@ -19,7 +19,7 @@ import { sounds, loadSavedAudioPreferences } from '../../audio/sound';
 import { RoomManager } from '../../../server/roomManager';
 import { GameTable } from '../GameTable';
 import { MultiplayerGameTable } from '../MultiplayerGameTable';
-import { TrumpBanner } from '../TrumpBanner';
+import { TrumpBanner, TableCenterTrump } from '../TrumpBanner';
 import { MainMenu } from '../MainMenu';
 import { ProfileModal } from '../ProfileModal';
 import { GameLobbyModal } from '../GameLobbyModal';
@@ -531,12 +531,50 @@ describe('Table UI & Tutorial Helpers', () => {
     // Scores are rendered
     expect(htmlMulti).toContain('9');
     expect(htmlMulti).toContain('8');
-    // Trump suit is prominently displayed in the middle of the table felt in TableCenterTrump
+    // Trump suit symbol is cleanly displayed in the middle of the table felt in TableCenterTrump (symbols only, no text words)
     expect(htmlMulti).toContain('data-testid="table-center-trump"');
-    expect(htmlMulti).toContain('TRUMP:');
-    expect(htmlMulti).toContain('spades');
-    // Caller name is present and truncated safely in the center table emblem
+    expect(htmlMulti).toContain('title="Trump: SPADES"');
+    expect(htmlMulti).not.toContain('TRUMP:');
+    // Caller name is present in player pod
     expect(htmlMulti).toContain('OpponentExtremeCaller');
+  });
+
+  it('renders TableCenterTrump with pure suit symbols for Trump and Lead (no text words) and hides during resolution', () => {
+    // 1. Single Trump Puck (no lead suit yet)
+    const htmlSingle = renderToStaticMarkup(
+      React.createElement(TableCenterTrump, {
+        trumpSuit: 'hearts',
+      })
+    );
+    expect(htmlSingle).toContain('data-testid="table-center-trump"');
+    expect(htmlSingle).toContain('title="Trump: HEARTS"');
+    // Pure symbol, no text words
+    expect(htmlSingle).not.toContain('TRUMP:');
+    expect(htmlSingle).not.toContain('hearts');
+
+    // 2. Dual Trump + Lead Puck (lead suit established)
+    const htmlDual = renderToStaticMarkup(
+      React.createElement(TableCenterTrump, {
+        trumpSuit: 'spades',
+        leadSuit: 'diamonds',
+      })
+    );
+    expect(htmlDual).toContain('data-testid="table-center-trump"');
+    expect(htmlDual).toContain('Trump: SPADES');
+    expect(htmlDual).toContain('Lead: DIAMONDS');
+    // Pure symbol, no text words
+    expect(htmlDual).not.toContain('TRUMP:');
+    expect(htmlDual).not.toContain('LEAD:');
+
+    // 3. Hides cleanly during trick resolution
+    const htmlResolving = renderToStaticMarkup(
+      React.createElement(TableCenterTrump, {
+        trumpSuit: 'spades',
+        leadSuit: 'diamonds',
+        isTrickResolving: true,
+      })
+    );
+    expect(htmlResolving).toBe('');
   });
 
   it('renders mobile Sign Out button in MainMenu header and ProfileModal footer when authenticated', () => {
