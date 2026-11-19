@@ -203,7 +203,7 @@ export const CardView: React.FC<CardViewProps> = ({
 
   const tagPill = playerTag ? (
     <span
-      className={`text-[10px] sm:text-[11px] font-black px-2 sm:px-2.5 py-0.5 rounded-full border shadow-md whitespace-nowrap transition-transform flex items-center gap-1 leading-tight ${
+      className={`text-[9px] xs:text-[10px] sm:text-[11px] font-black px-1.5 xs:px-2 sm:px-2.5 py-0.5 rounded-full border shadow-md whitespace-nowrap transition-transform flex items-center gap-1 leading-tight ${
         playerTagPosition === 'bottom' ? 'mt-1' : 'mb-1'
       } ${
         isSelected ? 'scale-105' : ''
@@ -219,7 +219,7 @@ export const CardView: React.FC<CardViewProps> = ({
     >
       {playerTagVariant === 'you' && <span className="w-1.5 h-1.5 rounded-full bg-slate-950 flex-shrink-0" />}
       {playerTagVariant === 'teammate' && <span className="w-1.5 h-1.5 rounded-full bg-sky-400 flex-shrink-0" />}
-      <span className="truncate max-w-[100px] sm:max-w-[130px]">{playerTag}</span>
+      <span className="truncate max-w-[56px] xs:max-w-[66px] sm:max-w-[100px]">{playerTag}</span>
     </span>
   ) : null;
 
