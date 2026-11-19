@@ -707,36 +707,36 @@ export const GameTable: React.FC<GameTableProps> = ({
               sounds.playUiClick();
               onExitGame();
             }}
-            className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-gray-300 flex-shrink-0 shadow-sm"
+            className="px-1.5 xs:px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] xs:text-xs font-bold text-gray-300 flex-shrink-0 shadow-sm"
           >
             ← Exit
           </button>
 
           {/* Team Scores Pill (Prominent, Wide & Responsive) */}
-          <div className="flex items-center space-x-1.5 xs:space-x-2 sm:space-x-2.5 bg-slate-950/95 px-2 xs:px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-2xl border border-slate-700/80 shadow-md flex-shrink-0">
+          <div className="flex items-center space-x-1 xs:space-x-1.5 sm:space-x-2 bg-slate-950/95 px-1.5 xs:px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-2xl border border-slate-700/80 shadow-md flex-shrink-0">
             {/* Your Team Score */}
-            <div className="flex items-center space-x-1 xs:space-x-1.5 sm:space-x-2 flex-shrink-0">
-              <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.7)] flex-shrink-0" />
-              <span className="text-[10px] xs:text-xs font-black text-slate-300 uppercase tracking-wider">
+            <div className="flex items-center space-x-1 flex-shrink-0">
+              <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.7)] flex-shrink-0" />
+              <span className="text-[9.5px] xs:text-[10.5px] sm:text-xs font-black text-slate-300 uppercase tracking-wider">
                 YOU
               </span>
-              <span className="text-base sm:text-lg font-black text-cyan-300 tabular-nums">
+              <span className="text-sm xs:text-base sm:text-lg font-black text-cyan-300 tabular-nums">
                 {state.scores[0]}
               </span>
               <span className="hidden lg:inline text-[10px] text-slate-400 font-mono">({state.tricksWon[0]})</span>
             </div>
 
-            <span className="text-slate-600 font-black text-xs sm:text-sm px-0.5">•</span>
+            <span className="text-slate-600 font-black text-xs px-0.5">•</span>
 
             {/* Opponents Score */}
-            <div className="flex items-center space-x-1 xs:space-x-1.5 sm:space-x-2 flex-shrink-0">
-              <span className="text-base sm:text-lg font-black text-rose-300 tabular-nums">
+            <div className="flex items-center space-x-1 flex-shrink-0">
+              <span className="text-sm xs:text-base sm:text-lg font-black text-rose-300 tabular-nums">
                 {state.scores[1]}
               </span>
-              <span className="text-[10px] xs:text-xs font-black text-slate-300 uppercase tracking-wider">
+              <span className="text-[9.5px] xs:text-[10.5px] sm:text-xs font-black text-slate-300 uppercase tracking-wider">
                 OPP
               </span>
-              <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.7)] flex-shrink-0" />
+              <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.7)] flex-shrink-0" />
               <span className="hidden lg:inline text-[10px] text-slate-400 font-mono">({state.tricksWon[1]})</span>
             </div>
           </div>

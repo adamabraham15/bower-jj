@@ -28,19 +28,19 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
 
   return (
     <div
-      className="flex items-center space-x-1 sm:space-x-1.5 px-2 xs:px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-slate-950/95 border-2 border-amber-400/90 shadow-[0_0_15px_rgba(245,158,11,0.3)] min-w-0 flex-shrink max-w-full overflow-hidden"
+      className="flex items-center space-x-1 sm:space-x-1.5 px-1.5 xs:px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-slate-950/95 border-2 border-amber-400/90 shadow-[0_0_15px_rgba(245,158,11,0.3)] min-w-0 flex-shrink max-w-full overflow-hidden"
       title={
         callerName
           ? `Trump: ${trumpSuit.toUpperCase()} — Called by ${callerName}${teamLabel ? ` (${teamLabel})` : ''}`
           : `Trump: ${trumpSuit.toUpperCase()}`
       }
     >
-      <span className="text-[9px] xs:text-[10px] sm:text-xs text-amber-400 uppercase font-black tracking-wider flex-shrink-0">
+      <span className="text-[8.5px] xs:text-[9.5px] sm:text-xs text-amber-400 uppercase font-black tracking-wider flex-shrink-0">
         TRUMP:
       </span>
       <SuitIcon
         suit={trumpSuit}
-        className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 flex-shrink-0"
+        className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4.5 sm:h-4.5 flex-shrink-0"
         overrideColor={trumpSuit === 'spades' ? '#e2e8f0' : undefined}
       />
       <span
@@ -53,7 +53,7 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
 
       {callerName && (
         <span
-          className={`flex items-center space-x-1 text-[9px] sm:text-[11px] font-black px-1.5 sm:px-2 py-0.5 rounded-full border shadow-sm flex-shrink-0 ${
+          className={`flex items-center space-x-0.5 xs:space-x-1 text-[8.5px] xs:text-[9.5px] sm:text-[11px] font-black px-1 xs:px-1.5 sm:px-2 py-0.5 rounded-full border shadow-sm min-w-0 flex-shrink ${
             callerTeam === undefined
               ? 'bg-slate-800 border-slate-700 text-gray-200'
               : isTeam
@@ -68,14 +68,14 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
               }`}
             />
           )}
-          <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold flex-shrink-0">by</span>
-          <span className="truncate max-w-[80px] xs:max-w-[100px] sm:max-w-[140px] md:max-w-[170px]">{callerName}</span>
+          <span className="text-[8.5px] xs:text-[9.5px] sm:text-[10px] text-slate-400 font-bold flex-shrink-0">by</span>
+          <span className="truncate max-w-[62px] xs:max-w-[85px] sm:max-w-[130px] md:max-w-[160px]">{callerName}</span>
           {teamLabel && <span className="hidden md:inline text-[9px] sm:text-[10px] text-slate-400 font-semibold flex-shrink-0">({teamLabel})</span>}
         </span>
       )}
 
       {isAlone && (
-        <span className="text-[7px] sm:text-[8px] bg-red-600 text-white font-black px-1.5 py-0.5 rounded-full flex-shrink-0 shadow-sm animate-pulse tracking-wide">
+        <span className="text-[6.5px] xs:text-[7px] sm:text-[8px] bg-red-600 text-white font-black px-1 xs:px-1.5 py-0.5 rounded-full flex-shrink-0 shadow-sm animate-pulse tracking-wide">
           ALONE
         </span>
       )}
