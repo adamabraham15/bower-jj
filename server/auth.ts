@@ -48,6 +48,20 @@ export interface VerifiedIdentity {
 }
 
 export class TokenVerifier {
+  private tokenCache = new Map<string, { identity: VerifiedIdentity; expiresAt: number }>();
+  private readonly maxCacheSize = 300;
+
+  private cacheIdentity(token: string, identity: VerifiedIdentity, jwtPayload?: any) {
+    if (!token || !identity || identity.isGuest) return;
+    const jwtExp = typeof jwtPayload?.exp === 'number' ? jwtPayload.exp * 1000 : Date.now() + 10 * 60 * 1000;
+    const ttl = Math.min(Date.now() + 5 * 60 * 1000, jwtExp);
+    if (this.tokenCache.size >= this.maxCacheSize) {
+      const oldestKey = this.tokenCache.keys().next().value;
+      if (oldestKey) this.tokenCache.delete(oldestKey);
+    }
+    this.tokenCache.set(token, { identity, expiresAt: ttl });
+  }
+
   /**
    * Cryptographically validates Supabase Access Token or verified dev session.
    * NEVER trusts client-supplied username as proof of identity.
@@ -57,6 +71,13 @@ export class TokenVerifier {
     fallbackUsername?: string,
     fallbackAvatar?: string
   ): Promise<VerifiedIdentity | null> {
+    if (token && typeof token === 'string') {
+      const cached = this.tokenCache.get(token);
+      if (cached && cached.expiresAt > Date.now()) {
+        return cached.identity;
+      }
+    }
+
     const isSupabaseJwt = Boolean(
       token &&
       typeof token === 'string' &&
@@ -92,7 +113,7 @@ export class TokenVerifier {
               return null;
             }
 
-            return {
+            const verifiedUser: VerifiedIdentity = {
               userId: user.id,
               email: user.email,
               username: profile?.username || user.user_metadata?.username || fallbackUsername || `Player_${user.id.slice(0, 5)}`,
@@ -100,6 +121,8 @@ export class TokenVerifier {
               isAdmin: Boolean(profile?.is_admin),
               isGuest: false,
             };
+            this.cacheIdentity(token!, verifiedUser, jwtPayload);
+            return verifiedUser;
           } else {
             console.warn('[AUTH SECURITY] Expired or invalid Supabase JWT from auth.getUser:', error?.message);
           }
@@ -113,7 +136,7 @@ export class TokenVerifier {
         const isExpired = typeof jwtPayload.exp === 'number' && jwtPayload.exp < Date.now() / 1000;
         if (!isExpired) {
           const userId = jwtPayload.sub;
-          return {
+          const fallbackVerified: VerifiedIdentity = {
             userId,
             email: jwtPayload.email,
             username: jwtPayload.user_metadata?.username || fallbackUsername || `Player_${userId.slice(0, 5)}`,
@@ -121,6 +144,8 @@ export class TokenVerifier {
             isAdmin: false,
             isGuest: false,
           };
+          this.cacheIdentity(token!, fallbackVerified, jwtPayload);
+          return fallbackVerified;
         }
       }
     }

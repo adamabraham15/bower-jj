@@ -1450,10 +1450,15 @@ export class RoomManager {
     const conn = this.connections.get(userId);
     if (!conn) return;
 
-    // Cleanly leave any stale lobby or finished room before entering matchmaking queue
+    // Cleanly leave any stale lobby, finished room, or abandoned room before entering matchmaking queue
     if (conn.roomCode) {
       const existingRoom = this.rooms.get(conn.roomCode);
-      if (!existingRoom || existingRoom.status === 'lobby' || existingRoom.status === 'finished') {
+      if (
+        !existingRoom ||
+        existingRoom.status === 'lobby' ||
+        existingRoom.status === 'finished' ||
+        existingRoom.slots.every((s) => !s || s.isAI || s.abandoned || s.userId !== userId)
+      ) {
         this.leaveRoom(userId);
       }
     }

@@ -332,6 +332,7 @@ export const App: React.FC = () => {
   const [authToken, setAuthToken] = useState<string | null>(null);
   const authUserRef = useRef<any | null>(null);
   const pendingSignupActivationRef = useRef<boolean>(false);
+  const pendingQueueAfterAuthRef = useRef<{ queue: QueueType; autoFillBots?: boolean } | null>(null);
 
   useEffect(() => {
     authUserRef.current = authUser;
@@ -1032,8 +1033,9 @@ export const App: React.FC = () => {
       return;
     }
     if (!authUser && (queue === 'ranked_solo' || queue === 'ranked_duo')) {
-      setAuthModalInitialTab('register');
-      setAuthModalReason('Ranked Competitive matches record your MMR and Global Leaderboard rank. Please create an account or sign in to play Ranked!');
+      pendingQueueAfterAuthRef.current = { queue, autoFillBots };
+      setAuthModalInitialTab('login');
+      setAuthModalReason('Ranked Competitive matches record your MMR and Global Leaderboard rank. Please sign in or create an account to play Ranked!');
       setIsAuthOpen(true);
       return;
     }
@@ -1048,6 +1050,7 @@ export const App: React.FC = () => {
 
   const handleLogout = async () => {
     sounds.playUiClick();
+    pendingQueueAfterAuthRef.current = null;
     await authService.logout();
     setAuthUser(null);
     setAuthToken(null);
@@ -1919,9 +1922,28 @@ export const App: React.FC = () => {
           if (user?.id) syncAuthoritativeProfile(user.id);
           setIsAuthOpen(false);
           showToast(`Signed in as ${user.user_metadata?.username || user.email}. Cloud sync active.`, 'Welcome Back!');
+
+          // Immediately reauthenticate websocket with fresh token
+          if (token) {
+            multiplayerClient.reauthenticate(
+              token,
+              user.user_metadata?.username || profile.username,
+              user.user_metadata?.avatar_icon || profile.avatarIcon
+            );
+          }
+
           const hasSeenTutorial = localStorage.getItem('bower_jj_tutorial_seen');
           if (!hasSeenTutorial) {
             setTimeout(() => setIsTutorialOpen(true), 400);
+          }
+
+          // Immediately queue up into the game they selected before auth!
+          if (pendingQueueAfterAuthRef.current) {
+            const pending = pendingQueueAfterAuthRef.current;
+            pendingQueueAfterAuthRef.current = null;
+            setTimeout(() => {
+              handleOpenMatchmaking(pending.queue, pending.autoFillBots);
+            }, 60);
           }
         }}
         onSignupActivated={(user, token) => {
@@ -1930,9 +1952,28 @@ export const App: React.FC = () => {
           if (user?.id) syncAuthoritativeProfile(user.id);
           setIsAuthOpen(false);
           showToast(`Account created for ${user?.user_metadata?.username}! Welcome to BOWER JJ.`, 'Account Created!');
+
+          // Immediately reauthenticate websocket with fresh token
+          if (token) {
+            multiplayerClient.reauthenticate(
+              token,
+              user.user_metadata?.username || profile.username,
+              user.user_metadata?.avatar_icon || profile.avatarIcon
+            );
+          }
+
           const hasSeenTutorial = localStorage.getItem('bower_jj_tutorial_seen');
           if (!hasSeenTutorial) {
             setTimeout(() => setIsTutorialOpen(true), 400);
+          }
+
+          // Immediately queue up into the game they selected before auth!
+          if (pendingQueueAfterAuthRef.current) {
+            const pending = pendingQueueAfterAuthRef.current;
+            pendingQueueAfterAuthRef.current = null;
+            setTimeout(() => {
+              handleOpenMatchmaking(pending.queue, pending.autoFillBots);
+            }, 60);
           }
         }}
         onContinueAsGuest={() => {

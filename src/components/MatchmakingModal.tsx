@@ -111,6 +111,12 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
     const unsubscribe = multiplayerClient.setCallbacks({
       onAuth: () => {
         setErrorMessage(null);
+        if (queueType !== 'private') {
+          const mode = (queueType === 'ranked_rivals' || queueType === 'ranked_duo')
+            ? 'rivals'
+            : (queueType === 'unranked' ? 'casual' : 'solo');
+          multiplayerClient.enterQueue(mode, duoPreference);
+        }
       },
       onRoom: (room) => {
         setCurrentRoom(room);
@@ -283,7 +289,7 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
           <div
             onClick={() => {
               setErrorMessage(null);
-              multiplayerClient.connect(undefined, undefined, undefined, true).then((connected) => {
+              multiplayerClient.connect().then((connected) => {
                 if (connected) {
                   setErrorMessage(null);
                   if (queueType === 'private') {

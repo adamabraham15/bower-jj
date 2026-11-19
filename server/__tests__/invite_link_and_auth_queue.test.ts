@@ -406,5 +406,52 @@ describe('Invite Link Parsing and Authentication Queue Suite', () => {
 
       unsubApp();
     });
+
+    it('buffers QUEUE_ENTER during reauthentication and immediately flushes upon AUTH_SUCCESS', async () => {
+      const client = new MultiplayerClient();
+      const sent: any[] = [];
+      (client as any).ws = { readyState: 1, send: (raw: string) => sent.push(JSON.parse(raw)) };
+      (client as any).isAuthenticated = true; // previously connected as guest
+
+      // Player logs in -> triggers reauthenticate
+      client.reauthenticate('test_token_123', 'RegisteredUser', 'crown_avatar');
+      expect((client as any).isReauthenticating).toBe(true);
+      expect(client.isAuthed()).toBe(false);
+
+      // Auth message sent
+      expect(sent).toHaveLength(1);
+      expect(sent[0].type).toBe('AUTH');
+      expect(sent[0].accessToken).toBe('test_token_123');
+
+      // Player immediately clicks to queue up in ranked solo
+      client.enterQueue('solo');
+
+      // QUEUE_ENTER must NOT be sent over wire yet because auth is in flight!
+      expect(sent).toHaveLength(1);
+      expect((client as any).pendingMessages).toHaveLength(1);
+      expect((client as any).pendingMessages[0].type).toBe('QUEUE_ENTER');
+
+      // Server responds with AUTH_SUCCESS
+      (client as any).handleMessage({
+        type: 'AUTH_SUCCESS',
+        sessionToken: 'tok_abc',
+        user: {
+          id: 'usr_reg_123',
+          username: 'RegisteredUser',
+          avatarIcon: 'crown_avatar',
+          rankTier: '10',
+          rankPoints: 50,
+          mmr: 1250,
+        },
+      });
+
+      // Now client is authenticated, not reauthenticating, and pending message was flushed
+      expect((client as any).isReauthenticating).toBe(false);
+      expect(client.isAuthed()).toBe(true);
+      expect(sent).toHaveLength(2);
+      expect(sent[1].type).toBe('QUEUE_ENTER');
+      expect(sent[1].mode).toBe('solo');
+      expect((client as any).pendingMessages).toHaveLength(0);
+    });
   });
 });

@@ -455,6 +455,7 @@ export async function createMultiplayerServer(
 
           if (!identity) {
             isAuthenticating = false;
+            preAuthQueue.length = 0;
             telemetry.authFailuresBlocked++;
             sendError(ws, 'Authentication rejected: Invalid, expired, or missing credentials.');
             return;
@@ -547,12 +548,13 @@ export async function createMultiplayerServer(
           return;
         }
 
-        // Must be authenticated for subsequent actions
+        // Must be authenticated for subsequent actions. If authentication is currently in flight, buffer message until AUTH completes.
+        if (isAuthenticating) {
+          preAuthQueue.push(msg);
+          return;
+        }
+
         if (!authenticatedUserId) {
-          if (isAuthenticating) {
-            preAuthQueue.push(msg);
-            return;
-          }
           sendError(ws, 'Not authenticated. Send AUTH message first.');
           return;
         }

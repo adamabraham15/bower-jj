@@ -38,6 +38,7 @@ export class MultiplayerClient {
   private myPosition: PlayerPosition | null = null;
   private cachedResolvedUrl: string | null = null;
   private isAuthenticated: boolean = false;
+  private isReauthenticating: boolean = false;
   private authResolvers: Array<(success: boolean) => void> = [];
 
   private resolvePendingAuth(success: boolean) {
@@ -282,17 +283,19 @@ export class MultiplayerClient {
       } catch {}
     }
 
-    if (!forceFresh && this.ws && this.ws.readyState === WebSocket.OPEN && this.isAuthenticated) {
+    if (!forceFresh && this.ws && this.ws.readyState === WebSocket.OPEN) {
       if (tokenUpgraded || (this.accessToken && this.accessToken !== this.lastSentAccessToken)) {
-        this.reauthenticate(this.accessToken || accessToken, username, avatarIcon);
+        return this.reauthenticate(this.accessToken || accessToken, username, avatarIcon);
       }
-      return true;
+      if (this.isAuthenticated && !this.isReauthenticating) {
+        return true;
+      }
     }
 
     if (!forceFresh && (this.isConnecting || (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)))) {
       return new Promise<boolean>((resolve) => {
         this.authResolvers.push(resolve);
-        setTimeout(() => resolve(this.isAuthenticated), 7000);
+        setTimeout(() => resolve(this.isAuthenticated && !this.isReauthenticating), 7000);
       });
     }
 
@@ -389,11 +392,12 @@ export class MultiplayerClient {
     }, delay);
   }
 
-  public reauthenticate(accessToken?: string, username?: string, avatarIcon?: string) {
+  public reauthenticate(accessToken?: string, username?: string, avatarIcon?: string): Promise<boolean> {
     if (accessToken) this.accessToken = accessToken;
     if (username) this.username = username;
     if (avatarIcon) this.avatarIcon = avatarIcon;
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.isReauthenticating = true;
       this.lastSentAccessToken = this.accessToken || null;
       this.send({
         type: 'AUTH',
@@ -402,11 +406,19 @@ export class MultiplayerClient {
         sessionToken: this.sessionToken || undefined,
         accessToken: this.accessToken || undefined,
       });
+      return new Promise<boolean>((resolve) => {
+        this.authResolvers.push(resolve);
+        setTimeout(() => {
+          this.isReauthenticating = false;
+          resolve(this.isAuthenticated);
+        }, 7000);
+      });
     }
+    return this.connect(username, avatarIcon, accessToken, false);
   }
 
   private flushPendingMessages() {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.isAuthenticated) return;
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.isAuthenticated || this.isReauthenticating) return;
     const queued = [...this.pendingMessages];
     this.pendingMessages = [];
     for (const msg of queued) {
@@ -422,6 +434,7 @@ export class MultiplayerClient {
     switch (msg.type) {
       case 'AUTH_SUCCESS':
         this.isAuthenticated = true;
+        this.isReauthenticating = false;
         if (msg.sessionToken) {
           this.sessionToken = msg.sessionToken;
           try {
@@ -434,7 +447,7 @@ export class MultiplayerClient {
         this.onAuthCallback?.(msg.user, msg.sessionToken);
         this.flushPendingMessages();
         this.resolvePendingAuth(true);
-        // If accessToken arrived while connecting, upgrade session immediately
+        // If accessToken changed while reauthenticating, upgrade session immediately
         if (this.accessToken && this.accessToken !== this.lastSentAccessToken) {
           this.reauthenticate(this.accessToken, this.username, this.avatarIcon);
         }
@@ -541,6 +554,10 @@ export class MultiplayerClient {
       case 'ERROR':
         this.pendingJoinCode = null;
         this.isPendingPartyCreate = false;
+        if (this.isReauthenticating) {
+          this.isReauthenticating = false;
+          this.resolvePendingAuth(false);
+        }
         this.onErrorCallback?.(msg.message);
         this.errorListeners.forEach(cb => cb(msg.message));
         break;
@@ -555,7 +572,7 @@ export class MultiplayerClient {
       return;
     }
 
-    if (this.ws && this.ws.readyState === WebSocket.OPEN && this.isAuthenticated) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN && this.isAuthenticated && !this.isReauthenticating) {
       this.ws.send(JSON.stringify(msg));
     } else {
       // Buffer outgoing messages while connecting/authenticating
@@ -658,14 +675,14 @@ export class MultiplayerClient {
   }
 
   public isAuthed(): boolean {
-    return this.isAuthenticated;
+    return this.isAuthenticated && !this.isReauthenticating;
   }
 
   public async waitForAuth(timeoutMs: number = 6000): Promise<boolean> {
-    if (this.isAuthenticated) return true;
+    if (this.isAuthenticated && !this.isReauthenticating) return true;
     return new Promise((resolve) => {
       this.authResolvers.push(resolve);
-      setTimeout(() => resolve(this.isAuthenticated), timeoutMs);
+      setTimeout(() => resolve(this.isAuthenticated && !this.isReauthenticating), timeoutMs);
     });
   }
 
