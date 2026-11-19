@@ -869,13 +869,6 @@ export const GameTable: React.FC<GameTableProps> = ({
                       isWinningCard ? 'scale-115 z-30' : 'z-20'
                     }`}
                   >
-                    {/* Winner crown */}
-                    {isWinningCard && (
-                      <span className="text-xs font-black text-amber-300 bg-amber-500/20 border border-amber-400 px-2 py-0.5 rounded-full mb-1 animate-bounce">
-                        👑 TRICK WINNER
-                      </span>
-                    )}
-
                     <CardView
                       card={pc.card}
                       trumpSuit={state.trumpSuit}
@@ -883,8 +876,8 @@ export const GameTable: React.FC<GameTableProps> = ({
                       isPlayable={false}
                       isSelected={isWinningCard}
                       isTableCard={true}
-                      playerTag={playerName}
-                      playerTagVariant={tagVariant}
+                      playerTag={isWinningCard ? `👑 ${playerName} (Winner)` : playerName}
+                      playerTagVariant={isWinningCard ? 'you' : tagVariant}
                     />
                   </div>
                 );
@@ -892,9 +885,9 @@ export const GameTable: React.FC<GameTableProps> = ({
             </div>
           )}
 
-          {/* Trick Resolving Banner: Announced and Clear! */}
+          {/* Trick Resolving Banner: Floating at top of arena to keep bottom cards completely visible! */}
           {isTrickResolving && state.currentTrick.winner !== undefined && state.currentTrick.winningCard && (
-            <div className="absolute inset-x-2 bottom-4 z-40 bg-slate-900/95 border-2 border-amber-400 rounded-2xl p-2.5 text-center shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="absolute -top-3 sm:-top-4 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 border-2 border-amber-400 rounded-2xl px-3.5 py-1 sm:py-1.5 text-center shadow-2xl animate-in zoom-in-95 duration-200 whitespace-nowrap max-w-[94%]">
               <div className="text-xs font-black text-amber-300 flex items-center justify-center space-x-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 <span>

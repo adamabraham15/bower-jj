@@ -281,7 +281,7 @@ export const LeadSuitBadge: React.FC<LeadSuitBadgeProps> = ({
   leadSuit,
   showFollowHint = false,
 }) => (
-  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-30 flex items-center space-x-1.5 bg-slate-900/95 border border-slate-600/80 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-lg whitespace-nowrap scale-90 sm:scale-100">
+  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center space-x-1.5 bg-slate-950/85 border border-slate-700/80 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-md whitespace-nowrap pointer-events-none scale-90 sm:scale-100">
     <span className="text-[10px] text-gray-400 font-bold uppercase">Lead:</span>
     <SuitIcon suit={leadSuit} className="w-3.5 h-3.5" />
     <span
