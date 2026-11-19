@@ -20,6 +20,8 @@ interface CardViewProps {
   elevated?: boolean;
   badge?: string;
   playerTag?: string; // e.g. "You", "West", "Partner", "East"
+  playerTagVariant?: 'you' | 'teammate' | 'opponent' | 'default';
+  isTableCard?: boolean;
   cardBackSkin?: string;
 }
 
@@ -125,6 +127,8 @@ export const CardView: React.FC<CardViewProps> = ({
   elevated = false,
   badge,
   playerTag,
+  playerTagVariant = 'default',
+  isTableCard = false,
   cardBackSkin = 'classic_blue',
 }) => {
   const [backImgFailed, setBackImgFailed] = useState(false);
@@ -209,8 +213,22 @@ export const CardView: React.FC<CardViewProps> = ({
     >
       {/* Player Tag */}
       {playerTag && (
-        <span className="text-[10px] font-black text-amber-300 bg-slate-900/90 px-2 py-0.5 rounded-full border border-amber-400/50 mb-1 shadow-md whitespace-nowrap">
-          {playerTag}
+        <span
+          className={`text-[10px] sm:text-[11px] font-black px-2 sm:px-2.5 py-0.5 rounded-full border mb-1 shadow-md whitespace-nowrap transition-transform flex items-center gap-1 leading-tight ${
+            isSelected ? 'scale-105' : ''
+          } ${
+            playerTagVariant === 'you'
+              ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-amber-500/30'
+              : playerTagVariant === 'teammate'
+              ? 'bg-sky-950/95 text-sky-300 border-sky-400/60 shadow-sky-500/20'
+              : playerTagVariant === 'opponent'
+              ? 'bg-slate-900/95 text-amber-200 border-amber-400/40 shadow-black/40'
+              : 'bg-slate-900/90 text-amber-300 border-amber-400/50 shadow-md'
+          }`}
+        >
+          {playerTagVariant === 'you' && <span className="w-1.5 h-1.5 rounded-full bg-slate-950" />}
+          {playerTagVariant === 'teammate' && <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />}
+          <span>{playerTag}</span>
         </span>
       )}
 
@@ -218,7 +236,13 @@ export const CardView: React.FC<CardViewProps> = ({
       <div
         onClick={isPlayable ? onClick : undefined}
         className={`relative rounded-xl transition-all duration-200 ease-out flex-shrink-0 ${cfg.wClass} ${cfg.hClass}
-          ${isPlayable ? 'cursor-pointer hover:-translate-y-2 active:scale-95' : 'opacity-60 cursor-not-allowed'}
+          ${
+            isPlayable
+              ? 'cursor-pointer hover:-translate-y-2 active:scale-95'
+              : isTableCard || playerTag
+              ? 'cursor-default opacity-100'
+              : 'opacity-60 cursor-not-allowed'
+          }
           ${isSelected ? '-translate-y-3 ring-4 ring-amber-400 shadow-amber-500/60 scale-105' : ''}
           ${isPlayable && !isSelected ? 'hover:shadow-amber-500/30 hover:ring-2 hover:ring-amber-400/70' : ''}
           border-2 ${isRight ? 'border-amber-400 ring-2 ring-amber-400/70' : isLeft ? 'border-amber-300 ring-2 ring-amber-300/60' : 'border-slate-300'}

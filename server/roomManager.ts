@@ -88,7 +88,8 @@ export class RoomManager {
   private soloQueue: string[] = []; // Array of userIds waiting in queue
   private matchTimer: NodeJS.Timeout | null = null;
   private cleanupTimer: NodeJS.Timeout | null = null;
-  public trickResolutionDelayMs: number = 1800;
+  public trickResolutionDelayMs: number = 2200;
+  public finalTrickResolutionDelayMs: number = 3800;
   public aiTurnDelayMs: number = 750;
   public inviteExpiryMs: number = 30000;
   public pgRepo?: PostgresDatabaseRepository;
@@ -1858,9 +1859,16 @@ export class RoomManager {
     this.broadcastGameSync(room.code);
 
     if (nextState.phase === 'trick_resolving') {
+      const isLastTrickOfHand = nextState.completedTricks.length === 4;
+      const delay =
+        this.trickResolutionDelayMs <= 100
+          ? this.trickResolutionDelayMs
+          : isLastTrickOfHand
+          ? this.finalTrickResolutionDelayMs
+          : this.trickResolutionDelayMs;
       setTimeout(() => {
         this.resolveCompletedTrick(room.code);
-      }, this.trickResolutionDelayMs);
+      }, delay);
     } else {
       this.triggerAITurn(room.code);
     }
@@ -2293,9 +2301,16 @@ export class RoomManager {
           this.broadcastGameSync(roomCode);
 
           if (next.phase === 'trick_resolving') {
+            const isLastTrickOfHand = next.completedTricks.length === 4;
+            const delay =
+              this.trickResolutionDelayMs <= 100
+                ? this.trickResolutionDelayMs
+                : isLastTrickOfHand
+                ? this.finalTrickResolutionDelayMs
+                : this.trickResolutionDelayMs;
             setTimeout(() => {
               this.resolveCompletedTrick(roomCode);
-            }, this.trickResolutionDelayMs);
+            }, delay);
           } else {
             this.triggerAITurn(roomCode);
           }

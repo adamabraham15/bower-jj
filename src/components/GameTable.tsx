@@ -257,7 +257,7 @@ export const GameTable: React.FC<GameTableProps> = ({
     }
   }, [state.phase, state.scores, state.rules.targetScore, matchReported, onMatchComplete]);
 
-  // Trick completion pause: Keep all 4 cards on screen for 1.8 seconds with winner announcement
+  // Trick completion pause: Keep all 4 cards on screen (2.2s for normal tricks, 3.8s for the final trick of the hand)
   useEffect(() => {
     if (state.phase !== 'trick_resolving') return;
 
@@ -265,10 +265,13 @@ export const GameTable: React.FC<GameTableProps> = ({
     const isUserTeam = winnerPos !== undefined && getPlayerTeam(winnerPos) === 0;
     sounds.playTrickWin(isUserTeam);
 
+    const isLastTrickOfHand = state.completedTricks.length === 4;
+    const delay = isLastTrickOfHand ? 3800 : 2200;
+
     const timer = setTimeout(() => {
       const next = completeTrick(state);
       setState(next);
-    }, 1800);
+    }, delay);
 
     return () => clearTimeout(timer);
   }, [state.phase]);
@@ -819,7 +822,7 @@ export const GameTable: React.FC<GameTableProps> = ({
 
         {/* Center Trick Arena & Table Hub */}
         <div
-          className="relative w-72 h-72 sm:w-84 sm:h-84 rounded-full border-2 backdrop-blur-xs flex items-center justify-center"
+          className="relative w-[292px] h-[292px] xs:w-[310px] xs:h-[310px] sm:w-[350px] sm:h-[350px] md:w-[380px] md:h-[380px] rounded-full border-2 backdrop-blur-xs flex items-center justify-center"
           style={{
             borderColor: `${equippedFelt.feltBorder}85`,
             backgroundColor: `${equippedFelt.feltColor}90`,
@@ -838,22 +841,26 @@ export const GameTable: React.FC<GameTableProps> = ({
             <LeadSuitBadge leadSuit={leadSuit} showFollowHint />
           )}
 
-          {/* Played Cards in Trick Arena (Clamped spread so East/West cards stay completely clear of avatars!) */}
+          {/* Played Cards in Trick Arena (Spaced out diamond formation so all cards & names are clear) */}
           {(state.phase === 'playing' || isTrickResolving) && (
             <div className="relative w-full h-full flex items-center justify-center">
               {trickCards.map(pc => {
                 const player = state.players[pc.player];
                 const isWinningCard = isTrickResolving && state.currentTrick.winningCard?.id === pc.card.id;
+                const isYou = pc.player === 0;
+                const isTeammate = getPlayerTeam(pc.player) === 0;
+                const playerName = isYou ? 'You' : player.name.split(' ')[0];
+                const tagVariant = isYou ? 'you' : isTeammate ? 'teammate' : 'opponent';
 
-                // Position each card inside the center felt circle without encroaching on avatars
+                // Spread out inside the felt arena towards each player's edge
                 const positionStyle =
                   pc.player === 0
-                    ? 'bottom-4 sm:bottom-5 left-1/2 -translate-x-1/2'
+                    ? 'bottom-1.5 xs:bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2'
                     : pc.player === 2
-                    ? 'top-6 sm:top-7 left-1/2 -translate-x-1/2'
+                    ? 'top-1.5 xs:top-2 sm:top-3 left-1/2 -translate-x-1/2'
                     : pc.player === 1
-                    ? 'left-12 sm:left-14 top-1/2 -translate-y-1/2'
-                    : 'right-12 sm:right-14 top-1/2 -translate-y-1/2';
+                    ? 'left-1.5 xs:left-2 sm:left-3 top-1/2 -translate-y-1/2'
+                    : 'right-1.5 xs:right-2 sm:right-3 top-1/2 -translate-y-1/2';
 
                 return (
                   <div
@@ -875,7 +882,9 @@ export const GameTable: React.FC<GameTableProps> = ({
                       size="sm"
                       isPlayable={false}
                       isSelected={isWinningCard}
-                      playerTag={pc.player === 0 ? 'You' : player.name.split(' ')[0]}
+                      isTableCard={true}
+                      playerTag={playerName}
+                      playerTagVariant={tagVariant}
                     />
                   </div>
                 );
@@ -890,6 +899,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 <span>
                   {state.players[state.currentTrick.winner].name} WON THE TRICK with {formatCardName(state.currentTrick.winningCard, state.trumpSuit)}!
+                  {state.completedTricks.length === 4 && ' • Hand Completed!'}
                 </span>
               </div>
             </div>

@@ -298,6 +298,15 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
     }
   }, [isDealerDiscardPhase]);
 
+  // Play trick win sound effect when trick begins resolving
+  useEffect(() => {
+    if (serverState.phase === 'trick_resolving' && serverState.currentTrick.winner !== undefined) {
+      const winnerPos = serverState.currentTrick.winner;
+      const isUserTeam = getPlayerTeam(winnerPos) === getPlayerTeam(yourPos);
+      sounds.playTrickWin(isUserTeam);
+    }
+  }, [serverState.phase, serverState.currentTrick.winner, yourPos]);
+
   // Helper to map absolute seat position (0, 1, 2, 3) to relative UI placement:
   // 0 offset = Bottom (You)
   // 1 offset = Left
@@ -694,7 +703,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
 
         {/* Center Trick Arena */}
         <div
-          className="relative w-72 h-72 sm:w-84 sm:h-84 rounded-full border-2 backdrop-blur-xs flex items-center justify-center"
+          className="relative w-[292px] h-[292px] xs:w-[310px] xs:h-[310px] sm:w-[350px] sm:h-[350px] md:w-[380px] md:h-[380px] rounded-full border-2 backdrop-blur-xs flex items-center justify-center"
           style={{
             borderColor: `${equippedFelt.feltBorder}85`,
             backgroundColor: `${equippedFelt.feltColor}90`,
@@ -713,19 +722,23 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             <LeadSuitBadge leadSuit={leadSuit} />
           )}
 
-          {/* Played Cards in Trick Arena (Clamped spread so East/West cards stay completely clear of avatars!) */}
+          {/* Played Cards in Trick Arena (Spaced out diamond formation so all cards & names are clear) */}
           {(serverState.phase === 'playing' || isTrickResolving) && (
             <div className="relative w-full h-full flex items-center justify-center">
               {trickCards.map(pc => {
                 const relPos = getRelativePosition(pc.player);
                 const slot = getSlot(pc.player);
                 const isWinningCard = isTrickResolving && serverState.currentTrick.winningCard?.id === pc.card.id;
+                const isYou = pc.player === yourPos;
+                const isTeammate = getPlayerTeam(pc.player) === getPlayerTeam(yourPos);
+                const playerName = isYou ? 'You' : slot ? slot.username.split(' ')[0] : `Player ${pc.player + 1}`;
+                const tagVariant = isYou ? 'you' : isTeammate ? 'teammate' : 'opponent';
 
                 const positionStyle = {
-                  bottom: 'bottom-4 sm:bottom-5 left-1/2 -translate-x-1/2',
-                  left: 'left-12 sm:left-14 top-1/2 -translate-y-1/2',
-                  top: 'top-6 sm:top-7 left-1/2 -translate-x-1/2',
-                  right: 'right-12 sm:right-14 top-1/2 -translate-y-1/2',
+                  bottom: 'bottom-1.5 xs:bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2',
+                  left: 'left-1.5 xs:left-2 sm:left-3 top-1/2 -translate-y-1/2',
+                  top: 'top-1.5 xs:top-2 sm:top-3 left-1/2 -translate-x-1/2',
+                  right: 'right-1.5 xs:right-2 sm:right-3 top-1/2 -translate-y-1/2',
                 }[relPos];
 
                 return (
@@ -747,7 +760,9 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                       size="sm"
                       isPlayable={false}
                       isSelected={isWinningCard}
-                      playerTag={pc.player === yourPos ? 'You' : slot ? slot.username.split(' ')[0] : undefined}
+                      isTableCard={true}
+                      playerTag={playerName}
+                      playerTagVariant={tagVariant}
                     />
                   </div>
                 );
@@ -762,6 +777,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 <span>
                   {getSlot(serverState.currentTrick.winner)?.username || `Player ${serverState.currentTrick.winner}`} WON THE TRICK with {formatCardName(serverState.currentTrick.winningCard, serverState.trumpSuit)}!
+                  {(serverState.completedTricksCount === 4 || (serverState.tricksWon[0] + serverState.tricksWon[1] === 4)) && ' • Hand Completed!'}
                 </span>
               </div>
             </div>

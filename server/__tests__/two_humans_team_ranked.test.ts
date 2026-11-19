@@ -174,8 +174,8 @@ describe('Ranked 2-Player Queue: Cooperative Team vs Bots', () => {
     expect(res2).not.toBeNull();
 
     // Both humans gain LP and MMR together!
-    expect(res1!.newPoints).toBeGreaterThan(initialLp1);
-    expect(res2!.newPoints).toBeGreaterThan(initialLp2);
+    expect(res1!.lpChange).toBeGreaterThan(0);
+    expect(res2!.lpChange).toBeGreaterThan(0);
     expect(res1!.user.mmr).toBeGreaterThan(initialMmr1);
     expect(res2!.user.mmr).toBeGreaterThan(initialMmr2);
   });
