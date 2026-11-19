@@ -21,6 +21,7 @@ interface CardViewProps {
   badge?: string;
   playerTag?: string; // e.g. "You", "West", "Partner", "East"
   playerTagVariant?: 'you' | 'teammate' | 'opponent' | 'default';
+  playerTagPosition?: 'top' | 'bottom';
   isTableCard?: boolean;
   cardBackSkin?: string;
 }
@@ -128,6 +129,7 @@ export const CardView: React.FC<CardViewProps> = ({
   badge,
   playerTag,
   playerTagVariant = 'default',
+  playerTagPosition = 'top',
   isTableCard = false,
   cardBackSkin = 'classic_blue',
 }) => {
@@ -199,6 +201,28 @@ export const CardView: React.FC<CardViewProps> = ({
       ? 'text-[#15803d]'
       : 'text-slate-950';
 
+  const tagPill = playerTag ? (
+    <span
+      className={`text-[10px] sm:text-[11px] font-black px-2 sm:px-2.5 py-0.5 rounded-full border shadow-md whitespace-nowrap transition-transform flex items-center gap-1 leading-tight ${
+        playerTagPosition === 'bottom' ? 'mt-1' : 'mb-1'
+      } ${
+        isSelected ? 'scale-105' : ''
+      } ${
+        playerTagVariant === 'you'
+          ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-amber-500/30'
+          : playerTagVariant === 'teammate'
+          ? 'bg-sky-950/95 text-sky-300 border-sky-400/60 shadow-sky-500/20'
+          : playerTagVariant === 'opponent'
+          ? 'bg-slate-900/95 text-amber-200 border-amber-400/40 shadow-black/40'
+          : 'bg-slate-900/90 text-amber-300 border-amber-400/50 shadow-md'
+      }`}
+    >
+      {playerTagVariant === 'you' && <span className="w-1.5 h-1.5 rounded-full bg-slate-950 flex-shrink-0" />}
+      {playerTagVariant === 'teammate' && <span className="w-1.5 h-1.5 rounded-full bg-sky-400 flex-shrink-0" />}
+      <span className="truncate max-w-[100px] sm:max-w-[130px]">{playerTag}</span>
+    </span>
+  ) : null;
+
   return (
     <div
       className={`flex flex-col items-center select-none flex-shrink-0 ${cfg.wClass}`}
@@ -211,26 +235,8 @@ export const CardView: React.FC<CardViewProps> = ({
           : {}
       }
     >
-      {/* Player Tag */}
-      {playerTag && (
-        <span
-          className={`text-[10px] sm:text-[11px] font-black px-2 sm:px-2.5 py-0.5 rounded-full border mb-1 shadow-md whitespace-nowrap transition-transform flex items-center gap-1 leading-tight ${
-            isSelected ? 'scale-105' : ''
-          } ${
-            playerTagVariant === 'you'
-              ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-amber-500/30'
-              : playerTagVariant === 'teammate'
-              ? 'bg-sky-950/95 text-sky-300 border-sky-400/60 shadow-sky-500/20'
-              : playerTagVariant === 'opponent'
-              ? 'bg-slate-900/95 text-amber-200 border-amber-400/40 shadow-black/40'
-              : 'bg-slate-900/90 text-amber-300 border-amber-400/50 shadow-md'
-          }`}
-        >
-          {playerTagVariant === 'you' && <span className="w-1.5 h-1.5 rounded-full bg-slate-950 flex-shrink-0" />}
-          {playerTagVariant === 'teammate' && <span className="w-1.5 h-1.5 rounded-full bg-sky-400 flex-shrink-0" />}
-          <span className="truncate max-w-[100px] sm:max-w-[130px]">{playerTag}</span>
-        </span>
-      )}
+      {/* Player Tag (Top position) */}
+      {playerTagPosition !== 'bottom' && tagPill}
 
       {/* Card Body */}
       <div
@@ -324,6 +330,9 @@ export const CardView: React.FC<CardViewProps> = ({
           <div className="absolute inset-0 border border-amber-400/30 rounded-xl pointer-events-none" />
         )}
       </div>
+
+      {/* Player Tag (Bottom position) */}
+      {playerTagPosition === 'bottom' && tagPill}
     </div>
   );
 };

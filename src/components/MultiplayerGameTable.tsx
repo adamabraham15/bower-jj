@@ -344,9 +344,9 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
 
     const positionStyle = customStyle || {
       bottom: 'bottom-1 left-2 xs:left-3 sm:bottom-2.5 sm:left-24 md:left-28 lg:left-36',
-      left: 'left-1.5 sm:left-3 top-1/2 -translate-y-1/2',
+      left: 'left-0.5 sm:left-2 top-1/2 -translate-y-1/2',
       top: 'top-1 sm:top-2 left-1/2 -translate-x-1/2',
-      right: 'right-1.5 sm:right-3 top-1/2 -translate-y-1/2',
+      right: 'right-0.5 sm:right-2 top-1/2 -translate-y-1/2',
     }[relPos];
 
     const isMutedPlayer = slot ? mutedUsernames.has(slot.username) : false;
@@ -507,7 +507,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
               {/* Player Name */}
               <div className="mt-1 flex flex-col items-center">
                 <div className="text-[11px] sm:text-xs font-bold text-white flex items-center space-x-1">
-                  <span>{slot ? (pos === yourPos ? `${slot.username} (You)` : slot.username) : `Seat ${pos}`}</span>
+                  <span className="truncate max-w-[65px] xs:max-w-[72px] sm:max-w-[90px]">{slot ? (pos === yourPos ? `${slot.username} (You)` : slot.username) : `Seat ${pos}`}</span>
                   {isCurrentTurn && <TurnActiveDot />}
                 </div>
                 {slot?.isAI && (
@@ -697,7 +697,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
 
         {/* Center Trick Arena */}
         <div
-          className="relative w-[280px] h-[280px] xs:w-[295px] xs:h-[295px] sm:w-[340px] sm:h-[340px] md:w-[370px] md:h-[370px] lg:w-[390px] lg:h-[390px] rounded-full border-2 backdrop-blur-xs flex items-center justify-center"
+          className="relative w-[246px] h-[246px] xs:w-[258px] xs:h-[258px] sm:w-[310px] sm:h-[310px] md:w-[350px] md:h-[350px] rounded-full border-2 backdrop-blur-xs flex items-center justify-center"
           style={{
             borderColor: `${equippedFelt.feltBorder}85`,
             backgroundColor: `${equippedFelt.feltColor}90`,
@@ -737,10 +737,10 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 const tagVariant = isYou ? 'you' : isTeammate ? 'teammate' : 'opponent';
 
                 const positionStyle = {
-                  bottom: 'bottom-1 sm:bottom-2 left-1/2 -translate-x-1/2',
-                  left: 'left-1 sm:left-2 top-1/2 -translate-y-1/2',
-                  top: 'top-1 sm:top-2 left-1/2 -translate-x-1/2',
-                  right: 'right-1 sm:right-2 top-1/2 -translate-y-1/2',
+                  bottom: 'bottom-1 sm:bottom-1.5 left-1/2 -translate-x-1/2',
+                  left: 'left-1.5 sm:left-2 top-1/2 -translate-y-1/2',
+                  top: 'top-1 sm:top-1.5 left-1/2 -translate-x-1/2',
+                  right: 'right-1.5 sm:right-2 top-1/2 -translate-y-1/2',
                 }[relPos];
 
                 return (
@@ -759,6 +759,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                       isTableCard={true}
                       playerTag={isWinningCard ? `👑 ${playerName} (Winner)` : playerName}
                       playerTagVariant={isWinningCard ? 'you' : tagVariant}
+                      playerTagPosition={isYou ? 'bottom' : 'top'}
                     />
                   </div>
                 );
