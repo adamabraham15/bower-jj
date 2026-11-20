@@ -174,7 +174,7 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({
               <span className="sm:hidden">Packs</span>
               {unopenedCount > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-amber-500 text-slate-950">
-                  {unopenedCount}
+                  {unopenedCount > 99 ? '99+' : unopenedCount}
                 </span>
               )}
             </button>

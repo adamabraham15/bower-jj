@@ -195,18 +195,54 @@ export function normalizeXpProgress(
   };
 }
 
+const isUuid = (id?: string | null): boolean => {
+  return Boolean(id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+};
+
 const getCollectionCacheKey = (userId?: string | null) => {
   return `bower_jj_cached_collection_${userId || 'active'}`;
 };
 
 const loadCachedCollectionState = (userId?: string | null): PlayerCollectionState | undefined => {
   try {
-    const key = getCollectionCacheKey(userId);
-    const raw = localStorage.getItem(key) || localStorage.getItem('bower_jj_cached_collection_active');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && Array.isArray(parsed.cards)) {
-        return parsed;
+    // 1. Direct user key
+    if (userId) {
+      const userKey = getCollectionCacheKey(userId);
+      const userRaw = localStorage.getItem(userKey);
+      if (userRaw) {
+        const parsed = JSON.parse(userRaw);
+        if (parsed && Array.isArray(parsed.cards)) {
+          return parsed;
+        }
+      }
+    }
+
+    // 2. Check saved profile's playerId UUID if no userId was provided or direct key was empty
+    const savedProfileRaw = localStorage.getItem(STORAGE_KEY);
+    if (savedProfileRaw) {
+      try {
+        const p = JSON.parse(savedProfileRaw);
+        if (isUuid(p?.playerId) && p.playerId !== userId) {
+          const profileUserKey = getCollectionCacheKey(p.playerId);
+          const profileRaw = localStorage.getItem(profileUserKey);
+          if (profileRaw) {
+            const parsed = JSON.parse(profileRaw);
+            if (parsed && Array.isArray(parsed.cards)) {
+              return parsed;
+            }
+          }
+        }
+      } catch {}
+    }
+
+    // 3. Fallback to active cache only when not looking for a specific authenticated user
+    if (!userId || !isUuid(userId)) {
+      const raw = localStorage.getItem('bower_jj_cached_collection_active');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.cards)) {
+          return parsed;
+        }
       }
     }
   } catch {}
@@ -216,8 +252,24 @@ const loadCachedCollectionState = (userId?: string | null): PlayerCollectionStat
 const saveCachedCollectionState = (state: PlayerCollectionState, userId?: string | null) => {
   try {
     const payload = JSON.stringify(state);
-    localStorage.setItem(getCollectionCacheKey(userId), payload);
-    localStorage.setItem('bower_jj_cached_collection_active', payload);
+    if (userId) {
+      localStorage.setItem(getCollectionCacheKey(userId), payload);
+    }
+    // Only update 'active' cache if it belongs to an authenticated user (UUID)
+    // or if no authenticated user is currently saved in local profile
+    const isAuthUser = isUuid(userId);
+    const savedProfileRaw = localStorage.getItem(STORAGE_KEY);
+    let hasSavedAuthProfile = false;
+    if (savedProfileRaw) {
+      try {
+        const p = JSON.parse(savedProfileRaw);
+        hasSavedAuthProfile = isUuid(p?.playerId);
+      } catch {}
+    }
+
+    if (isAuthUser || !hasSavedAuthProfile) {
+      localStorage.setItem('bower_jj_cached_collection_active', payload);
+    }
   } catch {}
 };
 
@@ -393,7 +445,19 @@ export const App: React.FC = () => {
   const [incomingFriendRequests, setIncomingFriendRequests] = useState<UserAccount['friendRequests']>([]);
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const [userRankPosition, setUserRankPosition] = useState<number | undefined>();
-  const [collectionState, setCollectionState] = useState<PlayerCollectionState | undefined>(() => loadCachedCollectionState());
+  const [collectionState, setCollectionState] = useState<PlayerCollectionState | undefined>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const p = JSON.parse(saved);
+        if (isUuid(p?.playerId)) {
+          const cached = loadCachedCollectionState(p.playerId);
+          if (cached) return cached;
+        }
+      }
+    } catch {}
+    return loadCachedCollectionState();
+  });
   const lastRecordedGameOverRoomRef = useRef<string | null>(null);
 
   // Rank Promotion Fanfare Modal (supports both Division Up and Full Tier Ascension)
@@ -496,6 +560,31 @@ export const App: React.FC = () => {
             },
           };
         });
+
+        if (typeof sync.unopenedPacksCount === 'number') {
+          setCollectionState(prev => {
+            if (!prev) {
+              const fallback: PlayerCollectionState = {
+                unopenedPacksCount: sync.unopenedPacksCount,
+                unopenedPacks: [],
+                cards: [],
+                unlockedCardBacks: ['classic_blue', 'classic_red'],
+                unlockedAvatars: ['the_outlaw', 'elven_trickster', 'cyber_bot', 'clever_fox', 'velvet_gentleman', 'iron_tactician'],
+                waxSeals: 150,
+                recentDrops: [],
+                dropRates: { common: 65, rare: 23, epic: 10, legendary: 2 },
+              };
+              saveCachedCollectionState(fallback, userId);
+              return fallback;
+            }
+            if (prev.unopenedPacksCount !== sync.unopenedPacksCount) {
+              const next = { ...prev, unopenedPacksCount: sync.unopenedPacksCount };
+              saveCachedCollectionState(next, userId);
+              return next;
+            }
+            return prev;
+          });
+        }
       }
     });
 
@@ -523,15 +612,14 @@ export const App: React.FC = () => {
   const applyAuthoritativeUser = (user: UserAccount) => {
     const activeAuthId = authUserRef.current?.id;
     const isVerifiedUser = Boolean(activeAuthId && user.id === activeAuthId);
+    const prevPlayerId = profile.playerId;
+    const prevHasSavedUuid = isUuid(prevPlayerId);
+    const isMismatchedUnauthedHandshake = Boolean(
+      !activeAuthId && prevHasSavedUuid && user.id !== prevPlayerId && (user.totalGames || 0) === 0
+    );
+    const keepPrevRank = Boolean((activeAuthId && !isVerifiedUser) || isMismatchedUnauthedHandshake);
 
     setProfile(prev => {
-      const prevHasSavedUuid = Boolean(
-        prev.playerId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(prev.playerId)
-      );
-      const isMismatchedUnauthedHandshake = Boolean(
-        !activeAuthId && prevHasSavedUuid && user.id !== prev.playerId && (user.totalGames || 0) === 0
-      );
-      const keepPrevRank = Boolean((activeAuthId && !isVerifiedUser) || isMismatchedUnauthedHandshake);
       const keepNonZeroStats = Boolean(
         (isVerifiedUser || prev.playerId === user.id) &&
           (user.totalGames || 0) === 0 &&
@@ -636,11 +724,14 @@ export const App: React.FC = () => {
       };
     });
 
-    if (user.collectionState) {
-      setCollectionState(user.collectionState);
-      saveCachedCollectionState(user.collectionState, user.id);
-    } else {
-      setCollectionState(prev => prev || loadCachedCollectionState(user.id));
+    // Do NOT clobber collection state if this is an unauthenticated or mismatched guest handshake
+    if (!keepPrevRank) {
+      if (user.collectionState) {
+        setCollectionState(user.collectionState);
+        saveCachedCollectionState(user.collectionState, user.id);
+      } else {
+        setCollectionState(prev => prev || loadCachedCollectionState(user.id));
+      }
     }
   };
 
@@ -907,7 +998,8 @@ export const App: React.FC = () => {
       },
       onCollection: (cs) => {
         setCollectionState(cs);
-        saveCachedCollectionState(cs, authUserRef.current?.id);
+        const resolvedUserId = authUserRef.current?.id || (isUuid(profile.playerId) ? profile.playerId : undefined);
+        saveCachedCollectionState(cs, resolvedUserId);
         if (typeof cs.waxSeals === 'number') {
           setProfile(prev => ({
             ...prev,
@@ -921,9 +1013,10 @@ export const App: React.FC = () => {
       onPackOpened: (result) => {
         setIsOpeningPack(false);
         setPendingPackResult(result);
+        const resolvedUserId = authUserRef.current?.id || (isUuid(profile.playerId) ? profile.playerId : undefined);
         if (result.collectionState) {
           setCollectionState(result.collectionState);
-          saveCachedCollectionState(result.collectionState, authUserRef.current?.id);
+          saveCachedCollectionState(result.collectionState, resolvedUserId);
         }
         if (typeof result.totalWaxSeals === 'number') {
           setProfile(prev => ({
@@ -944,9 +1037,10 @@ export const App: React.FC = () => {
             ...prev,
             waxSeals: data.waxSeals,
           }));
+          const resolvedUserId = authUserRef.current?.id || (isUuid(profile.playerId) ? profile.playerId : undefined);
           if (data.collectionState) {
             setCollectionState(data.collectionState);
-            saveCachedCollectionState(data.collectionState, authUserRef.current?.id);
+            saveCachedCollectionState(data.collectionState, resolvedUserId);
           }
           try {
             localStorage.setItem('bower_jj_wax_seals', String(data.waxSeals));
@@ -1959,9 +2053,16 @@ export const App: React.FC = () => {
         initialEmail={authModalInitialEmail}
         reason={authModalReason}
         onAuthSuccess={(user, token) => {
+          authUserRef.current = user;
           setAuthUser(user);
           if (token) setAuthToken(token);
-          if (user?.id) syncAuthoritativeProfile(user.id);
+          if (user?.id) {
+            const cached = loadCachedCollectionState(user.id);
+            if (cached) {
+              setCollectionState(cached);
+            }
+            syncAuthoritativeProfile(user.id);
+          }
           setIsAuthOpen(false);
           showToast(`Signed in as ${user.user_metadata?.username || user.email}. Cloud sync active.`, 'Welcome Back!');
 

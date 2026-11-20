@@ -195,7 +195,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               </div>
               {unopenedPacksCount > 0 && (
                 <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-xs shadow">
-                  {unopenedPacksCount}
+                  {unopenedPacksCount > 99 ? '99+' : unopenedPacksCount}
                 </span>
               )}
             </button>
@@ -745,7 +745,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                   </span>
                   <span className="text-[11px] text-slate-400 font-semibold block truncate">
                     {unopenedPacksCount > 0
-                      ? `${unopenedPacksCount} booster pack${unopenedPacksCount > 1 ? 's' : ''} ready to open!`
+                      ? `${unopenedPacksCount > 99 ? '99+' : unopenedPacksCount} booster pack${unopenedPacksCount > 1 ? 's' : ''} ready to open!`
                       : 'Unbox new cards, cosmetics & wax seals'}
                   </span>
                 </div>
@@ -755,7 +755,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 {unopenedPacksCount > 0 ? (
                   <span className="px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-[0_0_12px_rgba(245,158,11,0.4)] animate-pulse">
                     <Package className="w-3.5 h-3.5" />
-                    <span>{unopenedPacksCount} READY</span>
+                    <span>{unopenedPacksCount > 99 ? '99+' : unopenedPacksCount} READY</span>
                   </span>
                 ) : (
                   <span className="px-3 py-1 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-300 text-xs font-bold group-hover:border-amber-500/50 group-hover:text-white transition-colors">
@@ -780,7 +780,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               <span>Collector Vault</span>
             </span>
             <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 font-black text-xs">
-              {unopenedPacksCount} Unopened
+              {unopenedPacksCount > 99 ? '99+' : unopenedPacksCount} Unopened
             </span>
           </div>
 
@@ -793,7 +793,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             <div className="space-y-1.5">
               <h3 className="text-sm font-black text-white leading-snug">
                 {unopenedPacksCount > 0
-                  ? `${unopenedPacksCount} Booster Pack${unopenedPacksCount > 1 ? 's' : ''} Ready!`
+                  ? `${unopenedPacksCount > 99 ? '99+' : unopenedPacksCount} Booster Pack${unopenedPacksCount > 1 ? 's' : ''} Ready!`
                   : 'Level-Up Booster Packs'}
               </h3>
               <p className="text-[11px] text-slate-400 leading-relaxed">
