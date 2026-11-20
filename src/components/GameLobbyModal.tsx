@@ -230,6 +230,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
   const handleUpdateRule = (patch: any) => {
     if (!isHost) return;
     sounds.playUiClick();
+    setCurrentRoom((prev) => (prev ? { ...prev, rules: { ...prev.rules, ...patch } } : prev));
     multiplayerClient.updateRoomRules(patch);
   };
 
@@ -255,6 +256,8 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
     sounds.playUiClick();
     if (multiplayerClient.isConnected() && currentRoom) {
       multiplayerClient.startGame();
+      onMatchFoundRef.current();
+      onClose();
     } else if (onStartAIMatch) {
       const fallbackRules: EuchreHouseRules = {
         ...DEFAULT_RULES,

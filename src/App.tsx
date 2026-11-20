@@ -3,7 +3,7 @@
  * Supports Offline AI Games & Live Authoritative WebSockets Multiplayer.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MainMenu } from './components/MainMenu';
 import { GameTable } from './components/GameTable';
 import { MultiplayerGameTable } from './components/MultiplayerGameTable';
@@ -1414,6 +1414,10 @@ export const App: React.FC = () => {
     });
   };
 
+  const handleMatchReady = useCallback(() => {
+    setMatchFoundData(null);
+  }, []);
+
   // Dedicated Live Site Traffic & Online User Tracker
   if (isTrackerView) {
     return (
@@ -1843,7 +1847,7 @@ export const App: React.FC = () => {
           modeTitle={matchFoundData.modeTitle}
           yourTeam={matchFoundData.yourTeam}
           opponents={matchFoundData.opponents}
-          onReady={() => setMatchFoundData(null)}
+          onReady={handleMatchReady}
         />
       )}
 

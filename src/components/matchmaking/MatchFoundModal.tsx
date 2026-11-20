@@ -4,7 +4,7 @@
  * 3D glowing "MATCH FOUND" banner, team vs opponents card slide-ins, and ready countdown.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Trophy, Swords, Zap, CheckCircle2 } from 'lucide-react';
 import { sounds } from '../../audio/sound';
 import { AvatarPortrait } from '../AvatarPortrait';
@@ -39,6 +39,8 @@ export const MatchFoundModal: React.FC<MatchFoundModalProps> = ({
 }) => {
   const [countdown, setCountdown] = useState<number>(3);
   const [isClientReady, setIsClientReady] = useState(false);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -57,7 +59,7 @@ export const MatchFoundModal: React.FC<MatchFoundModalProps> = ({
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          onReady();
+          onReadyRef.current();
           return 0;
         }
         return prev - 1;
@@ -65,7 +67,7 @@ export const MatchFoundModal: React.FC<MatchFoundModalProps> = ({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isOpen, onReady]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
