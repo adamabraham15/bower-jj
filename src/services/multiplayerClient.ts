@@ -720,6 +720,10 @@ export class MultiplayerClient {
     mode: 'solo' | 'rivals' | 'duo' | 'casual' = 'solo',
     duoPreference?: 'teammates' | 'opponents' | 'random'
   ) {
+    if (this.currentRoom && this.currentRoom.status === 'playing') {
+      console.warn('[MultiplayerClient] Attempted to enter queue while active in playing match. Ignoring.');
+      return;
+    }
     this.send({ type: 'QUEUE_ENTER', mode, duoPreference });
   }
 

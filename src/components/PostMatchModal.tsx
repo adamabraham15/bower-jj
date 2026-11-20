@@ -46,7 +46,9 @@ interface PostMatchModalProps {
   ratingLabel?: string;
   oldTier?: RankTier;
   newTier?: RankTier;
+  oldDivision?: RankDivision;
   newDivision?: RankDivision;
+  oldPoints?: number;
   currentPoints?: number;
   xpEarned?: number;
   playerLevel: number;
@@ -72,7 +74,9 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
   ratingLabel,
   oldTier = '9',
   newTier = '9',
+  oldDivision,
   newDivision,
+  oldPoints,
   currentPoints = 45,
   xpEarned = 450,
   playerLevel,
@@ -173,86 +177,145 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
         {/* Scrollable Stats & Progression Body */}
         <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-5 space-y-3 sm:space-y-4">
           {/* 1. Competitive LP & MMR Delta or Match Type */}
-          {isRanked || (lpDelta !== undefined && lpDelta !== 0) ? (
-            <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <RankBadge
-                    tier={newTier}
-                    division={newDivision}
-                    points={currentPoints}
-                    size="md"
-                    showLabel={false}
-                  />
-                  <div>
-                    <div className="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center space-x-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                      <span>{getRankDivisionInfo(newTier, currentPoints, newDivision).fullRankName}</span>
+          {isRanked || (lpDelta !== undefined && lpDelta !== 0) ? (() => {
+            const safeDivision: RankDivision = newDivision || 'III';
+            const divInfo = getRankDivisionInfo(newTier, currentPoints, safeDivision);
+            const activeDivIdx = divInfo.divisionNumber - 1;
+
+            return (
+              <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <RankBadge
+                      tier={newTier}
+                      division={safeDivision}
+                      points={currentPoints}
+                      size="md"
+                      showLabel={false}
+                    />
+                    <div>
+                      <div className="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center space-x-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                        <span>{divInfo.fullRankName}</span>
+                      </div>
+                      <div className="text-[11px] text-gray-300 font-semibold">
+                        {newTier === 'BOWER_JJ'
+                          ? `${currentPoints.toLocaleString()} LP • Apex Sovereign`
+                          : `${currentPoints} / 100 LP in Division ${safeDivision} • ${RANK_INFO[newTier]?.title || 'Competitor'}`}
+                      </div>
                     </div>
-                    <div className="text-[11px] text-gray-300 font-semibold">
-                      {currentPoints} / 100 LP in Div {getRankDivisionInfo(newTier, currentPoints, newDivision).division} •{' '}
-                      {RANK_INFO[newTier]?.title || 'Competitor'}
-                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span
+                      className={`text-base font-black font-mono flex items-center justify-end space-x-1 ${
+                        (lpDelta ?? 0) > 0 ? 'text-emerald-400' : (lpDelta ?? 0) < 0 ? 'text-red-400' : 'text-amber-300'
+                      }`}
+                    >
+                      <span>
+                        {(lpDelta ?? 0) > 0
+                          ? `+${lpDelta} LP`
+                          : (lpDelta ?? 0) < 0
+                          ? `-${Math.abs(lpDelta!)} LP`
+                          : '+0 LP'}
+                      </span>
+                    </span>
+                    <span className="text-[10px] text-gray-400 block font-medium">
+                      {ratingLabel || ((lpDelta ?? 0) === 0 ? 'Rank Protected' : 'MMR-Scaled Match')}
+                    </span>
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <span
-                    className={`text-base font-black font-mono flex items-center justify-end space-x-1 ${
-                      (lpDelta ?? 0) > 0 ? 'text-emerald-400' : (lpDelta ?? 0) < 0 ? 'text-red-400' : 'text-amber-300'
-                    }`}
-                  >
-                    <span>
-                      {(lpDelta ?? 0) > 0
-                        ? `+${lpDelta} LP`
-                        : (lpDelta ?? 0) < 0
-                        ? `-${Math.abs(lpDelta!)} LP`
-                        : '+0 LP'}
-                    </span>
-                  </span>
-                  <span className="text-[10px] text-gray-400 block font-medium">
-                    {ratingLabel || ((lpDelta ?? 0) === 0 ? 'Rank Protected' : 'MMR-Scaled Match')}
-                  </span>
-                </div>
-              </div>
+                {/* 3-Division Progress Strip (100 LP per Division: III -> II -> I) */}
+                {newTier !== 'BOWER_JJ' ? (
+                  <div className="pt-2 border-t border-slate-800/80 space-y-2">
+                    <div className="flex items-center justify-between text-[11px] font-bold">
+                      <span className="text-gray-300">Division Progression</span>
+                      <span className="text-amber-300 font-extrabold flex items-center gap-1">
+                        {divInfo.isPromoSeries ? (
+                          <>
+                            <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400 animate-pulse" />
+                            <span>Promotion Ready! (76-100 LP)</span>
+                          </>
+                        ) : (
+                          <span>
+                            {divInfo.lpToNextMilestone} LP to {divInfo.division === 'I' ? 'Next Tier' : 'Next Div'}
+                          </span>
+                        )}
+                      </span>
+                    </div>
 
-              {/* 3-Division Progress Strip (100 LP per Division: III -> II -> I) */}
-              {newTier !== 'BOWER_JJ' && (
-                <div className="pt-1 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                  <div className="flex-1 flex items-center gap-1.5">
-                    {(['III', 'II', 'I'] as const).map((divLabel, segIdx) => {
-                      const dInfo = getRankDivisionInfo(newTier, currentPoints, newDivision);
-                      const activeIdx = dInfo.divisionNumber - 1;
-                      const fillPct =
-                        segIdx < activeIdx
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['III', 'II', 'I'] as const).map((divLabel, segIdx) => {
+                        const isPast = segIdx < activeDivIdx;
+                        const isCurrent = segIdx === activeDivIdx;
+                        const isFuture = segIdx > activeDivIdx;
+                        const fillPct = isPast
                           ? 100
-                          : segIdx > activeIdx
+                          : isFuture
                           ? 0
                           : Math.min(100, Math.max(0, currentPoints));
-                      return (
-                        <div key={divLabel} className="flex-1">
-                          <div className="h-1.5 rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all duration-500"
-                              style={{
-                                width: `${fillPct}%`,
-                                backgroundColor: RANK_INFO[newTier]?.color || '#f59e0b',
-                              }}
-                            />
+
+                        return (
+                          <div
+                            key={divLabel}
+                            className={`p-2 rounded-xl border transition-all ${
+                              isCurrent
+                                ? 'bg-slate-800/90 border-amber-500/70 shadow-[0_0_12px_rgba(245,158,11,0.2)] ring-1 ring-amber-400/50'
+                                : isPast
+                                ? 'bg-slate-900/60 border-slate-700/60'
+                                : 'bg-slate-950/40 border-slate-800/50 opacity-60'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between text-[10px] font-black mb-1.5">
+                              <span
+                                className={`flex items-center gap-1 ${
+                                  isCurrent
+                                    ? 'text-amber-300 font-black'
+                                    : isPast
+                                    ? 'text-emerald-400 font-bold'
+                                    : 'text-slate-400'
+                                }`}
+                              >
+                                <span>Div {divLabel}</span>
+                                {isCurrent && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                                )}
+                              </span>
+                              <span className="font-mono text-[9px] text-gray-300 font-semibold">
+                                {isPast ? '100 / 100' : isCurrent ? `${currentPoints} / 100` : '0 / 100'}
+                              </span>
+                            </div>
+
+                            <div className="h-2 rounded-full bg-slate-950 border border-slate-800 overflow-hidden p-0.5">
+                              <div
+                                className="h-full rounded-full transition-all duration-700 shadow-sm"
+                                style={{
+                                  width: `${fillPct}%`,
+                                  backgroundColor: isPast
+                                    ? '#10b981'
+                                    : isCurrent
+                                    ? (RANK_INFO[newTier]?.color || '#f59e0b')
+                                    : '#334155',
+                                }}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                  <span className="text-[10px] font-bold text-amber-300 whitespace-nowrap">
-                    {getRankDivisionInfo(newTier, currentPoints, newDivision).isPromoSeries
-                      ? '🔥 Promo Ready!'
-                      : `${getRankDivisionInfo(newTier, currentPoints, newDivision).lpToNextMilestone} LP to Next Div`}
-                  </span>
-                </div>
-              )}
-            </div>
-          ) : (
+                ) : (
+                  <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                    <span className="text-gray-300 font-bold">Apex Tier Status:</span>
+                    <span className="text-amber-300 font-black tracking-wider">
+                      {currentPoints.toLocaleString()} LP Total (Grandmaster)
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })() : (
             <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between text-xs">
               <span className="text-gray-400 font-bold">Match Type:</span>
               <span className="text-cyan-300 font-black">

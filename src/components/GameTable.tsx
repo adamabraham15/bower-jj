@@ -55,7 +55,7 @@ import {
   isActiveDecisionPhase,
 } from './BiddingModalHelpers';
 import { AudioControlsPopover } from './AudioControlsPopover';
-import { RankBadge, RankTier } from './RankBadge';
+import { RankBadge, RankTier, RankDivision } from './RankBadge';
 import { PostMatchModal } from './PostMatchModal';
 import { PublicProfileModal, PublicPlayerData } from './PublicProfileModal';
 
@@ -97,6 +97,7 @@ interface GameTableProps {
   initialState: EuchreGameState;
   profile?: {
     rankTier?: RankTier;
+    rankDivision?: RankDivision;
     rankPoints?: number;
     level?: number;
     xp?: number;
@@ -1104,6 +1105,9 @@ export const GameTable: React.FC<GameTableProps> = ({
             matchTypeLabel="Offline Bot Practice (No Rank Risk)"
             oldTier={profile?.rankTier || (state.players[0].rankTier as RankTier) || '9'}
             newTier={profile?.rankTier || (state.players[0].rankTier as RankTier) || '9'}
+            oldDivision={profile?.rankDivision || 'III'}
+            newDivision={profile?.rankDivision || 'III'}
+            oldPoints={profile?.rankPoints ?? 0}
             currentPoints={profile?.rankPoints ?? 0}
             xpEarned={state.scores[0] >= state.rules.targetScore ? 150 : 50}
             playerLevel={profile?.level ?? 1}

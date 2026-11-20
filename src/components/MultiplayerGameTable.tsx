@@ -54,6 +54,11 @@ interface MultiplayerGameTableProps {
     oldPoints: number;
     newPoints: number;
     lpChange: number;
+    didRankUp?: boolean;
+    didDivisionUp?: boolean;
+    oldDivision?: string;
+    newDivision?: string;
+    promotionSealsAwarded?: number;
     mmrChange?: number;
     newMmr?: number;
     lobbyMmr?: number;
@@ -1089,6 +1094,9 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
               ratingLabel={ratingLabel}
               oldTier={lastRankUpdate?.oldTier || (profile?.rankTier as any) || serverState.slots[yourPos]?.rankTier || '9'}
               newTier={lastRankUpdate?.newTier || (profile?.rankTier as any) || serverState.slots[yourPos]?.rankTier || '9'}
+              oldDivision={(lastRankUpdate?.oldDivision as any) || profile?.rankDivision || 'III'}
+              newDivision={(lastRankUpdate?.newDivision as any) || profile?.rankDivision || 'III'}
+              oldPoints={lastRankUpdate?.oldPoints ?? profile?.rankPoints ?? 0}
               currentPoints={lastRankUpdate?.newPoints ?? profile?.rankPoints ?? 0}
               xpEarned={isVictory ? 350 : 120}
               playerLevel={profile?.level ?? 1}

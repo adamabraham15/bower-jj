@@ -498,7 +498,16 @@ export class RoomManager {
       return;
     }
 
-    // Seamlessly transfer queue membership from oldUserId to newUser.id
+    // Seamlessly transfer queue membership from oldUserId to newUser.id (only if not already playing an active match)
+    if (oldConn.roomCode) {
+      const activeMatchRoom = this.rooms.get(oldConn.roomCode);
+      if (activeMatchRoom && activeMatchRoom.status === 'playing') {
+        this.soloQueue = this.soloQueue.filter((id) => id !== oldUserId && id !== newUser.id);
+        oldConn.inQueue = undefined;
+        oldConn.queueEnterTime = undefined;
+      }
+    }
+
     const qIdx = this.soloQueue.indexOf(oldUserId);
     if (qIdx !== -1) {
       if (this.soloQueue.includes(newUser.id)) {
@@ -1157,6 +1166,12 @@ export class RoomManager {
     if (!room) throw new Error('Room not found');
     if (room.hostUserId !== userId && !room.isMatchmade) throw new Error('Only host can start the game');
 
+    // Protect active matchmade games from being restarted mid-match
+    if (room.status === 'playing' && room.isMatchmade) {
+      logger.warn(`[START_GAME] Room ${room.code} is already playing a matchmade game. Ignoring restart attempt.`);
+      return room;
+    }
+
     let occupiedCount = room.slots.filter(s => s !== null).length;
     if (occupiedCount !== 4) {
       if (room.queueMode === 'rivals' || room.queueMode === 'custom' || room.queueMode === 'duo') {
@@ -1450,9 +1465,16 @@ export class RoomManager {
     const conn = this.connections.get(userId);
     if (!conn) return;
 
-    // Cleanly leave any stale lobby, finished room, or abandoned room before entering matchmaking queue
+    // Prevent re-entering matchmaking queue if player is already in an active playing match
     if (conn.roomCode) {
       const existingRoom = this.rooms.get(conn.roomCode);
+      if (existingRoom && existingRoom.status === 'playing') {
+        const isSeated = existingRoom.slots.some((s) => s && s.userId === userId && !s.abandoned);
+        if (isSeated) {
+          logger.warn(`[QUEUE] User ${userId} attempted enterQueue while active in playing room ${conn.roomCode}. Ignoring.`);
+          return;
+        }
+      }
       if (
         !existingRoom ||
         existingRoom.status === 'lobby' ||
@@ -1513,6 +1535,26 @@ export class RoomManager {
   private processMatchmakingQueue() {
     if (this.soloQueue.length === 0) return;
 
+    // Evict any user from soloQueue who is disconnected or already in an active playing match
+    this.soloQueue = this.soloQueue.filter((uid) => {
+      const conn = this.connections.get(uid);
+      if (!conn || !conn.ws || conn.ws.readyState !== 1 /* WebSocket.OPEN */) return false;
+      if (conn.roomCode) {
+        const room = this.rooms.get(conn.roomCode);
+        if (room && room.status === 'playing') {
+          const isSeated = room.slots.some((s) => s && s.userId === uid && !s.abandoned);
+          if (isSeated) {
+            conn.inQueue = undefined;
+            conn.queueEnterTime = undefined;
+            return false;
+          }
+        }
+      }
+      return true;
+    });
+
+    if (this.soloQueue.length === 0) return;
+
     const now = Date.now();
 
     // First 15s: prioritize players near your rank (+-1 tier).
@@ -1569,6 +1611,10 @@ export class RoomManager {
 
         matchedUserIds.forEach(uid => {
           const c = this.connections.get(uid);
+          if (c) {
+            c.inQueue = undefined;
+            c.queueEnterTime = undefined;
+          }
           if (c?.roomCode) {
             const oldR = this.rooms.get(c.roomCode);
             if (!oldR || oldR.status === 'lobby' || oldR.status === 'finished') {
@@ -1663,6 +1709,10 @@ export class RoomManager {
 
         matchedUserIds.forEach(uid => {
           const c = this.connections.get(uid);
+          if (c) {
+            c.inQueue = undefined;
+            c.queueEnterTime = undefined;
+          }
           if (c?.roomCode) {
             const oldR = this.rooms.get(c.roomCode);
             if (!oldR || oldR.status === 'lobby' || oldR.status === 'finished') {
@@ -1776,10 +1826,14 @@ export class RoomManager {
       const targetTier = hostAcc?.rankTier || '9';
       const conn = this.connections.get(hostId);
       const wait = now - (conn?.queueEnterTime || now);
+      const qMode = conn?.inQueue === 'casual' ? 'casual' : 'solo';
+      if (conn) {
+        conn.inQueue = undefined;
+        conn.queueEnterTime = undefined;
+      }
 
       db.recordMatchmakingComposition(1, wait);
 
-      const qMode = conn?.inQueue === 'casual' ? 'casual' : 'solo';
       const room = this.createRoom(hostId, DEFAULT_RULES, qMode);
       room.isMatchmade = true;
       room.queueMode = qMode;

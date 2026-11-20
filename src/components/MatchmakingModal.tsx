@@ -3,7 +3,7 @@
  * Connects directly to the authoritative WebSocket server with custom house rules.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Users,
@@ -102,16 +102,32 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
     return () => clearInterval(tick);
   }, [isOpen]);
 
+  const onMatchFoundRef = useRef(onMatchFound);
+  useEffect(() => {
+    onMatchFoundRef.current = onMatchFound;
+  }, [onMatchFound]);
+
+  const hasMatchedRef = useRef(false);
+
   useEffect(() => {
     if (!isOpen) {
       setLocalPendingInvites({});
+      hasMatchedRef.current = false;
       return;
     }
+
+    hasMatchedRef.current = false;
+
+    const handleMatchTransition = () => {
+      if (hasMatchedRef.current) return;
+      hasMatchedRef.current = true;
+      onMatchFoundRef.current();
+    };
 
     const unsubscribe = multiplayerClient.setCallbacks({
       onAuth: () => {
         setErrorMessage(null);
-        if (queueType !== 'private') {
+        if (!hasMatchedRef.current && queueType !== 'private') {
           const mode = (queueType === 'ranked_rivals' || queueType === 'ranked_duo')
             ? 'rivals'
             : (queueType === 'unranked' ? 'casual' : 'solo');
@@ -143,7 +159,7 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
           });
         }
         if (room.status === 'playing') {
-          onMatchFound();
+          handleMatchTransition();
         }
       },
       onQueue: (data) => {
@@ -152,7 +168,7 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
         setErrorMessage(null);
       },
       onGameSync: () => {
-        onMatchFound();
+        handleMatchTransition();
       },
       onError: (msg) => {
         setErrorMessage(msg);
@@ -186,11 +202,11 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
 
     return () => {
       unsubscribe();
-      if (queueType !== 'private') {
+      if (!hasMatchedRef.current && queueType !== 'private') {
         multiplayerClient.leaveQueue();
       }
     };
-  }, [isOpen, queueType, onMatchFound]);
+  }, [isOpen, queueType]);
 
   if (!isOpen) return null;
 
