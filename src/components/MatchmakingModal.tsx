@@ -846,13 +846,13 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
               <div className="flex flex-col items-center">
                 <span className="text-[10px] text-cyan-400 font-bold uppercase mb-1">Your Team</span>
                 <RankBadge tier={userRank} points={userPoints} size="sm" showLabel={false} />
-                <span className="text-xs font-bold text-white mt-1">Blue</span>
+                <span className="text-xs font-bold text-white mt-2.5">Blue</span>
               </div>
               <div className="text-sm font-black text-amber-500">VS</div>
               <div className="flex flex-col items-center">
                 <span className="text-[10px] text-red-400 font-bold uppercase mb-1">Opponents</span>
                 <RankBadge tier={userRank} size="sm" showLabel={false} />
-                <span className="text-xs font-bold text-white mt-1">Red</span>
+                <span className="text-xs font-bold text-white mt-2.5">Red</span>
               </div>
             </div>
 

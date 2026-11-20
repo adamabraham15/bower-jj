@@ -784,8 +784,8 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
 
           {/* Trick Resolving Banner: Floating in center of arena during resolution */}
           {isTrickResolving && serverState.currentTrick.winner !== undefined && serverState.currentTrick.winningCard && (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 bg-slate-950/95 border-2 border-amber-400 rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2 text-center shadow-2xl animate-in zoom-in-95 duration-200 whitespace-nowrap max-w-[92%] pointer-events-none">
-              <div className="text-[11px] sm:text-xs font-black text-amber-300 flex items-center justify-center space-x-1.5">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 bg-slate-950/95 border-2 border-amber-400 rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2 text-center shadow-2xl animate-in zoom-in-95 duration-200 max-w-[85%] sm:max-w-md pointer-events-none">
+              <div className="text-[11px] sm:text-xs font-black text-amber-300 flex items-center justify-center space-x-1.5 flex-wrap">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
                 <span>
                   {getSlot(serverState.currentTrick.winner)?.username || `Player ${serverState.currentTrick.winner}`} WON THE TRICK with {formatCardName(serverState.currentTrick.winningCard, serverState.trumpSuit)}!
@@ -919,7 +919,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
 
         {/* Dealer Discard Prompt */}
         {isDealerDiscardPhase ? (
-          <div className="absolute top-16 z-40 bg-amber-500 text-slate-950 px-4 py-2 rounded-2xl shadow-2xl font-black text-xs animate-bounce flex items-center space-x-2 text-center max-w-md mx-2">
+          <div className="absolute top-[84px] sm:top-24 left-1/2 -translate-x-1/2 z-40 bg-amber-500 text-slate-950 px-3.5 py-1.5 sm:py-2 rounded-2xl shadow-2xl font-black text-[11px] sm:text-xs animate-bounce flex items-center space-x-1.5 text-center max-w-[85%] sm:max-w-md mx-auto pointer-events-none">
             <span>👇</span>
             <span>
               {isBenched
@@ -928,7 +928,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
             </span>
           </div>
         ) : isBenched ? (
-          <div className="absolute top-16 z-40 bg-cyan-950/90 border-2 border-cyan-400 text-cyan-200 px-4 py-2 rounded-2xl shadow-2xl font-bold text-xs text-center mx-2">
+          <div className="absolute top-[84px] sm:top-24 left-1/2 -translate-x-1/2 z-40 bg-cyan-950/90 border-2 border-cyan-400 text-cyan-200 px-3.5 py-1.5 rounded-2xl shadow-2xl font-bold text-xs text-center max-w-[85%] mx-auto">
             🚀 Your partner is GOING ALONE! You sit this hand out.
           </div>
         ) : null}

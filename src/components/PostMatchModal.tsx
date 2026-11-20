@@ -177,10 +177,11 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
         {/* Scrollable Stats & Progression Body */}
         <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-5 space-y-3 sm:space-y-4">
           {/* 1. Competitive LP & MMR Delta or Match Type */}
-          {isRanked || (lpDelta !== undefined && lpDelta !== 0) ? (() => {
+          {(() => {
             const safeDivision: RankDivision = newDivision || 'III';
             const divInfo = getRankDivisionInfo(newTier, currentPoints, safeDivision);
             const activeDivIdx = divInfo.divisionNumber - 1;
+            const hasLpChange = isRanked || (lpDelta !== undefined && lpDelta !== 0);
 
             return (
               <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
@@ -207,22 +208,35 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
                   </div>
 
                   <div className="text-right">
-                    <span
-                      className={`text-base font-black font-mono flex items-center justify-end space-x-1 ${
-                        (lpDelta ?? 0) > 0 ? 'text-emerald-400' : (lpDelta ?? 0) < 0 ? 'text-red-400' : 'text-amber-300'
-                      }`}
-                    >
-                      <span>
-                        {(lpDelta ?? 0) > 0
-                          ? `+${lpDelta} LP`
-                          : (lpDelta ?? 0) < 0
-                          ? `-${Math.abs(lpDelta!)} LP`
-                          : '+0 LP'}
-                      </span>
-                    </span>
-                    <span className="text-[10px] text-gray-400 block font-medium">
-                      {ratingLabel || ((lpDelta ?? 0) === 0 ? 'Rank Protected' : 'MMR-Scaled Match')}
-                    </span>
+                    {hasLpChange ? (
+                      <>
+                        <span
+                          className={`text-base font-black font-mono flex items-center justify-end space-x-1 ${
+                            (lpDelta ?? 0) > 0 ? 'text-emerald-400' : (lpDelta ?? 0) < 0 ? 'text-red-400' : 'text-amber-300'
+                          }`}
+                        >
+                          <span>
+                            {(lpDelta ?? 0) > 0
+                              ? `+${lpDelta} LP`
+                              : (lpDelta ?? 0) < 0
+                              ? `-${Math.abs(lpDelta!)} LP`
+                              : '+0 LP'}
+                          </span>
+                        </span>
+                        <span className="text-[10px] text-gray-400 block font-medium">
+                          {ratingLabel || ((lpDelta ?? 0) === 0 ? 'Rank Protected' : 'MMR-Scaled Match')}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-xs font-black text-cyan-400 block font-mono">
+                          +0 LP
+                        </span>
+                        <span className="text-[10px] text-gray-400 block font-medium">
+                          {matchTypeLabel || 'Practice / Unranked'}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -315,14 +329,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
                 )}
               </div>
             );
-          })() : (
-            <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between text-xs">
-              <span className="text-gray-400 font-bold">Match Type:</span>
-              <span className="text-cyan-300 font-black">
-                {matchTypeLabel || 'Casual / Practice (No Rank Risk)'}
-              </span>
-            </div>
-          )}
+          })()}
 
           {/* 2. XP & Player Level Progress */}
           <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">

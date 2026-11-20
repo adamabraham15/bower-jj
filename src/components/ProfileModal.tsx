@@ -240,33 +240,33 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         </div>
 
         {/* Avatar & Rank Placement - Cleanly spaced below banner */}
-        <div className="px-6 pt-2 pb-1 relative z-10 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+        <div className="px-4 sm:px-6 pt-2 pb-1 relative z-10 flex items-center justify-between gap-2">
+          <div className="flex items-center space-x-2.5 sm:space-x-4 min-w-0 flex-1">
             {/* Avatar overlapping banner cleanly */}
-            <div className="-mt-12 sm:-mt-14 relative z-20 group cursor-pointer flex-shrink-0" onClick={() => setActiveTab('wardrobe')}>
+            <div className="-mt-10 sm:-mt-14 relative z-20 group cursor-pointer flex-shrink-0" onClick={() => setActiveTab('wardrobe')}>
               <AvatarPortrait
                 avatarId={profile.avatarIcon}
                 size="lg"
                 showRarityGem
-                className="!w-20 !h-20 border-4 border-slate-900 shadow-2xl ring-2 ring-amber-400/30"
+                className="!w-16 !h-16 sm:!w-20 sm:!h-20 border-4 border-slate-900 shadow-2xl ring-2 ring-amber-400/30"
               />
             </div>
 
             {/* Username & Level - completely below banner on solid background */}
-            <div className="flex flex-col justify-center">
-              <h2 className="text-2xl font-black text-white tracking-wide">
+            <div className="flex flex-col justify-center min-w-0 flex-1">
+              <h2 className="text-lg sm:text-2xl font-black text-white tracking-wide truncate">
                 <span>{profile.username}</span>
               </h2>
-              <div className="text-xs text-amber-400 font-bold flex items-center space-x-1.5 mt-0.5">
+              <div className="text-[11px] sm:text-xs text-amber-400 font-bold flex items-center space-x-1 sm:space-x-1.5 mt-0.5 truncate">
                 <span>LEVEL {profile.level}</span>
                 <span className="text-gray-500">•</span>
-                <span className="text-gray-300 font-medium">{selectedTitle}</span>
+                <span className="text-gray-300 font-medium truncate">{selectedTitle}</span>
               </div>
             </div>
           </div>
 
           {/* Rank Badge - positioned cleanly on the right, fully below banner */}
-          <div className="flex-shrink-0 pl-2">
+          <div className="flex-shrink-0">
             <RankBadge
               tier={profile.rankTier}
               division={profile.rankDivision}
