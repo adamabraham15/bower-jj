@@ -908,7 +908,7 @@ export async function createMultiplayerServer(
               }
             }
             if (targetUserId) {
-              activeRm.inviteFriendToParty(uid, targetUserId, msg.mode);
+              activeRm.inviteFriendToParty(uid, targetUserId, msg.mode, msg.friendUsername);
             }
             break;
           }

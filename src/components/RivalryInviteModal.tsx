@@ -73,6 +73,10 @@ export const RivalryInviteModal: React.FC<RivalryInviteModalProps> = ({
 
     // Connect and create a rivals room if not already in one
     multiplayerClient.connect();
+    multiplayerClient.fetchFriends();
+    const friendsPoll = setInterval(() => {
+      multiplayerClient.fetchFriends();
+    }, 3000);
 
     const activeRoom = multiplayerClient.getCurrentRoom();
     if (!multiplayerClient.hasActiveRoom() || activeRoom?.queueMode !== 'rivals') {
@@ -115,6 +119,7 @@ export const RivalryInviteModal: React.FC<RivalryInviteModalProps> = ({
     });
 
     return () => {
+      clearInterval(friendsPoll);
       unsubscribe();
     };
   }, [isOpen, onMatchFound]);

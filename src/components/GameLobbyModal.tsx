@@ -97,7 +97,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
 
     const friendsRefreshInterval = setInterval(() => {
       multiplayerClient.fetchFriends();
-    }, 8000);
+    }, 3000);
 
     // Check if an active lobby room already exists
     const activeRoom = multiplayerClient.getCurrentRoom();

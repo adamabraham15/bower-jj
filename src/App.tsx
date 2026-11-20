@@ -195,6 +195,32 @@ export function normalizeXpProgress(
   };
 }
 
+const getCollectionCacheKey = (userId?: string | null) => {
+  return `bower_jj_cached_collection_${userId || 'active'}`;
+};
+
+const loadCachedCollectionState = (userId?: string | null): PlayerCollectionState | undefined => {
+  try {
+    const key = getCollectionCacheKey(userId);
+    const raw = localStorage.getItem(key) || localStorage.getItem('bower_jj_cached_collection_active');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.cards)) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return undefined;
+};
+
+const saveCachedCollectionState = (state: PlayerCollectionState, userId?: string | null) => {
+  try {
+    const payload = JSON.stringify(state);
+    localStorage.setItem(getCollectionCacheKey(userId), payload);
+    localStorage.setItem('bower_jj_cached_collection_active', payload);
+  } catch {}
+};
+
 export const App: React.FC = () => {
   const [profile, setProfile] = useState<PlayerProfileData>(() => {
     try {
@@ -367,7 +393,7 @@ export const App: React.FC = () => {
   const [incomingFriendRequests, setIncomingFriendRequests] = useState<UserAccount['friendRequests']>([]);
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const [userRankPosition, setUserRankPosition] = useState<number | undefined>();
-  const [collectionState, setCollectionState] = useState<PlayerCollectionState | undefined>();
+  const [collectionState, setCollectionState] = useState<PlayerCollectionState | undefined>(() => loadCachedCollectionState());
   const lastRecordedGameOverRoomRef = useRef<string | null>(null);
 
   // Rank Promotion Fanfare Modal (supports both Division Up and Full Tier Ascension)
@@ -612,6 +638,9 @@ export const App: React.FC = () => {
 
     if (user.collectionState) {
       setCollectionState(user.collectionState);
+      saveCachedCollectionState(user.collectionState, user.id);
+    } else {
+      setCollectionState(prev => prev || loadCachedCollectionState(user.id));
     }
   };
 
@@ -761,10 +790,13 @@ export const App: React.FC = () => {
   // Connect to Multiplayer Server on startup
   useEffect(() => {
     multiplayerClient.connect(profile.username, profile.avatarIcon);
+    const stopPresence = multiplayerClient.startPresenceAutoRefresh(6000);
 
     const unsubscribe = multiplayerClient.setCallbacks({
       onAuth: (user) => {
         applyAuthoritativeUser(user);
+        multiplayerClient.fetchFriends();
+        multiplayerClient.fetchCollectionState();
       },
       onUserSync: (user) => {
         applyAuthoritativeUser(user);
@@ -875,6 +907,7 @@ export const App: React.FC = () => {
       },
       onCollection: (cs) => {
         setCollectionState(cs);
+        saveCachedCollectionState(cs, authUserRef.current?.id);
         if (typeof cs.waxSeals === 'number') {
           setProfile(prev => ({
             ...prev,
@@ -890,6 +923,7 @@ export const App: React.FC = () => {
         setPendingPackResult(result);
         if (result.collectionState) {
           setCollectionState(result.collectionState);
+          saveCachedCollectionState(result.collectionState, authUserRef.current?.id);
         }
         if (typeof result.totalWaxSeals === 'number') {
           setProfile(prev => ({
@@ -912,6 +946,7 @@ export const App: React.FC = () => {
           }));
           if (data.collectionState) {
             setCollectionState(data.collectionState);
+            saveCachedCollectionState(data.collectionState, authUserRef.current?.id);
           }
           try {
             localStorage.setItem('bower_jj_wax_seals', String(data.waxSeals));
@@ -974,6 +1009,7 @@ export const App: React.FC = () => {
     });
 
     return () => {
+      stopPresence();
       unsubscribe();
     };
   }, []);
@@ -1363,10 +1399,12 @@ export const App: React.FC = () => {
           },
         ];
       }
-      return {
+      const nextState = {
         ...prev,
         cards: updatedCards,
       };
+      saveCachedCollectionState(nextState, authUserRef.current?.id);
+      return nextState;
     });
   };
 

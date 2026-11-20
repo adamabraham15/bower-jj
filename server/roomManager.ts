@@ -63,7 +63,7 @@ export const RANKED_BOT_FALLBACK_MS = process.env.RANKED_BOT_WAIT_MS
   ? parseInt(process.env.RANKED_BOT_WAIT_MS, 10)
   : 35000; // 35 seconds default for competitive ranked play
 export const CASUAL_BOT_FALLBACK_MS = 15000; // 15 seconds for unranked casual
-export const PARTIAL_HUMAN_FALLBACK_MS = 25000; // 25 seconds before pairing 2-3 humans with bots
+export const PARTIAL_HUMAN_FALLBACK_MS = 20000; // 20 seconds before pairing 2-3 humans with bots
 export const ACTIVE_MATCHES_DIR = process.env.ACTIVE_MATCHES_DIR || path.resolve(process.cwd(), 'server', 'data', 'active_matches');
 
 export interface ClientConnection {
@@ -613,6 +613,10 @@ export class RoomManager {
         logger.warn(`[RECONNECT PG] Failed checking active match for ${userId}:`, err);
       });
     }
+
+    // 3. Immediately broadcast real-time online presence update to friends & user
+    this.sendFriendListUpdate(userId).catch(() => {});
+    this.notifyFriendsOfUser(userId).catch(() => {});
   }
 
   public handleDisconnect(userId: string, ws?: WebSocket) {
@@ -651,6 +655,7 @@ export class RoomManager {
     }
 
     this.connections.delete(userId);
+    this.notifyFriendsOfUser(userId).catch(() => {});
   }
 
   private handlePlayerAbandoned(roomCode: string, pos: PlayerPosition) {
@@ -871,6 +876,12 @@ export class RoomManager {
         type: 'ROOM_UPDATE',
         room,
       });
+
+      for (const slot of room.slots) {
+        if (slot && !slot.isAI && slot.userId) {
+          this.notifyFriendsOfUser(slot.userId).catch(() => {});
+        }
+      }
 
       return room;
     }
@@ -1212,6 +1223,13 @@ export class RoomManager {
 
     this.broadcastGameSync(room.code);
 
+    // Notify online friends of seated human players that match has started (in_game status)
+    for (const slot of room.slots) {
+      if (slot && !slot.isAI && slot.userId) {
+        this.notifyFriendsOfUser(slot.userId).catch(() => {});
+      }
+    }
+
     if (players[initialState.currentTurn].isAI) {
       this.triggerAITurn(room.code);
     }
@@ -1352,6 +1370,7 @@ export class RoomManager {
         type: 'ROOM_UPDATE',
         room,
       });
+      this.notifyFriendsOfUser(userId).catch(() => {});
     } else if (room.status === 'playing') {
       this.handleForfeit(userId);
     }
@@ -1453,6 +1472,7 @@ export class RoomManager {
       type: 'ROOM_UPDATE',
       room: { ...room, status: 'finished' },
     });
+    this.notifyFriendsOfUser(userId).catch(() => {});
   }
 
   // --- MATCHMAKING QUEUE (REAL PLAYERS FIRST, TIER-COMPENSATED BOTS SECOND) ---
@@ -2074,6 +2094,12 @@ export class RoomManager {
     if (!room.id) room.id = crypto.randomUUID();
     this.clearActiveMatchSnapshot(room.code);
 
+    for (const slot of room.slots) {
+      if (slot && !slot.isAI && slot.userId) {
+        this.notifyFriendsOfUser(slot.userId).catch(() => {});
+      }
+    }
+
     const winningTeam = getWinningTeam(state.scores, state.rules.targetScore);
     const finalScore = `${state.scores[0]} - ${state.scores[1]}`;
     const isRanked =
@@ -2539,6 +2565,31 @@ export class RoomManager {
     });
   }
 
+  public async notifyFriendsOfUser(userId: string) {
+    if (!userId) return;
+    try {
+      let friendIds: string[] = [];
+      if (this.pgRepo) {
+        const friends = await this.pgRepo.getFriendsSummary(userId);
+        friendIds = friends.map(f => f.userId);
+      } else {
+        const user = db.getUserById(userId);
+        if (user && user.friends) {
+          friendIds = [...user.friends];
+        }
+      }
+      for (const fId of friendIds) {
+        if (this.connections.has(fId)) {
+          this.sendFriendListUpdate(fId).catch(err => {
+            logger.warn(`[NOTIFY_FRIENDS] Error updating friends for ${fId}: ${err}`);
+          });
+        }
+      }
+    } catch (err) {
+      logger.warn(`[NOTIFY_FRIENDS] Failed to notify friends of user ${userId}: ${err}`);
+    }
+  }
+
   public async sendLeaderboard(userId: string) {
     let entries: LeaderboardEntry[] = [];
     if (this.pgRepo) {
@@ -2588,9 +2639,31 @@ export class RoomManager {
     return undefined;
   }
 
-  public inviteFriendToParty(userId: string, friendUserId: string, mode: 'rivals' | 'custom' | 'duo' = 'rivals') {
+  public inviteFriendToParty(
+    userId: string,
+    friendUserId: string,
+    mode: 'rivals' | 'custom' | 'duo' = 'rivals',
+    friendUsername?: string
+  ) {
     const conn = this.connections.get(userId);
     if (!conn) return;
+
+    let targetUid = friendUserId;
+    let friendConn = this.connections.get(targetUid);
+    if ((!friendConn || friendConn.ws.readyState !== WebSocket.OPEN) && friendUsername) {
+      const byName = this.findOnlineUserIdByUsername(friendUsername);
+      if (byName) {
+        targetUid = byName;
+        friendConn = this.connections.get(byName);
+      }
+    }
+    if (!friendConn || friendConn.ws.readyState !== WebSocket.OPEN) {
+      const byFallback = this.findOnlineUserIdByUsername(targetUid);
+      if (byFallback) {
+        targetUid = byFallback;
+        friendConn = this.connections.get(byFallback);
+      }
+    }
 
     const existingRoom = conn.roomCode ? this.rooms.get(conn.roomCode) : undefined;
     let room: Room;
@@ -2612,9 +2685,8 @@ export class RoomManager {
 
     const hostPos = room.slots.findIndex(s => s && s.userId === userId);
 
-    const friendConn = this.connections.get(friendUserId);
     if (!friendConn || friendConn.ws.readyState !== WebSocket.OPEN) {
-      this.clearPendingInvite(room.code, friendUserId);
+      this.clearPendingInvite(room.code, targetUid);
       this.sendToUser(userId, {
         type: 'ROOM_UPDATE',
         room,
@@ -2624,8 +2696,8 @@ export class RoomManager {
       return;
     }
 
-    if (room.slots.some(s => s && !s.isAI && s.userId === friendUserId)) {
-      this.clearPendingInvite(room.code, friendUserId);
+    if (room.slots.some(s => s && !s.isAI && s.userId === targetUid)) {
+      this.clearPendingInvite(room.code, targetUid);
       this.broadcastRoom(room.code, {
         type: 'ROOM_UPDATE',
         room,
@@ -2654,10 +2726,10 @@ export class RoomManager {
     }
 
     const expiresAt = now + this.inviteExpiryMs;
-    this.clearPendingInvite(room.code, friendUserId);
-    room.pendingInvites[friendUserId] = expiresAt;
+    this.clearPendingInvite(room.code, targetUid);
+    room.pendingInvites[targetUid] = expiresAt;
 
-    const timerKey = `${room.code}_${friendUserId}`;
+    const timerKey = `${room.code}_${targetUid}`;
     const expTimer = setTimeout(() => {
       this.inviteTimers.delete(timerKey);
       const activeRoom = this.rooms.get(room.code);
@@ -2665,9 +2737,9 @@ export class RoomManager {
         activeRoom &&
         activeRoom.status === 'lobby' &&
         activeRoom.pendingInvites &&
-        activeRoom.pendingInvites[friendUserId] !== undefined
+        activeRoom.pendingInvites[targetUid] !== undefined
       ) {
-        delete activeRoom.pendingInvites[friendUserId];
+        delete activeRoom.pendingInvites[targetUid];
         this.broadcastRoom(activeRoom.code, {
           type: 'ROOM_UPDATE',
           room: activeRoom,
@@ -2696,7 +2768,7 @@ export class RoomManager {
       });
     }
 
-    this.sendToUser(friendUserId, {
+    this.sendToUser(targetUid, {
       type: 'PARTY_INVITE_RECEIVED',
       fromUsername: conn.username,
       fromAvatar: conn.avatarIcon,

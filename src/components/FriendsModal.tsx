@@ -47,6 +47,9 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
   useEffect(() => {
     if (!isOpen || !isAuthenticated) return;
     multiplayerClient.fetchFriends();
+    const pollInterval = setInterval(() => {
+      multiplayerClient.fetchFriends();
+    }, 3000);
     const unsub = multiplayerClient.setCallbacks({
       onError: (err) => {
         setFeedbackMsg({ text: err, isError: true });
@@ -57,7 +60,10 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
         }
       },
     });
-    return () => unsub();
+    return () => {
+      clearInterval(pollInterval);
+      unsub();
+    };
   }, [isOpen, isAuthenticated]);
 
   if (!isOpen) return null;
@@ -297,7 +303,7 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
                             <RankBadge tier={friend.rankTier} points={friend.rankPoints} size="sm" />
                             <button
                               onClick={() => {
-                                multiplayerClient.sendPartyInvite(friend.userId, 'custom');
+                                multiplayerClient.sendPartyInvite(friend.userId, 'custom', friend.username);
                                 onInviteToParty?.(friend.userId);
                               }}
                               className="px-2.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center space-x-1 shadow-md active:scale-95 transition-transform"
@@ -347,6 +353,17 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
 
                           <div className="flex items-center space-x-2">
                             <RankBadge tier={friend.rankTier} points={friend.rankPoints} size="sm" />
+                            <button
+                              onClick={() => {
+                                multiplayerClient.sendPartyInvite(friend.userId, 'custom', friend.username);
+                                onInviteToParty?.(friend.userId);
+                              }}
+                              className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 hover:border-cyan-400 font-bold text-xs flex items-center space-x-1 shadow-sm active:scale-95 transition-all"
+                              title="Invite friend to game lobby (delivers as soon as they are online)"
+                            >
+                              <Gamepad2 className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">Invite</span>
+                            </button>
                             <button
                               onClick={() => handleRemove(friend.userId)}
                               className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"

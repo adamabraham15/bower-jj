@@ -110,20 +110,20 @@ export class MultiplayerClient {
     return 'wss://occasionally-conflicts-pad-exercises.trycloudflare.com/ws';
   }
 
-  // Event Listeners
-  private onAuthCallback?: (user: UserAccount, token: string) => void;
-  private onUserSyncCallback?: (user: UserAccount) => void;
-  private onRoomCallback?: (room: Room, yourPosition?: PlayerPosition) => void;
-  private onGameSyncCallback?: (state: SanitizedGameState) => void;
-  private onQueueCallback?: (data: { inQueue: boolean; mode?: string; playersFound: number; elapsedSeconds: number }) => void;
-  private onEmoteCallback?: (fromPosition: PlayerPosition, text?: string, emoji?: string) => void;
-  private onFriendsCallback?: (friends: FriendSummary[], requests: UserAccount['friendRequests']) => void;
-  private onLeaderboardCallback?: (entries: LeaderboardEntry[], yourRank?: number) => void;
-  private onCollectionCallback?: (collection: PlayerCollectionState) => void;
-  private onPackOpenedCallback?: (result: PackOpenResult) => void;
-  private onCardCraftedCallback?: (data: { success: boolean; cardId: string; waxSeals: number; collectionState: PlayerCollectionState }) => void;
-  private onPackEarnedCallback?: (info: { count: number; totalUnopened: number; reason: string; level?: number; unlockedAvatars?: string[] }) => void;
-  private onRankUpdateCallback?: (update: {
+  // Multi-subscriber listener sets to prevent child modals from clobbering App.tsx listeners
+  private authListeners = new Set<(user: UserAccount, token: string) => void>();
+  private userSyncListeners = new Set<(user: UserAccount) => void>();
+  private roomListeners = new Set<(room: Room, yourPosition?: PlayerPosition) => void>();
+  private gameSyncListeners = new Set<(state: SanitizedGameState) => void>();
+  private queueListeners = new Set<(data: { inQueue: boolean; mode?: string; playersFound: number; elapsedSeconds: number }) => void>();
+  private emoteListeners = new Set<(fromPosition: PlayerPosition, text?: string, emoji?: string) => void>();
+  private friendsListeners = new Set<(friends: FriendSummary[], requests: UserAccount['friendRequests']) => void>();
+  private leaderboardListeners = new Set<(entries: LeaderboardEntry[], yourRank?: number) => void>();
+  private collectionListeners = new Set<(collection: PlayerCollectionState) => void>();
+  private packOpenedListeners = new Set<(result: PackOpenResult) => void>();
+  private cardCraftedListeners = new Set<(data: { success: boolean; cardId: string; waxSeals: number; collectionState: PlayerCollectionState }) => void>();
+  private packEarnedListeners = new Set<(info: { count: number; totalUnopened: number; reason: string; level?: number; unlockedAvatars?: string[] }) => void>();
+  private rankUpdateListeners = new Set<(update: {
     oldTier: RankTier;
     newTier: RankTier;
     oldPoints: number;
@@ -138,21 +138,17 @@ export class MultiplayerClient {
     newMmr?: number;
     lobbyMmr?: number;
     lobbyRankLabel?: string;
-  }) => void;
-  private onPartyInviteCallback?: (invite: { fromUsername: string; fromAvatar: string; roomCode: string; mode?: string; expiresAt?: number }) => void;
-  private onProfileCallback?: (profile: PublicPlayerData) => void;
-  private onMatchmakingStatsCallback?: (stats: MatchmakingStats) => void;
-  private onNoticeCallback?: (message: string, title?: string) => void;
-  private onErrorCallback?: (errorMsg: string) => void;
-
-  // Multi-subscriber listener sets to prevent child modals from clobbering App.tsx listeners
-  private roomListeners = new Set<(room: Room, yourPosition?: PlayerPosition) => void>();
-  private gameSyncListeners = new Set<(state: SanitizedGameState) => void>();
-  private queueListeners = new Set<(data: { inQueue: boolean; mode?: string; playersFound: number; elapsedSeconds: number }) => void>();
-  private collectionListeners = new Set<(collection: PlayerCollectionState) => void>();
-  private packOpenedListeners = new Set<(result: PackOpenResult) => void>();
+  }) => void>();
+  private partyInviteListeners = new Set<(invite: { fromUsername: string; fromAvatar: string; roomCode: string; mode?: string; expiresAt?: number }) => void>();
+  private profileListeners = new Set<(profile: PublicPlayerData) => void>();
+  private matchmakingStatsListeners = new Set<(stats: MatchmakingStats) => void>();
   private noticeListeners = new Set<(message: string, title?: string) => void>();
   private errorListeners = new Set<(errorMsg: string) => void>();
+
+  // Presence auto-refresh tracking
+  private presenceInterval: any = null;
+  private focusHandler: (() => void) | null = null;
+  private visibilityHandler: (() => void) | null = null;
 
   // Outgoing message queue for requests made while connecting
   private pendingMessages: ClientMessage[] = [];
@@ -202,67 +198,97 @@ export class MultiplayerClient {
     onNotice?: (message: string, title?: string) => void;
     onError?: (errorMsg: string) => void;
   }): () => void {
-    if (callbacks.onAuth) this.onAuthCallback = callbacks.onAuth;
-    if (callbacks.onUserSync) this.onUserSyncCallback = callbacks.onUserSync;
-    if (callbacks.onRoom) {
-      this.onRoomCallback = callbacks.onRoom;
-      this.roomListeners.add(callbacks.onRoom);
-    }
-    if (callbacks.onGameSync) {
-      this.onGameSyncCallback = callbacks.onGameSync;
-      this.gameSyncListeners.add(callbacks.onGameSync);
-    }
-    if (callbacks.onQueue) {
-      this.onQueueCallback = callbacks.onQueue;
-      this.queueListeners.add(callbacks.onQueue);
-    }
-    if (callbacks.onEmote) this.onEmoteCallback = callbacks.onEmote;
-    if (callbacks.onFriends) this.onFriendsCallback = callbacks.onFriends;
-    if (callbacks.onLeaderboard) this.onLeaderboardCallback = callbacks.onLeaderboard;
-    if (callbacks.onCollection) {
-      this.onCollectionCallback = callbacks.onCollection;
-      this.collectionListeners.add(callbacks.onCollection);
-    }
-    if (callbacks.onPackOpened) {
-      this.onPackOpenedCallback = callbacks.onPackOpened;
-      this.packOpenedListeners.add(callbacks.onPackOpened);
-    }
-    if (callbacks.onPackEarned) this.onPackEarnedCallback = callbacks.onPackEarned;
-    if (callbacks.onRankUpdate) this.onRankUpdateCallback = callbacks.onRankUpdate;
-    if (callbacks.onPartyInvite) this.onPartyInviteCallback = callbacks.onPartyInvite;
-    if (callbacks.onProfile) this.onProfileCallback = callbacks.onProfile;
-    if (callbacks.onMatchmakingStats) this.onMatchmakingStatsCallback = callbacks.onMatchmakingStats;
-    if (callbacks.onNotice) {
-      this.onNoticeCallback = callbacks.onNotice;
-      this.noticeListeners.add(callbacks.onNotice);
-    }
-    if (callbacks.onError) {
-      this.onErrorCallback = callbacks.onError;
-      this.errorListeners.add(callbacks.onError);
-    }
+    if (callbacks.onAuth) this.authListeners.add(callbacks.onAuth);
+    if (callbacks.onUserSync) this.userSyncListeners.add(callbacks.onUserSync);
+    if (callbacks.onRoom) this.roomListeners.add(callbacks.onRoom);
+    if (callbacks.onGameSync) this.gameSyncListeners.add(callbacks.onGameSync);
+    if (callbacks.onQueue) this.queueListeners.add(callbacks.onQueue);
+    if (callbacks.onEmote) this.emoteListeners.add(callbacks.onEmote);
+    if (callbacks.onFriends) this.friendsListeners.add(callbacks.onFriends);
+    if (callbacks.onLeaderboard) this.leaderboardListeners.add(callbacks.onLeaderboard);
+    if (callbacks.onCollection) this.collectionListeners.add(callbacks.onCollection);
+    if (callbacks.onPackOpened) this.packOpenedListeners.add(callbacks.onPackOpened);
+    if (callbacks.onCardCrafted) this.cardCraftedListeners.add(callbacks.onCardCrafted);
+    if (callbacks.onPackEarned) this.packEarnedListeners.add(callbacks.onPackEarned);
+    if (callbacks.onRankUpdate) this.rankUpdateListeners.add(callbacks.onRankUpdate);
+    if (callbacks.onPartyInvite) this.partyInviteListeners.add(callbacks.onPartyInvite);
+    if (callbacks.onProfile) this.profileListeners.add(callbacks.onProfile);
+    if (callbacks.onMatchmakingStats) this.matchmakingStatsListeners.add(callbacks.onMatchmakingStats);
+    if (callbacks.onNotice) this.noticeListeners.add(callbacks.onNotice);
+    if (callbacks.onError) this.errorListeners.add(callbacks.onError);
 
     return () => {
-      if (callbacks.onRoom) {
-        this.roomListeners.delete(callbacks.onRoom);
-        if (this.onRoomCallback === callbacks.onRoom) this.onRoomCallback = undefined;
-      }
-      if (callbacks.onGameSync) {
-        this.gameSyncListeners.delete(callbacks.onGameSync);
-        if (this.onGameSyncCallback === callbacks.onGameSync) this.onGameSyncCallback = undefined;
-      }
-      if (callbacks.onQueue) {
-        this.queueListeners.delete(callbacks.onQueue);
-        if (this.onQueueCallback === callbacks.onQueue) this.onQueueCallback = undefined;
-      }
-      if (callbacks.onNotice) {
-        this.noticeListeners.delete(callbacks.onNotice);
-        if (this.onNoticeCallback === callbacks.onNotice) this.onNoticeCallback = undefined;
-      }
-      if (callbacks.onError) {
-        this.errorListeners.delete(callbacks.onError);
-        if (this.onErrorCallback === callbacks.onError) this.onErrorCallback = undefined;
+      if (callbacks.onAuth) this.authListeners.delete(callbacks.onAuth);
+      if (callbacks.onUserSync) this.userSyncListeners.delete(callbacks.onUserSync);
+      if (callbacks.onRoom) this.roomListeners.delete(callbacks.onRoom);
+      if (callbacks.onGameSync) this.gameSyncListeners.delete(callbacks.onGameSync);
+      if (callbacks.onQueue) this.queueListeners.delete(callbacks.onQueue);
+      if (callbacks.onEmote) this.emoteListeners.delete(callbacks.onEmote);
+      if (callbacks.onFriends) this.friendsListeners.delete(callbacks.onFriends);
+      if (callbacks.onLeaderboard) this.leaderboardListeners.delete(callbacks.onLeaderboard);
+      if (callbacks.onCollection) this.collectionListeners.delete(callbacks.onCollection);
+      if (callbacks.onPackOpened) this.packOpenedListeners.delete(callbacks.onPackOpened);
+      if (callbacks.onCardCrafted) this.cardCraftedListeners.delete(callbacks.onCardCrafted);
+      if (callbacks.onPackEarned) this.packEarnedListeners.delete(callbacks.onPackEarned);
+      if (callbacks.onRankUpdate) this.rankUpdateListeners.delete(callbacks.onRankUpdate);
+      if (callbacks.onPartyInvite) this.partyInviteListeners.delete(callbacks.onPartyInvite);
+      if (callbacks.onProfile) this.profileListeners.delete(callbacks.onProfile);
+      if (callbacks.onMatchmakingStats) this.matchmakingStatsListeners.delete(callbacks.onMatchmakingStats);
+      if (callbacks.onNotice) this.noticeListeners.delete(callbacks.onNotice);
+      if (callbacks.onError) this.errorListeners.delete(callbacks.onError);
+    };
+  }
+
+  public startPresenceAutoRefresh(intervalMs: number = 6000): () => void {
+    if (this.presenceInterval) {
+      clearInterval(this.presenceInterval);
+      this.presenceInterval = null;
+    }
+
+    const refresh = () => {
+      if (this.isConnected() && this.isAuthed()) {
+        this.fetchFriends();
       }
     };
+
+    this.presenceInterval = setInterval(refresh, intervalMs);
+
+    if (typeof window !== 'undefined' && !this.focusHandler) {
+      this.focusHandler = () => {
+        if (this.isConnected() && this.isAuthed()) {
+          this.fetchFriends();
+          this.fetchCollectionState();
+        }
+      };
+      window.addEventListener('focus', this.focusHandler);
+    }
+
+    if (typeof document !== 'undefined' && !this.visibilityHandler) {
+      this.visibilityHandler = () => {
+        if (document.visibilityState === 'visible' && this.isConnected() && this.isAuthed()) {
+          this.fetchFriends();
+          this.fetchCollectionState();
+        }
+      };
+      document.addEventListener('visibilitychange', this.visibilityHandler);
+    }
+
+    return () => this.stopPresenceAutoRefresh();
+  }
+
+  public stopPresenceAutoRefresh(): void {
+    if (this.presenceInterval) {
+      clearInterval(this.presenceInterval);
+      this.presenceInterval = null;
+    }
+    if (typeof window !== 'undefined' && this.focusHandler) {
+      window.removeEventListener('focus', this.focusHandler);
+      this.focusHandler = null;
+    }
+    if (typeof document !== 'undefined' && this.visibilityHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.visibilityHandler = null;
+    }
   }
 
   public async connect(
@@ -351,8 +377,9 @@ export class MultiplayerClient {
           console.warn('Multiplayer WebSocket error:', err);
           this.cachedResolvedUrl = null;
           this.isAuthenticated = false;
-          this.onErrorCallback?.('Connection error to multiplayer server');
-          this.errorListeners.forEach(cb => cb('Connection error to multiplayer server'));
+          this.errorListeners.forEach(cb => {
+            try { cb('Connection error to multiplayer server'); } catch (e) { console.error(e); }
+          });
           clearTimeout(safetyTimer);
           this.resolvePendingAuth(false);
         };
@@ -444,9 +471,12 @@ export class MultiplayerClient {
         this.userId = msg.user.id;
         this.username = msg.user.username;
         this.avatarIcon = msg.user.avatarIcon;
-        this.onAuthCallback?.(msg.user, msg.sessionToken);
+        this.authListeners.forEach(cb => {
+          try { cb(msg.user, msg.sessionToken); } catch (err) { console.error(err); }
+        });
         this.flushPendingMessages();
         this.resolvePendingAuth(true);
+
         // If accessToken changed while reauthenticating, upgrade session immediately
         if (this.accessToken && this.accessToken !== this.lastSentAccessToken) {
           this.reauthenticate(this.accessToken, this.username, this.avatarIcon);
@@ -457,7 +487,9 @@ export class MultiplayerClient {
         this.userId = msg.user.id;
         this.username = msg.user.username;
         this.avatarIcon = msg.user.avatarIcon;
-        this.onUserSyncCallback?.(msg.user);
+        this.userSyncListeners.forEach(cb => {
+          try { cb(msg.user); } catch (err) { console.error(err); }
+        });
         break;
 
       case 'ROOM_UPDATE': {
@@ -473,81 +505,93 @@ export class MultiplayerClient {
           const myIdx = msg.room.slots.findIndex(s => s && s.username === this.username);
           if (myIdx !== -1) this.myPosition = myIdx as PlayerPosition;
         }
-        if (this.onRoomCallback) this.onRoomCallback(msg.room, this.myPosition ?? undefined);
         this.roomListeners.forEach(cb => {
-          if (cb !== this.onRoomCallback) cb(msg.room, this.myPosition ?? undefined);
+          try { cb(msg.room, this.myPosition ?? undefined); } catch (err) { console.error(err); }
         });
         break;
       }
 
       case 'GAME_SYNC':
-        if (this.onGameSyncCallback) this.onGameSyncCallback(msg.state);
         this.gameSyncListeners.forEach(cb => {
-          if (cb !== this.onGameSyncCallback) cb(msg.state);
+          try { cb(msg.state); } catch (err) { console.error(err); }
         });
         break;
 
       case 'QUEUE_UPDATE':
-        if (this.onQueueCallback) this.onQueueCallback(msg);
         this.queueListeners.forEach(cb => {
-          if (cb !== this.onQueueCallback) cb(msg);
+          try { cb(msg); } catch (err) { console.error(err); }
         });
         break;
 
       case 'EMOTE_BROADCAST':
-        this.onEmoteCallback?.(msg.fromPosition, msg.text, msg.emoji);
+        this.emoteListeners.forEach(cb => {
+          try { cb(msg.fromPosition, msg.text, msg.emoji); } catch (err) { console.error(err); }
+        });
         break;
 
       case 'FRIENDS_LIST':
-        this.onFriendsCallback?.(msg.friends, msg.incomingRequests);
+        this.friendsListeners.forEach(cb => {
+          try { cb(msg.friends, msg.incomingRequests); } catch (err) { console.error(err); }
+        });
         break;
 
       case 'LEADERBOARD_DATA':
-        this.onLeaderboardCallback?.(msg.entries, msg.yourRank);
+        this.leaderboardListeners.forEach(cb => {
+          try { cb(msg.entries, msg.yourRank); } catch (err) { console.error(err); }
+        });
         break;
 
       case 'COLLECTION_STATE':
-        if (this.onCollectionCallback) this.onCollectionCallback(msg.collection);
         this.collectionListeners.forEach(cb => {
-          if (cb !== this.onCollectionCallback) cb(msg.collection);
+          try { cb(msg.collection); } catch (err) { console.error(err); }
         });
         break;
 
       case 'PACK_OPENED':
-        if (this.onPackOpenedCallback) this.onPackOpenedCallback(msg.result);
         this.packOpenedListeners.forEach(cb => {
-          if (cb !== this.onPackOpenedCallback) cb(msg.result);
+          try { cb(msg.result); } catch (err) { console.error(err); }
         });
         break;
 
       case 'CARD_CRAFTED':
-        this.onCardCraftedCallback?.(msg);
+        this.cardCraftedListeners.forEach(cb => {
+          try { cb(msg); } catch (err) { console.error(err); }
+        });
         break;
 
       case 'PACK_EARNED':
-        this.onPackEarnedCallback?.(msg);
+        this.packEarnedListeners.forEach(cb => {
+          try { cb(msg); } catch (err) { console.error(err); }
+        });
         break;
 
       case 'RANK_UPDATE':
-        this.onRankUpdateCallback?.(msg);
+        this.rankUpdateListeners.forEach(cb => {
+          try { cb(msg); } catch (err) { console.error(err); }
+        });
         break;
 
       case 'PARTY_INVITE_RECEIVED':
-        this.onPartyInviteCallback?.(msg);
+        this.partyInviteListeners.forEach(cb => {
+          try { cb(msg); } catch (err) { console.error(err); }
+        });
         break;
 
       case 'PROFILE_DATA':
-        this.onProfileCallback?.(msg.profile);
+        this.profileListeners.forEach(cb => {
+          try { cb(msg.profile); } catch (err) { console.error(err); }
+        });
         break;
 
       case 'MATCHMAKING_STATS':
-        this.onMatchmakingStatsCallback?.(msg.stats);
+        this.matchmakingStatsListeners.forEach(cb => {
+          try { cb(msg.stats); } catch (err) { console.error(err); }
+        });
         break;
 
       case 'NOTICE':
-        if (this.onNoticeCallback) this.onNoticeCallback(msg.message, msg.title);
         this.noticeListeners.forEach(cb => {
-          if (cb !== this.onNoticeCallback) cb(msg.message, msg.title);
+          try { cb(msg.message, msg.title); } catch (err) { console.error(err); }
         });
         break;
 
@@ -558,8 +602,9 @@ export class MultiplayerClient {
           this.isReauthenticating = false;
           this.resolvePendingAuth(false);
         }
-        this.onErrorCallback?.(msg.message);
-        this.errorListeners.forEach(cb => cb(msg.message));
+        this.errorListeners.forEach(cb => {
+          try { cb(msg.message); } catch (err) { console.error(err); }
+        });
         break;
     }
   }
@@ -873,8 +918,10 @@ export class MultiplayerClient {
 
       if (!res.ok) return null;
       const data = await res.json();
-      if (data?.user && this.onUserSyncCallback) {
-        this.onUserSyncCallback(data.user);
+      if (data?.user) {
+        this.userSyncListeners.forEach(cb => {
+          try { cb(data.user); } catch (e) { console.error(e); }
+        });
       }
       return data;
     } catch {

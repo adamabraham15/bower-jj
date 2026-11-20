@@ -125,6 +125,85 @@ describe('Friends List, Match History & Rank Progression', () => {
       expect(aFinal?.friends).not.toContain(userB.id);
       expect(bFinal?.friends).not.toContain(userA.id);
     });
+
+    it('automatically broadcasts real-time presence updates to online friends on connect, match state, and disconnect', async () => {
+      const u1Id = '11111111-aaaa-4000-8000-000000000001';
+      const u2Id = '22222222-bbbb-4000-8000-000000000002';
+
+      const { user: u1 } = db.getOrCreateUser('PlayerOne', '🤠', undefined, u1Id);
+      const { user: u2 } = db.getOrCreateUser('PlayerTwo', '👑', undefined, u2Id);
+
+      u1.friends = [u2Id];
+      u2.friends = [u1Id];
+
+      const u1Messages: any[] = [];
+      const u2Messages: any[] = [];
+
+      const mockWs1: any = {
+        readyState: 1, // WebSocket.OPEN
+        send: (msg: string) => {
+          u1Messages.push(JSON.parse(msg));
+        },
+      };
+
+      const mockWs2: any = {
+        readyState: 1,
+        send: (msg: string) => {
+          u2Messages.push(JSON.parse(msg));
+        },
+      };
+
+      // 1. User 1 connects first
+      roomManager.registerConnection(u1Id, {
+        ws: mockWs1,
+        userId: u1Id,
+        username: u1.username,
+        avatarIcon: u1.avatarIcon,
+      });
+
+      // User 1 gets initial friends list (PlayerTwo is offline)
+      const u1InitialFriends = u1Messages.filter(m => m.type === 'FRIENDS_LIST').pop();
+      expect(u1InitialFriends).toBeDefined();
+      expect(u1InitialFriends.friends[0].userId).toBe(u2Id);
+      expect(u1InitialFriends.friends[0].isOnline).toBe(false);
+
+      // 2. User 2 connects -> triggers real-time presence broadcast to User 1!
+      roomManager.registerConnection(u2Id, {
+        ws: mockWs2,
+        userId: u2Id,
+        username: u2.username,
+        avatarIcon: u2.avatarIcon,
+      });
+
+      // User 1 should have received a new FRIENDS_LIST with PlayerTwo ONLINE
+      const u1AfterU2Login = u1Messages.filter(m => m.type === 'FRIENDS_LIST').pop();
+      expect(u1AfterU2Login).toBeDefined();
+      expect(u1AfterU2Login.friends[0].userId).toBe(u2Id);
+      expect(u1AfterU2Login.friends[0].isOnline).toBe(true);
+      expect(u1AfterU2Login.friends[0].status).toBe('online');
+
+      // 3. User 2 starts a match -> triggers status update to 'in_game'
+      roomManager.createRoom(u2Id, undefined, 'custom');
+      roomManager.startGame(u2Id);
+
+      const u1AfterU2GameStart = u1Messages.filter(m => m.type === 'FRIENDS_LIST').pop();
+      expect(u1AfterU2GameStart).toBeDefined();
+      expect(u1AfterU2GameStart.friends[0].isOnline).toBe(true);
+      expect(u1AfterU2GameStart.friends[0].status).toBe('in_game');
+
+      // 4. User 2 disconnects -> triggers real-time offline broadcast to User 1
+      roomManager.handleDisconnect(u2Id, mockWs2);
+
+      const u1AfterU2Disconnect = u1Messages.filter(m => m.type === 'FRIENDS_LIST').pop();
+      expect(u1AfterU2Disconnect).toBeDefined();
+      expect(u1AfterU2Disconnect.friends[0].isOnline).toBe(false);
+      expect(u1AfterU2Disconnect.friends[0].status).toBe('offline');
+    });
+
+    it('enforces PARTIAL_HUMAN_FALLBACK_MS threshold to 20 seconds for responsive friend matchmaking', async () => {
+      const { PARTIAL_HUMAN_FALLBACK_MS } = await import('../roomManager');
+      expect(PARTIAL_HUMAN_FALLBACK_MS).toBe(20000);
+    });
   });
 
   describe('3. Rank Progression & Match Result Integrity', () => {
