@@ -6,6 +6,7 @@
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js';
 import { captureInitialAuthRedirect, formatAuthError } from './authCallback';
 import { resolveAvatarId, resolveCardBackId, resolveTableFeltId } from '../config/collectiblesCatalog';
+import type { FriendSummary } from '../../server/types';
 
 // Capture auth redirect parameters before Supabase client initializes and scrubs URL fragments
 captureInitialAuthRedirect();
@@ -434,6 +435,57 @@ class AuthService {
     } catch (err) {
       console.error('Failed to fetch full authoritative profile:', err);
       return null;
+    }
+  }
+
+  /**
+   * Fetch user's friends directly from Supabase (REST fallback for instant load)
+   */
+  public async fetchFriends(userId: string): Promise<FriendSummary[]> {
+    if (!supabase || !userId) return [];
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    if (!isUuid) return [];
+
+    try {
+      const { data: friendships, error: friendErr } = await supabase
+        .from('friendships')
+        .select('user_id, friend_id')
+        .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
+
+      if (friendErr || !friendships || friendships.length === 0) return [];
+
+      const friendIds = friendships.map(f => (f.user_id === userId ? f.friend_id : f.user_id));
+      if (friendIds.length === 0) return [];
+
+      const [profilesRes, ranksRes, xpRes] = await Promise.all([
+        supabase.from('profiles').select('id, username, avatar_icon').in('id', friendIds),
+        supabase.from('player_ranks').select('user_id, rank_tier, rank_division, rank_points').in('user_id', friendIds),
+        supabase.from('player_xp').select('user_id, level').in('user_id', friendIds),
+      ]);
+
+      const rankMap = new Map((ranksRes.data || []).map(r => [r.user_id, r]));
+      const xpMap = new Map((xpRes.data || []).map(x => [x.user_id, x]));
+
+      const results: FriendSummary[] = (profilesRes.data || []).map(p => {
+        const r = rankMap.get(p.id);
+        const x = xpMap.get(p.id);
+        return {
+          userId: p.id,
+          username: p.username || 'Player',
+          avatarIcon: resolveAvatarId(p.avatar_icon),
+          rankTier: (r?.rank_tier as any) || '9',
+          rankDivision: (r?.rank_division as any) || 'III',
+          rankPoints: r?.rank_points ?? 0,
+          level: x?.level ?? 1,
+          isOnline: false,
+          status: 'offline',
+        };
+      });
+
+      return results;
+    } catch (err) {
+      console.warn('Could not fetch friends directly from Supabase:', err);
+      return [];
     }
   }
 

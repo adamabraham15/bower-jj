@@ -273,6 +273,49 @@ const saveCachedCollectionState = (state: PlayerCollectionState, userId?: string
   } catch {}
 };
 
+const getFriendsCacheKey = (userId?: string | null) => {
+  return `bower_jj_cached_friends_${userId || 'active'}`;
+};
+
+const loadCachedFriends = (userId?: string | null): FriendSummary[] => {
+  try {
+    if (userId) {
+      const userKey = getFriendsCacheKey(userId);
+      const userRaw = localStorage.getItem(userKey);
+      if (userRaw) {
+        const parsed = JSON.parse(userRaw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    }
+
+    const savedProfileRaw = localStorage.getItem(STORAGE_KEY);
+    if (savedProfileRaw) {
+      try {
+        const p = JSON.parse(savedProfileRaw);
+        if (isUuid(p?.playerId) && p.playerId !== userId) {
+          const profileRaw = localStorage.getItem(getFriendsCacheKey(p.playerId));
+          if (profileRaw) {
+            const parsed = JSON.parse(profileRaw);
+            if (Array.isArray(parsed)) return parsed;
+          }
+        }
+      } catch {}
+    }
+  } catch {}
+  return [];
+};
+
+const saveCachedFriends = (friends: FriendSummary[], userId?: string | null) => {
+  try {
+    if (userId && Array.isArray(friends)) {
+      localStorage.setItem(getFriendsCacheKey(userId), JSON.stringify(friends));
+      if (isUuid(userId)) {
+        localStorage.setItem('bower_jj_cached_friends_active', JSON.stringify(friends));
+      }
+    }
+  } catch {}
+};
+
 export const App: React.FC = () => {
   const [profile, setProfile] = useState<PlayerProfileData>(() => {
     try {
@@ -441,7 +484,18 @@ export const App: React.FC = () => {
   } | null>(null);
 
   // Live Multiplayer & Social State
-  const [friendsList, setFriendsList] = useState<FriendSummary[]>([]);
+  const [friendsList, setFriendsList] = useState<FriendSummary[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const p = JSON.parse(saved);
+        if (isUuid(p?.playerId)) {
+          return loadCachedFriends(p.playerId);
+        }
+      }
+    } catch {}
+    return loadCachedFriends();
+  });
   const [incomingFriendRequests, setIncomingFriendRequests] = useState<UserAccount['friendRequests']>([]);
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const [userRankPosition, setUserRankPosition] = useState<number | undefined>();
@@ -585,6 +639,19 @@ export const App: React.FC = () => {
             return prev;
           });
         }
+      }
+    });
+
+    authService.fetchFriends(userId).then(friends => {
+      if (friends && friends.length > 0) {
+        setFriendsList(prev => {
+          const onlineMap = new Map(prev.map(f => [f.userId, f]));
+          return friends.map(f => {
+            const live = onlineMap.get(f.userId);
+            return live ? { ...f, isOnline: live.isOnline, status: live.status, roomCode: live.roomCode } : f;
+          });
+        });
+        saveCachedFriends(friends, userId);
       }
     });
 
@@ -799,6 +866,10 @@ export const App: React.FC = () => {
           authUserRef.current = session.user;
           setAuthUser(session.user);
           setAuthToken(session.access_token);
+          const cachedFriends = loadCachedFriends(session.user.id);
+          if (cachedFriends.length > 0) {
+            setFriendsList(cachedFriends);
+          }
           syncAuthoritativeProfile(session.user.id);
           multiplayerClient.connect(
             session.user.user_metadata?.username || profile.username,
@@ -819,6 +890,10 @@ export const App: React.FC = () => {
           authUserRef.current = session.user;
           setAuthUser(session.user);
           setAuthToken(session.access_token);
+          const cachedFriends = loadCachedFriends(session.user.id);
+          if (cachedFriends.length > 0) {
+            setFriendsList(cachedFriends);
+          }
           syncAuthoritativeProfile(session.user.id);
 
           // Reconnect/authenticate with verified access token
@@ -991,6 +1066,8 @@ export const App: React.FC = () => {
       onFriends: (friends, requests) => {
         setFriendsList(friends);
         setIncomingFriendRequests(requests);
+        const resolvedUserId = authUserRef.current?.id || (isUuid(profile.playerId) ? profile.playerId : undefined);
+        saveCachedFriends(friends, resolvedUserId);
       },
       onLeaderboard: (entries, rank) => {
         setLeaderboardEntries(entries);
@@ -2060,6 +2137,10 @@ export const App: React.FC = () => {
             const cached = loadCachedCollectionState(user.id);
             if (cached) {
               setCollectionState(cached);
+            }
+            const cachedFriends = loadCachedFriends(user.id);
+            if (cachedFriends.length > 0) {
+              setFriendsList(cachedFriends);
             }
             syncAuthoritativeProfile(user.id);
           }

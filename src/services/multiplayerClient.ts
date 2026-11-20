@@ -107,7 +107,7 @@ export class MultiplayerClient {
     }
 
     // 4. Default WAN fallback
-    return 'wss://occasionally-conflicts-pad-exercises.trycloudflare.com/ws';
+    return 'wss://years-charm-bills-walks.trycloudflare.com/ws';
   }
 
   // Multi-subscriber listener sets to prevent child modals from clobbering App.tsx listeners
@@ -441,7 +441,8 @@ export class MultiplayerClient {
         }, 7000);
       });
     }
-    return this.connect(username, avatarIcon, accessToken, false);
+    // If not connected, connect afresh with new credentials and force fresh registry resolution
+    return this.connect(username, avatarIcon, accessToken, true);
   }
 
   private flushPendingMessages() {
