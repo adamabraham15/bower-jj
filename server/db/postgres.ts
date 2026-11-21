@@ -726,7 +726,7 @@ export class PostgresDatabaseRepository {
       try {
         await client.query(`DROP TABLE IF EXISTS public.player_battle_pass;`);
       } catch (dropErr: any) {
-        logger.warn(`[MIGRATION 4.6.0] Could not drop player_battle_pass (${dropErr.message}). Continuing safely.`);
+        console.warn(`[MIGRATION 4.6.0] Could not drop player_battle_pass (${dropErr.message}). Continuing safely.`);
       }
     }
   }
