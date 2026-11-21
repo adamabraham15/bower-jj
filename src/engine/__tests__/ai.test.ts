@@ -138,4 +138,91 @@ describe('AI Decision Engines (Easy, Medium, Hard)', () => {
     expect(isCardPlayLegal(played, state.hands[1], state.currentTrick, 'hearts')).toBe(true);
     expect(played.id).toBe('clubs-9'); // Forced to follow suit
   });
+
+  it('Master AI donates at 9 opponent points to prevent a game-ending loner sweep', () => {
+    let state = createMockState();
+    state = {
+      ...state,
+      dealer: 0, // South is opponent dealer
+      scores: [9, 6], // Opponents at 9 points (Team 0 has 9)
+      upCard: { id: 'hearts-J', suit: 'hearts', rank: 'J' }, // Opponent dealer holds Bower upcard
+      hands: {
+        ...state.hands,
+        1: [
+          // Player 1 is West (1st seat after dealer, Team 1)
+          { id: 'hearts-9', suit: 'hearts', rank: '9' },
+          { id: 'hearts-10', suit: 'hearts', rank: '10' },
+          { id: 'spades-A', suit: 'spades', rank: 'A' },
+          { id: 'clubs-K', suit: 'clubs', rank: 'K' },
+          { id: 'diamonds-9', suit: 'diamonds', rank: '9' },
+        ],
+      },
+    };
+
+    const decision = decideRound1Bid(state, 1, 'master');
+    // Master AI orders up defensively to cap opponents at 1-2 points instead of losing 4 on a loner
+    expect(decision.type).toBe('order_up');
+    expect(decision.alone).toBe(false);
+  });
+
+  it('Expert and Master AI bleed trumps by leading Bowers when makers', () => {
+    let state = createMockState();
+    state = {
+      ...state,
+      phase: 'playing',
+      trumpSuit: 'hearts',
+      callingPlayer: 1,
+      callingTeam: 1, // Player 1's team called trump
+      completedTricks: [],
+      currentTrick: {
+        leadPlayer: 1,
+        cards: [],
+      },
+      hands: {
+        ...state.hands,
+        1: [
+          { id: 'hearts-J', suit: 'hearts', rank: 'J' }, // Right Bower
+          { id: 'diamonds-J', suit: 'diamonds', rank: 'J' }, // Left Bower
+          { id: 'spades-A', suit: 'spades', rank: 'A' },
+          { id: 'clubs-10', suit: 'clubs', rank: '10' },
+          { id: 'clubs-9', suit: 'clubs', rank: '9' },
+        ],
+      },
+    };
+
+    const leadCard = decideCardPlay(state, 1, 'expert');
+    // Leads Right Bower to pull opponent trumps!
+    expect(leadCard.id).toBe('hearts-J');
+  });
+
+  it('Master and Expert AI play minimal winning card as 4th player to conserve high cards', () => {
+    let state = createMockState();
+    state = {
+      ...state,
+      phase: 'playing',
+      trumpSuit: 'hearts',
+      currentTrick: {
+        leadPlayer: 0,
+        leadSuit: 'clubs',
+        cards: [
+          { player: 0, card: { id: 'clubs-10', suit: 'clubs', rank: '10' } },
+          { player: 1, card: { id: 'clubs-K', suit: 'clubs', rank: 'K' } }, // Opponent winning with King
+          { player: 2, card: { id: 'clubs-9', suit: 'clubs', rank: '9' } },
+        ],
+      },
+      hands: {
+        ...state.hands,
+        3: [
+          // Player 3 is 4th player (last to play in trick)
+          { id: 'clubs-A', suit: 'clubs', rank: 'A' }, // Can win with Ace
+          { id: 'hearts-9', suit: 'hearts', rank: '9' },
+          { id: 'spades-9', suit: 'spades', rank: '9' },
+        ],
+      },
+    };
+
+    const play = decideCardPlay(state, 3, 'master');
+    // Plays clubs-A because it is the minimal winning legal card that beats King of clubs
+    expect(play.id).toBe('clubs-A');
+  });
 });

@@ -35,7 +35,7 @@ export function getNextPlayer(pos: PlayerPosition): PlayerPosition {
   return ((pos + 1) % 4) as PlayerPosition;
 }
 
-export type AIDifficulty = 'easy' | 'medium' | 'hard';
+export type AIDifficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'master';
 
 export interface Player {
   id: string;
@@ -47,6 +47,8 @@ export interface Player {
   cardBack?: string;
   rankPoints?: number;
   rankTier?: string;
+  botMmr?: number;
+  mmr?: number;
 }
 
 export type GamePhase =

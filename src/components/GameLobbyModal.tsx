@@ -721,7 +721,7 @@ export const GameLobbyModal: React.FC<GameLobbyModalProps> = ({
                     </div>
 
                     <div className="flex items-center gap-1.5">
-                      {(['easy', 'medium', 'hard'] as AIDifficulty[]).map((d) => (
+                      {(['easy', 'medium', 'hard', 'expert', 'master'] as AIDifficulty[]).map((d) => (
                         <button
                           key={d}
                           onClick={() => {

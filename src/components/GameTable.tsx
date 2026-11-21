@@ -505,7 +505,7 @@ export const GameTable: React.FC<GameTableProps> = ({
               <div
                 onClick={() => {
                   sounds.playUiClick();
-                  const tier = (player.rankTier as RankTier) || (pos === 0 ? '9' : player.aiDifficulty === 'hard' ? 'K' : player.aiDifficulty === 'medium' ? '10' : '9');
+                  const tier = (player.rankTier as RankTier) || (pos === 0 ? '9' : player.aiDifficulty === 'master' ? 'BOWER_JJ' : player.aiDifficulty === 'expert' ? 'A' : player.aiDifficulty === 'hard' ? 'K' : player.aiDifficulty === 'medium' ? '10' : '9');
                   setInspectedPlayer({
                     id: player.id || `bot_${player.name}`,
                     username: player.name,

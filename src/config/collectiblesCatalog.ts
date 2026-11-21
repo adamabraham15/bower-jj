@@ -8,6 +8,8 @@
  * - Lossless legacy emoji & legacy card-back alias resolution
  */
 
+import { AIDifficulty } from '../engine/types';
+
 export type RarityTier = 'common' | 'rare' | 'epic' | 'legendary';
 
 export type CardIdentity = '10' | 'J' | 'Q' | 'K' | 'A';
@@ -738,16 +740,20 @@ export function getEligibleMilestoneAvatars(params: {
   });
 }
 
-export const BOT_AVATAR_BY_DIFFICULTY: Record<'easy' | 'medium' | 'hard', string[]> = {
+export const BOT_AVATAR_BY_DIFFICULTY: Record<AIDifficulty, string[]> = {
   easy: ['iron_tactician', 'clever_fox', 'velvet_gentleman'],
   medium: ['cyber_bot', 'thunder_knight', 'elven_trickster'],
   hard: ['shadow_assassin', 'arcane_archmage', 'bower_king', 'cosmic_emissary'],
+  expert: ['arcane_archmage', 'cosmic_emissary', 'phoenix_sovereign', 'bower_king'],
+  master: ['phoenix_sovereign', 'bower_king', 'cosmic_emissary', 'shadow_assassin'],
 };
 
-export const BOT_CARD_BACK_BY_DIFFICULTY: Record<'easy' | 'medium' | 'hard', string> = {
+export const BOT_CARD_BACK_BY_DIFFICULTY: Record<AIDifficulty, string> = {
   easy: 'classic_red',
   medium: 'cybernetic',
   hard: 'dark_royalty',
+  expert: 'arcane',
+  master: 'celestial',
 };
 
 /**

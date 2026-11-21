@@ -770,7 +770,7 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
                     {/* AI Fill Selector */}
                     <div className="flex items-center space-x-2">
                       <div className="flex space-x-1 flex-1">
-                        {(['easy', 'medium', 'hard'] as AIDifficulty[]).map((d) => (
+                        {(['easy', 'medium', 'hard', 'expert', 'master'] as AIDifficulty[]).map((d) => (
                           <button
                             key={d}
                             onClick={() => setAiFillDifficulty(d)}

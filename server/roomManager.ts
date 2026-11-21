@@ -669,8 +669,10 @@ export class RoomManager {
 
     slot.isAI = true;
     slot.abandoned = true;
-    const botCfg = this.getBotConfigForTier(slot.rankTier);
+    const lobbyMmr = this.calculateRoomHumanMmr(room);
+    const botCfg = this.getBotConfigForMmr(lobbyMmr, slot.rankTier);
     slot.aiDifficulty = botCfg.difficulty;
+    slot.botMmr = botCfg.botMmr;
     slot.username = `${abandoningUsername} (Bot)`;
 
     if (abandoningUserId) {
@@ -737,30 +739,93 @@ export class RoomManager {
     }
   }
 
-  // --- BOT RANK COMPENSATION ENGINE ---
+  // --- BOT RANK & MMR COMPENSATION ENGINE ---
 
   /**
-   * Dynamically compensates bot difficulty and displayed badge based on the player's competitive tier:
-   * - 9 Rank: Easy AI (makes occasional beginner errors, conservative calling)
-   * - 10 Rank / Q Rank: Medium AI (understands Bowers, singleton void creation)
-   * - K Rank / A Rank / BOWER JJ: Hard AI (card counting, next-suit theory, loner thresholding)
+   * Calculates the average MMR of human players in a given room.
    */
-  public getBotConfigForTier(tier: RankTier = '9'): { difficulty: AIDifficulty; displayTier: RankTier } {
+  public calculateRoomHumanMmr(room: Room): number {
+    const humanSlots = room.slots.filter(
+      (s): s is PlayerSlot => Boolean(s && !s.isAI && s.userId && !s.abandoned)
+    );
+    if (humanSlots.length === 0) return 1200;
+
+    const totalMmr = humanSlots.reduce((sum, s) => {
+      const u = this.getCachedUser(s.userId!);
+      return sum + (u?.mmr || 1200);
+    }, 0);
+
+    return Math.round(totalMmr / humanSlots.length);
+  }
+
+  /**
+   * Dynamically compensates bot difficulty, displayed tier, and calibrated MMR based on the lobby MMR
+   * and player competitive tier:
+   * - Lobby MMR >= 2000 (Apex BOWER_JJ: Master/Grandmaster/Challenger): Master AI (Apex Challenger caliber)
+   * - Lobby MMR 1750 - 1999 (Astral Ace): Expert AI (Tournament caliber)
+   * - Lobby MMR 1500 - 1749 (Golden King): Hard AI (Advanced card play)
+   * - Lobby MMR 1250 - 1499 (Silver Baron / Verdant Queen): Medium AI (Solid fundamentals)
+   * - Lobby MMR < 1250 (Copper Squire): Easy AI (Beginner-friendly)
+   */
+  public getBotConfigForMmr(
+    lobbyMmr: number,
+    preferredTier?: RankTier
+  ): { difficulty: AIDifficulty; displayTier: RankTier; botMmr: number } {
+    const tierBonus = preferredTier === 'BOWER_JJ' ? 2050 : preferredTier === 'A' ? 1800 : preferredTier === 'K' ? 1600 : preferredTier === 'Q' ? 1450 : preferredTier === '10' ? 1300 : 1150;
+    const effectiveMmr = Math.max(lobbyMmr, tierBonus);
+
+    if (effectiveMmr >= 2000) {
+      return {
+        difficulty: 'master',
+        displayTier: 'BOWER_JJ',
+        botMmr: Math.max(2000, lobbyMmr),
+      };
+    } else if (effectiveMmr >= 1750) {
+      return {
+        difficulty: 'expert',
+        displayTier: preferredTier && TIER_ORDER.indexOf(preferredTier) >= TIER_ORDER.indexOf('A') ? preferredTier : 'A',
+        botMmr: Math.max(1750, lobbyMmr),
+      };
+    } else if (effectiveMmr >= 1500) {
+      return {
+        difficulty: 'hard',
+        displayTier: preferredTier && TIER_ORDER.indexOf(preferredTier) >= TIER_ORDER.indexOf('K') ? preferredTier : 'K',
+        botMmr: Math.max(1500, lobbyMmr),
+      };
+    } else if (effectiveMmr >= 1250) {
+      return {
+        difficulty: 'medium',
+        displayTier: preferredTier || (effectiveMmr >= 1400 ? 'Q' : '10'),
+        botMmr: Math.max(1250, lobbyMmr),
+      };
+    } else {
+      return {
+        difficulty: 'easy',
+        displayTier: preferredTier || '9',
+        botMmr: Math.min(1249, lobbyMmr),
+      };
+    }
+  }
+
+  /**
+   * Backwards-compatible tier mapping supporting all 5 AI difficulty tiers.
+   */
+  public getBotConfigForTier(tier: RankTier = '9'): { difficulty: AIDifficulty; displayTier: RankTier; botMmr: number } {
     switch (tier) {
       case '9':
-        return { difficulty: 'easy', displayTier: '9' };
+        return { difficulty: 'easy', displayTier: '9', botMmr: 1150 };
       case '10':
-        return { difficulty: 'medium', displayTier: '10' };
+        return { difficulty: 'medium', displayTier: '10', botMmr: 1300 };
       case 'Q':
-        return { difficulty: 'medium', displayTier: 'Q' };
+        return { difficulty: 'medium', displayTier: 'Q', botMmr: 1450 };
       case 'K':
-        return { difficulty: 'hard', displayTier: 'K' };
+        return { difficulty: 'hard', displayTier: 'K', botMmr: 1650 };
       case 'A':
-        return { difficulty: 'hard', displayTier: 'A' };
+        return { difficulty: 'hard', displayTier: 'A', botMmr: 1850 };
       case 'BOWER_JJ':
-        return { difficulty: 'hard', displayTier: 'BOWER_JJ' };
+        return { difficulty: 'hard', displayTier: 'BOWER_JJ', botMmr: 2100 };
       default:
-        return { difficulty: 'medium', displayTier: '10' };
+        return { difficulty: 'medium', displayTier: '10', botMmr: 1300 };
     }
   }
 
@@ -1071,16 +1136,22 @@ export class RoomManager {
       throw new Error('Only the host can fill empty seats with AI');
     }
 
-    // Determine target tier & AI difficulty from host or players in room
+    // Calculate effective Lobby MMR from all human players in this room:
+    const lobbyMmr = this.calculateRoomHumanMmr(room);
+
+    // Determine target tier & AI difficulty dynamically scaled to the Lobby MMR:
     let targetTier: RankTier = overrideTier || '9';
     const hostAcc = this.getCachedUser(userId);
     if (hostAcc) {
       targetTier = overrideTier || hostAcc.rankTier;
     }
 
-    const botConfig = this.getBotConfigForTier(targetTier);
+    const botConfig = this.getBotConfigForMmr(lobbyMmr, targetTier);
     const difficulty = overrideDifficulty || botConfig.difficulty;
     const displayTier = botConfig.displayTier;
+    const botMmr = botConfig.botMmr;
+
+    logger.info(`[BOT SCALING] Room ${room.code} Lobby MMR ${lobbyMmr} -> AI bots configured as ${difficulty} (${displayTier}, MMR ${botMmr})`);
 
     const aiAvatars = BOT_AVATAR_BY_DIFFICULTY[difficulty] || BOT_AVATAR_BY_DIFFICULTY.medium;
     const aiCardBack = BOT_CARD_BACK_BY_DIFFICULTY[difficulty] || DEFAULT_CARD_BACK_ID;
@@ -1104,6 +1175,7 @@ export class RoomManager {
         rankTier: displayTier,
         connected: true,
         isReady: true,
+        botMmr,
       };
     });
 
@@ -2320,13 +2392,20 @@ export class RoomManager {
   private getPlayerMmr(slot: PlayerSlot | null): number {
     if (!slot) return 1200;
     if (slot.isAI) {
+      if (typeof slot.botMmr === 'number') {
+        return slot.botMmr;
+      }
       switch (slot.aiDifficulty) {
         case 'easy':
           return 1150;
         case 'medium':
-          return 1400;
+          return 1350;
         case 'hard':
-          return 1750;
+          return 1600;
+        case 'expert':
+          return 1850;
+        case 'master':
+          return 2150;
         default:
           return 1300;
       }

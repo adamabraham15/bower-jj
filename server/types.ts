@@ -192,6 +192,7 @@ export interface PlayerSlot {
   connected: boolean;
   isReady: boolean;
   abandoned?: boolean;
+  botMmr?: number;
 }
 
 export interface Room {
