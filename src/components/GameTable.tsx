@@ -842,7 +842,7 @@ export const GameTable: React.FC<GameTableProps> = ({
           />
 
           {/* Active Trump Suit & Maker Emblem in the Middle of the Table Felt */}
-          {state.trumpSuit && (state.phase === 'playing' || isTrickResolving) && (
+          {state.trumpSuit && (state.phase === 'playing' || state.phase === 'dealer_discard' || isTrickResolving) && (
             <TableCenterTrump
               trumpSuit={state.trumpSuit}
               callerName={callerName}

@@ -40,7 +40,7 @@ export const TrumpBanner: React.FC<TrumpBannerProps> = ({
       </span>
       <SuitIcon
         suit={trumpSuit}
-        className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4.5 sm:h-4.5 flex-shrink-0"
+        className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 flex-shrink-0"
         overrideColor={trumpSuit === 'spades' ? '#e2e8f0' : undefined}
       />
       <span
@@ -121,10 +121,7 @@ export interface TableCenterTrumpProps {
  */
 export const TableCenterTrump: React.FC<TableCenterTrumpProps> = ({
   trumpSuit,
-  isTrickResolving,
 }) => {
-  if (isTrickResolving) return null;
-
   return (
     <div
       data-testid="table-center-trump"
@@ -132,12 +129,20 @@ export const TableCenterTrump: React.FC<TableCenterTrumpProps> = ({
     >
       <div
         title={`Trump: ${trumpSuit.toUpperCase()}`}
-        className="w-10.5 h-10.5 xs:w-11.5 xs:h-11.5 sm:w-13 sm:h-13 rounded-full bg-gradient-to-b from-slate-900/95 to-slate-950/98 border-2 border-amber-400/90 shadow-[0_0_20px_rgba(245,158,11,0.45),inset_0_0_8px_rgba(0,0,0,0.8)] flex items-center justify-center backdrop-blur-xs transition-transform duration-150"
+        className="w-11 h-11 xs:w-12 xs:h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-b from-slate-900/95 to-slate-950/98 border-2 border-amber-400/90 shadow-[0_0_20px_rgba(245,158,11,0.5),inset_0_0_10px_rgba(0,0,0,0.85)] flex items-center justify-center transition-transform duration-150"
+        style={{ minWidth: 44, minHeight: 44 }}
       >
         <SuitIcon
           suit={trumpSuit}
-          className="w-6.5 h-6.5 xs:w-7.5 xs:h-7.5 sm:w-8.5 sm:h-8.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
-          overrideColor={trumpSuit === 'spades' ? '#f8fafc' : undefined}
+          className="w-7 h-7 xs:w-8 xs:h-8 sm:w-9 sm:h-9 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
+          style={{ width: '65%', height: '65%', minWidth: 28, minHeight: 28 }}
+          overrideColor={
+            trumpSuit === 'spades'
+              ? '#f8fafc'
+              : trumpSuit === 'clubs'
+              ? '#22c55e'
+              : '#ef4444'
+          }
         />
       </div>
     </div>

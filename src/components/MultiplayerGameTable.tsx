@@ -727,7 +727,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
           />
 
           {/* Active Trump Suit & Maker Emblem in the Middle of the Table Felt */}
-          {serverState.trumpSuit && (serverState.phase === 'playing' || isTrickResolving) && (
+          {serverState.trumpSuit && (serverState.phase === 'playing' || serverState.phase === 'dealer_discard' || isTrickResolving) && (
             <TableCenterTrump
               trumpSuit={serverState.trumpSuit}
               callerName={callerName}
