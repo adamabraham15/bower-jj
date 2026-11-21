@@ -43,11 +43,13 @@ export const RankUpModal: React.FC<RankUpModalProps> = ({
   newPoints,
   promotionSealsAwarded,
 }) => {
-  const isTierAscension = oldTier !== newTier;
+  const isTierAscension =
+    oldTier !== newTier ||
+    (newTier === 'BOWER_JJ' && oldDivision !== newDivision && (newDivision === 'GRANDMASTER' || newDivision === 'CHALLENGER'));
   const resolvedOldDiv: RankDivision =
-    oldDivision || (isTierAscension ? 'I' : 'III');
+    oldDivision || (isTierAscension ? (newTier === 'BOWER_JJ' ? 'MASTER' : 'I') : 'III');
   const resolvedNewDiv: RankDivision =
-    newDivision || (newTier === 'BOWER_JJ' ? 'APEX' : isTierAscension ? 'III' : 'II');
+    newDivision || (newTier === 'BOWER_JJ' ? (newPoints >= 500 ? 'CHALLENGER' : newPoints >= 250 ? 'GRANDMASTER' : 'MASTER') : isTierAscension ? 'III' : 'II');
 
   const [animStage, setAnimStage] = useState<'charge' | 'reveal'>('charge');
   const [starIgnited, setStarIgnited] = useState(false);

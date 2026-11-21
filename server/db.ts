@@ -43,12 +43,15 @@ const DB_FILE = path.join(DB_DIR, 'db.json');
 
 export const TIER_ORDER: RankTier[] = ['9', '10', 'Q', 'K', 'A', 'BOWER_JJ'];
 
-export const DIVISION_ORDER: RankDivision[] = ['III', 'II', 'I', 'APEX'];
+export const DIVISION_ORDER: RankDivision[] = ['III', 'II', 'I', 'APEX', 'MASTER', 'GRANDMASTER', 'CHALLENGER'];
 export const DIVISION_WEIGHT: Record<RankDivision, number> = {
   III: 1,
   II: 2,
   I: 3,
   APEX: 4,
+  MASTER: 4,
+  GRANDMASTER: 5,
+  CHALLENGER: 6,
 };
 
 export const PROMOTION_WAX_SEALS: Record<RankTier, number> = {
@@ -65,8 +68,15 @@ export const DIVISION_UP_WAX_SEALS: Record<'II' | 'I', number> = {
   I: 35,
 };
 
-export function normalizeRankDivision(tier: RankTier, division?: string): RankDivision {
-  if (tier === 'BOWER_JJ') return 'APEX';
+export function normalizeRankDivision(tier: RankTier, division?: string, points: number = 0): RankDivision {
+  if (tier === 'BOWER_JJ') {
+    if (division === 'CHALLENGER' || division === 'GRANDMASTER' || division === 'MASTER') {
+      return division;
+    }
+    if (points >= 500) return 'CHALLENGER';
+    if (points >= 250) return 'GRANDMASTER';
+    return 'MASTER';
+  }
   if (division === 'I' || division === 'II' || division === 'III') return division;
   return 'III';
 }
@@ -475,9 +485,24 @@ class Database {
 
     if (targetPoints >= 100) {
       if (user.rankTier === 'BOWER_JJ') {
-        // At max tier BOWER_JJ, LP accumulates past 100
-        user.rankDivision = 'APEX';
-        user.rankPoints = targetPoints;
+        // At max tier BOWER_JJ, LP accumulates uncapped across Master, Grandmaster, Challenger
+        user.rankPoints = Math.max(0, targetPoints);
+        const oldApex = user.rankDivision;
+        if (user.rankPoints >= 500) {
+          user.rankDivision = 'CHALLENGER';
+          if (oldApex !== 'CHALLENGER') {
+            didDivisionUp = true;
+            promotionSealsAwarded = 300;
+          }
+        } else if (user.rankPoints >= 250) {
+          user.rankDivision = 'GRANDMASTER';
+          if (oldApex === 'MASTER' || oldApex === 'APEX' || oldApex === 'III') {
+            didDivisionUp = true;
+            promotionSealsAwarded = 150;
+          }
+        } else {
+          user.rankDivision = 'MASTER';
+        }
       } else if (oldDivision === 'III') {
         // Division Promotion: III -> II (100 LP each)
         user.rankDivision = 'II';
@@ -493,10 +518,10 @@ class Database {
         didDivisionUp = true;
         promotionSealsAwarded = DIVISION_UP_WAX_SEALS['I'];
       } else {
-        // Full Rank Tier Promotion from Division I -> Next Tier Division III!
+        // Full Rank Tier Promotion from Division I -> Next Tier Division III or BOWER_JJ MASTER!
         if (currentTierIdx < TIER_ORDER.length - 1) {
           user.rankTier = TIER_ORDER[currentTierIdx + 1];
-          user.rankDivision = user.rankTier === 'BOWER_JJ' ? 'APEX' : 'III';
+          user.rankDivision = user.rankTier === 'BOWER_JJ' ? 'MASTER' : 'III';
           user.rankPoints = targetPoints - 100;
           user.hasDemotionShield = true;
           didRankUp = true;
@@ -519,6 +544,15 @@ class Database {
         // Shield absorbs the loss once
         user.rankPoints = 0;
         user.hasDemotionShield = false;
+        if (user.rankTier === 'BOWER_JJ') {
+          user.rankDivision = 'MASTER';
+        }
+      } else if (user.rankTier === 'BOWER_JJ') {
+        // Demote from BOWER_JJ back to Astral Ace Division I (75 LP)
+        user.rankTier = 'A';
+        user.rankDivision = 'I';
+        user.rankPoints = 75;
+        user.hasDemotionShield = true;
       } else if (oldDivision === 'I') {
         user.rankDivision = 'II';
         user.rankPoints = 75;
@@ -538,11 +572,20 @@ class Database {
         user.rankPoints = 0;
       }
     } else {
-      user.rankDivision = oldDivision;
+      if (user.rankTier === 'BOWER_JJ') {
+        user.rankDivision =
+          targetPoints >= 500
+            ? 'CHALLENGER'
+            : targetPoints >= 250
+            ? 'GRANDMASTER'
+            : 'MASTER';
+      } else {
+        user.rankDivision = oldDivision;
+      }
       user.rankPoints = targetPoints;
     }
 
-    const newDivision = normalizeRankDivision(user.rankTier, user.rankDivision);
+    const newDivision = normalizeRankDivision(user.rankTier, user.rankDivision, user.rankPoints);
 
     // Record Match History
     const matchRecord: MatchRecord = {

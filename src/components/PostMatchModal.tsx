@@ -201,7 +201,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
                       </div>
                       <div className="text-[11px] text-gray-300 font-semibold">
                         {newTier === 'BOWER_JJ'
-                          ? `${currentPoints.toLocaleString()} LP • Apex Sovereign`
+                          ? `${currentPoints.toLocaleString()} LP • ${divInfo.fullRankName}`
                           : `${currentPoints} / 100 LP in Division ${safeDivision} • ${RANK_INFO[newTier]?.title || 'Competitor'}`}
                       </div>
                     </div>
@@ -320,11 +320,85 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                    <span className="text-gray-300 font-bold">Apex Tier Status:</span>
-                    <span className="text-amber-300 font-black tracking-wider">
-                      {currentPoints.toLocaleString()} LP Total (Grandmaster)
-                    </span>
+                  <div className="pt-2 border-t border-slate-800/80 space-y-2">
+                    <div className="flex items-center justify-between text-[11px] font-bold">
+                      <span className="text-gray-300">Apex Division Progression</span>
+                      <span className="text-amber-300 font-extrabold flex items-center gap-1">
+                        {divInfo.division === 'CHALLENGER' ? (
+                          <>
+                            <Crown className="w-3.5 h-3.5 text-amber-400 fill-amber-400 animate-bounce" />
+                            <span>Challenger Apex Tier (Pinnacle)</span>
+                          </>
+                        ) : divInfo.division === 'GRANDMASTER' ? (
+                          <span>{divInfo.lpToNextMilestone} LP to Challenger</span>
+                        ) : (
+                          <span>{divInfo.lpToNextMilestone} LP to Grandmaster</span>
+                        )}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['MASTER', 'GRANDMASTER', 'CHALLENGER'] as const).map((apexKey) => {
+                        const isCurrent = divInfo.division === apexKey;
+                        const isPast =
+                          (divInfo.division === 'CHALLENGER' && (apexKey === 'MASTER' || apexKey === 'GRANDMASTER')) ||
+                          (divInfo.division === 'GRANDMASTER' && apexKey === 'MASTER');
+                        const isFuture =
+                          (divInfo.division === 'MASTER' && (apexKey === 'GRANDMASTER' || apexKey === 'CHALLENGER')) ||
+                          (divInfo.division === 'GRANDMASTER' && apexKey === 'CHALLENGER');
+
+                        const fillPct = isPast
+                          ? 100
+                          : isFuture
+                          ? 0
+                          : divInfo.divisionProgressPercent;
+
+                        const apexColors = {
+                          MASTER: { name: 'Master', range: '0-250 LP', color: '#c084fc', border: '#a855f7' },
+                          GRANDMASTER: { name: 'Grandmaster', range: '250-500 LP', color: '#f87171', border: '#ef4444' },
+                          CHALLENGER: { name: 'Challenger', range: '500+ LP', color: '#fbbf24', border: '#f59e0b' },
+                        }[apexKey];
+
+                        return (
+                          <div
+                            key={apexKey}
+                            className={`p-2 rounded-xl border transition-all ${
+                              isCurrent
+                                ? 'bg-slate-800/90 shadow-[0_0_12px_rgba(245,158,11,0.25)] ring-1 ring-amber-400/50'
+                                : isPast
+                                ? 'bg-slate-900/60 border-slate-700/60'
+                                : 'bg-slate-950/40 border-slate-800/50 opacity-60'
+                            }`}
+                            style={{ borderColor: isCurrent ? apexColors.border : undefined }}
+                          >
+                            <div className="flex items-center justify-between text-[10px] font-black mb-1">
+                              <span
+                                className="flex items-center gap-1"
+                                style={{ color: isCurrent ? apexColors.color : isPast ? '#34d399' : '#64748b' }}
+                              >
+                                <span>{apexColors.name}</span>
+                                {isCurrent && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                                )}
+                              </span>
+                              <span className="font-mono text-[9px] text-gray-400">
+                                {isCurrent ? `${currentPoints} LP` : apexColors.range}
+                              </span>
+                            </div>
+
+                            <div className="h-2 rounded-full bg-slate-950 border border-slate-800 overflow-hidden p-0.5">
+                              <div
+                                className="h-full rounded-full transition-all duration-700 shadow-sm"
+                                style={{
+                                  width: `${fillPct}%`,
+                                  backgroundColor: isPast ? '#10b981' : isCurrent ? apexColors.color : '#334155',
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>

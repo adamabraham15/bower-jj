@@ -742,6 +742,9 @@ class AuthService {
         '9': 1,
       };
       const divWeights: Record<string, number> = {
+        CHALLENGER: 6,
+        GRANDMASTER: 5,
+        MASTER: 4,
         APEX: 4,
         I: 3,
         II: 2,
@@ -782,8 +785,15 @@ class AuthService {
         const totalGames = hasRankedHist ? mh.length : (s?.total_games || 0);
         const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
         const tier = r?.rank_tier || '9';
-        const division = tier === 'BOWER_JJ' ? 'APEX' : (r?.rank_division || 'III');
         const points = r?.rank_points || 0;
+        const division =
+          tier === 'BOWER_JJ'
+            ? points >= 500
+              ? 'CHALLENGER'
+              : points >= 250
+              ? 'GRANDMASTER'
+              : 'MASTER'
+            : (r?.rank_division || 'III');
         const mmr = r?.mmr || 1200;
 
         return {

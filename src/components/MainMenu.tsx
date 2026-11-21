@@ -473,18 +473,35 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                   showLabel={false}
                   showDivisionPips={false}
                 />
-                <span className="text-xs sm:text-sm font-black text-white">
+                <span className="text-xs sm:text-sm font-black text-white flex items-center gap-1">
                   <span className="text-amber-400">
-                    {RANK_INFO[profile.rankTier]?.name || `Rank ${profile.rankTier}`}
+                    {profile.rankTier === 'BOWER_JJ'
+                      ? 'BOWER JJ'
+                      : RANK_INFO[profile.rankTier]?.name || `Rank ${profile.rankTier}`}
                   </span>
-                  {profile.rankTier !== 'BOWER_JJ' && (
-                    <span className="text-amber-200/90 text-[11px] ml-1 font-mono">
+                  {profile.rankTier === 'BOWER_JJ' ? (() => {
+                    const apexDiv = getRankDivisionInfo(profile.rankTier, profile.rankPoints, profile.rankDivision);
+                    const pillClass =
+                      apexDiv.division === 'CHALLENGER'
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-400/60'
+                        : apexDiv.division === 'GRANDMASTER'
+                        ? 'bg-rose-500/20 text-rose-300 border-rose-400/60'
+                        : 'bg-purple-500/20 text-purple-300 border-purple-400/60';
+                    return (
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold border ${pillClass}`}>
+                        {apexDiv.compactRankName}
+                      </span>
+                    );
+                  })() : (
+                    <span className="text-amber-200/90 text-[11px] font-mono">
                       • {getRankDivisionInfo(profile.rankTier, profile.rankPoints, profile.rankDivision).division}
                     </span>
                   )}
                 </span>
                 <span className="text-slate-500 text-xs">•</span>
-                <span className="text-xs font-bold text-slate-200 font-mono">{profile.rankPoints}/100 LP</span>
+                <span className="text-xs font-bold text-slate-200 font-mono">
+                  {profile.rankTier === 'BOWER_JJ' ? `${profile.rankPoints} LP` : `${profile.rankPoints}/100 LP`}
+                </span>
               </button>
             </div>
           </div>

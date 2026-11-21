@@ -257,9 +257,21 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                 <div className="text-[11px] text-slate-300 font-semibold">
                   {resolvedInfo.title} •{' '}
                   <span className="text-amber-300 font-mono font-bold">
-                    {resolvedPoints}/100 LP in Div {resolvedDiv.division}
+                    {resolvedTier === 'BOWER_JJ' ? `${resolvedPoints} LP (${resolvedDiv.fullRankName})` : `${resolvedPoints}/100 LP in Div ${resolvedDiv.division}`}
                   </span>
-                  {resolvedTier !== 'BOWER_JJ' && (
+                  {resolvedTier === 'BOWER_JJ' ? (
+                    resolvedDiv.division !== 'CHALLENGER' ? (
+                      <span className="text-slate-400">
+                        {' '}
+                        ({resolvedDiv.lpToNextMilestone} LP to {resolvedDiv.division === 'MASTER' ? 'Grandmaster' : 'Challenger'})
+                      </span>
+                    ) : (
+                      <span className="text-amber-400 font-semibold">
+                        {' '}
+                        (Pinnacle Apex Tier)
+                      </span>
+                    )
+                  ) : (
                     <span className="text-slate-400">
                       {' '}
                       ({resolvedDiv.lpToNextMilestone} LP to{' '}
@@ -272,48 +284,94 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                   )}
                 </div>
 
-                {/* 3-Division Segmented Progress Bar (Div III: 100 LP | Div II: 100 LP | Div I: 100 LP) */}
-                <div className="mt-1.5 flex items-center gap-1.5 w-60 sm:w-72">
-                  {(['III', 'II', 'I'] as const).map((divLabel, segIdx) => {
-                    const activeIdx = resolvedDiv.divisionNumber - 1; // 0 for III, 1 for II, 2 for I
-                    const fillPct =
-                      resolvedTier === 'BOWER_JJ' || segIdx < activeIdx
+                {/* Segmented Progress Bar: LoL Apex Tier (Master 250 LP | Grandmaster 500 LP | Challenger Uncapped) vs 3-Division for standard */}
+                {resolvedTier === 'BOWER_JJ' ? (
+                  <div className="mt-1.5 flex items-center gap-1.5 w-60 sm:w-72">
+                    {(['MASTER', 'GRANDMASTER', 'CHALLENGER'] as const).map((apexKey) => {
+                      const isCurrent = resolvedDiv.division === apexKey;
+                      const isPast =
+                        (resolvedDiv.division === 'CHALLENGER' && (apexKey === 'MASTER' || apexKey === 'GRANDMASTER')) ||
+                        (resolvedDiv.division === 'GRANDMASTER' && apexKey === 'MASTER');
+                      const fillPct = isPast
                         ? 100
-                        : segIdx > activeIdx
-                        ? 0
-                        : Math.min(100, Math.max(0, resolvedPoints));
-                    const isCurrentSeg = segIdx === activeIdx && resolvedTier !== 'BOWER_JJ';
-                    return (
-                      <div key={divLabel} className="flex-1 flex flex-col gap-0.5">
-                        <div
-                          className={`h-2 rounded-full bg-slate-950 border overflow-hidden p-[1px] ${
-                            isCurrentSeg ? 'border-amber-400/70' : 'border-slate-700/80'
-                          }`}
-                        >
+                        : isCurrent
+                        ? resolvedDiv.divisionProgressPercent
+                        : 0;
+                      const apexColors = {
+                        MASTER: { name: 'Master', color: '#c084fc', border: '#a855f7' },
+                        GRANDMASTER: { name: 'Grandmaster', color: '#f87171', border: '#ef4444' },
+                        CHALLENGER: { name: 'Challenger', color: '#fbbf24', border: '#f59e0b' },
+                      }[apexKey];
+
+                      return (
+                        <div key={apexKey} className="flex-1 flex flex-col gap-0.5">
                           <div
-                            className="h-full rounded-full transition-all duration-500"
-                            style={{
-                              width: `${fillPct}%`,
-                              background: `linear-gradient(90deg, ${resolvedInfo.border}, ${resolvedInfo.color})`,
-                              boxShadow: fillPct > 0 ? `0 0 6px ${resolvedInfo.glow}` : 'none',
-                            }}
-                          />
+                            className={`h-2 rounded-full bg-slate-950 border overflow-hidden p-[1px] ${
+                              isCurrent ? 'border-amber-400/80 shadow-[0_0_6px_rgba(245,158,11,0.3)]' : 'border-slate-700/80'
+                            }`}
+                          >
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${fillPct}%`,
+                                backgroundColor: isPast ? '#10b981' : apexColors.color,
+                              }}
+                            />
+                          </div>
+                          <span
+                            className={`text-[8px] font-black text-center uppercase tracking-wider ${
+                              isCurrent ? 'text-amber-300' : isPast ? 'text-emerald-400' : 'text-slate-400'
+                            }`}
+                          >
+                            {apexColors.name}
+                          </span>
                         </div>
-                        <span
-                          className={`text-[8px] font-black text-center uppercase tracking-wider ${
-                            isCurrentSeg
-                              ? 'text-amber-300'
-                              : segIdx < activeIdx
-                              ? 'text-emerald-400'
-                              : 'text-slate-400'
-                          }`}
-                        >
-                          Div {divLabel} (100 LP)
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="mt-1.5 flex items-center gap-1.5 w-60 sm:w-72">
+                    {(['III', 'II', 'I'] as const).map((divLabel, segIdx) => {
+                      const activeIdx = resolvedDiv.divisionNumber - 1; // 0 for III, 1 for II, 2 for I
+                      const fillPct =
+                        segIdx < activeIdx
+                          ? 100
+                          : segIdx > activeIdx
+                          ? 0
+                          : Math.min(100, Math.max(0, resolvedPoints));
+                      const isCurrentSeg = segIdx === activeIdx;
+                      return (
+                        <div key={divLabel} className="flex-1 flex flex-col gap-0.5">
+                          <div
+                            className={`h-2 rounded-full bg-slate-950 border overflow-hidden p-[1px] ${
+                              isCurrentSeg ? 'border-amber-400/70' : 'border-slate-700/80'
+                            }`}
+                          >
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${fillPct}%`,
+                                background: `linear-gradient(90deg, ${resolvedInfo.border}, ${resolvedInfo.color})`,
+                                boxShadow: fillPct > 0 ? `0 0 6px ${resolvedInfo.glow}` : 'none',
+                              }}
+                            />
+                          </div>
+                          <span
+                            className={`text-[8px] font-black text-center uppercase tracking-wider ${
+                              isCurrentSeg
+                                ? 'text-amber-300'
+                                : segIdx < activeIdx
+                                ? 'text-emerald-400'
+                                : 'text-slate-400'
+                            }`}
+                          >
+                            Div {divLabel} (100 LP)
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -513,16 +571,26 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                         </div>
                         <div className="text-left leading-tight min-w-0">
                           <div
-                            className="text-[11px] sm:text-xs font-black whitespace-nowrap"
+                            className="text-[11px] sm:text-xs font-black whitespace-nowrap flex items-center gap-1"
                             style={{ color: entryInfo.color }}
                           >
-                            {entryInfo.name}{' '}
-                            {entry.rankTier !== 'BOWER_JJ' && (
+                            <span>{entry.rankTier === 'BOWER_JJ' ? 'BOWER JJ' : entryInfo.name}</span>
+                            {entry.rankTier === 'BOWER_JJ' ? (
+                              <span className={`text-[9px] px-1.5 py-0.2 rounded-full border font-bold ${
+                                entryDiv.division === 'CHALLENGER'
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-400/60'
+                                  : entryDiv.division === 'GRANDMASTER'
+                                  ? 'bg-rose-500/20 text-rose-300 border-rose-400/60'
+                                  : 'bg-purple-500/20 text-purple-300 border-purple-400/60'
+                              }`}>
+                                {entryDiv.compactRankName}
+                              </span>
+                            ) : (
                               <span className="text-amber-300 font-mono">{entryDiv.division}</span>
                             )}
                           </div>
                           <div className="text-[10px] font-mono font-bold text-white">
-                            {entry.rankPoints}/100 LP
+                            {entry.rankTier === 'BOWER_JJ' ? `${entry.rankPoints} LP` : `${entry.rankPoints}/100 LP`}
                           </div>
                         </div>
                       </div>
@@ -687,7 +755,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                           </span>
                           {isCurrent && (
                             <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black uppercase">
-                              Current Tier • Div {resolvedDiv.division}
+                              {tierKey === 'BOWER_JJ' ? `Current • ${resolvedDiv.compactRankName}` : `Current Tier • Div ${resolvedDiv.division}`}
                             </span>
                           )}
                         </div>
@@ -699,7 +767,11 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                             <Award className="w-3 h-3" />
                             {info.rewardSummary}
                           </span>
-                          {tierKey !== 'BOWER_JJ' && (
+                          {tierKey === 'BOWER_JJ' ? (
+                            <span className="text-[10px] font-mono text-amber-300/90">
+                              Apex Tiers: Master (0-249 LP) ➔ Grandmaster (250-499 LP) ➔ Challenger (500+ LP Uncapped)
+                            </span>
+                          ) : (
                             <span className="text-[10px] font-mono text-slate-400">
                               3 Divisions: Div III (100 LP) ➔ Div II (100 LP) ➔ Div I (100 LP)
                             </span>
@@ -711,7 +783,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                     <div className="flex-shrink-0 text-right">
                       {isCurrent ? (
                         <div className="text-xs font-black text-amber-400 font-mono">
-                          {resolvedPoints}/100 LP
+                          {tierKey === 'BOWER_JJ' ? `${resolvedPoints} LP` : `${resolvedPoints}/100 LP`}
                         </div>
                       ) : isUnlocked ? (
                         <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[10px] font-black uppercase">

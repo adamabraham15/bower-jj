@@ -7,7 +7,64 @@
 import React from 'react';
 
 export type RankTier = '9' | '10' | 'Q' | 'K' | 'A' | 'BOWER_JJ';
-export type RankDivision = 'III' | 'II' | 'I' | 'APEX';
+export type RankDivision = 'III' | 'II' | 'I' | 'APEX' | 'MASTER' | 'GRANDMASTER' | 'CHALLENGER';
+export type ApexDivision = 'MASTER' | 'GRANDMASTER' | 'CHALLENGER';
+
+export interface ApexTierMeta {
+  division: ApexDivision;
+  name: string;
+  compactName: string;
+  minLp: number;
+  nextLp: number | null;
+  color: string;
+  accentColor: string;
+  border: string;
+  glow: string;
+  crestGradient: string;
+  icon: string;
+}
+
+export const APEX_TIER_CONFIG: Record<ApexDivision, ApexTierMeta> = {
+  MASTER: {
+    division: 'MASTER',
+    name: 'JJ Master',
+    compactName: 'Master',
+    minLp: 0,
+    nextLp: 250,
+    color: '#c084fc',
+    accentColor: '#e879f9',
+    border: '#a855f7',
+    glow: 'rgba(168, 85, 247, 0.75)',
+    crestGradient: 'from-purple-600 via-violet-500 to-indigo-500',
+    icon: '🔮',
+  },
+  GRANDMASTER: {
+    division: 'GRANDMASTER',
+    name: 'JJ Grandmaster',
+    compactName: 'Grandmaster',
+    minLp: 250,
+    nextLp: 500,
+    color: '#f87171',
+    accentColor: '#fb7185',
+    border: '#ef4444',
+    glow: 'rgba(239, 68, 68, 0.8)',
+    crestGradient: 'from-rose-600 via-red-500 to-amber-500',
+    icon: '⚔️',
+  },
+  CHALLENGER: {
+    division: 'CHALLENGER',
+    name: 'JJ Challenger',
+    compactName: 'Challenger',
+    minLp: 500,
+    nextLp: null,
+    color: '#fbbf24',
+    accentColor: '#22d3ee',
+    border: '#f59e0b',
+    glow: 'rgba(251, 191, 36, 0.9)',
+    crestGradient: 'from-amber-500 via-yellow-300 to-cyan-400',
+    icon: '👑',
+  },
+};
 
 export interface RankTierMetadata {
   tier: RankTier;
@@ -30,7 +87,7 @@ export interface RankTierMetadata {
 }
 
 export interface RankDivisionInfo {
-  division: 'III' | 'II' | 'I' | 'APEX';
+  division: RankDivision;
   divisionNumber: 1 | 2 | 3 | 4;
   starsFilled: 1 | 2 | 3;
   nextMilestoneLp: number;
@@ -168,22 +225,70 @@ export function getRankDivisionInfo(
 ): RankDivisionInfo {
   const safeTier: RankTier = RANK_INFO[tier] ? tier : '9';
   const info = RANK_INFO[safeTier];
-  const clampedPoints = Math.min(100, Math.max(0, points || 0));
 
   if (safeTier === 'BOWER_JJ') {
-    return {
-      division: 'APEX',
-      divisionNumber: 4,
-      starsFilled: 3,
-      nextMilestoneLp: 100,
-      lpToNextMilestone: 0,
-      lpToNextTier: 0,
-      divisionProgressPercent: 100,
-      isPromoSeries: false,
-      fullRankName: `${info.name} • Apex`,
-      compactRankName: 'Supreme JJ',
-    };
+    const rawPoints = Math.max(0, points || 0);
+    let apexDiv: ApexDivision = 'MASTER';
+    if (rawPoints >= 500 || explicitDivision === 'CHALLENGER') {
+      apexDiv = 'CHALLENGER';
+    } else if (rawPoints >= 250 || explicitDivision === 'GRANDMASTER') {
+      apexDiv = 'GRANDMASTER';
+    } else {
+      apexDiv = 'MASTER';
+    }
+
+    const meta = APEX_TIER_CONFIG[apexDiv];
+
+    if (apexDiv === 'CHALLENGER') {
+      return {
+        division: 'CHALLENGER',
+        divisionNumber: 4,
+        starsFilled: 3,
+        nextMilestoneLp: rawPoints,
+        lpToNextMilestone: 0,
+        lpToNextTier: 0,
+        divisionProgressPercent: 100,
+        isPromoSeries: false,
+        fullRankName: meta.name,
+        compactRankName: meta.compactName,
+      };
+    } else if (apexDiv === 'GRANDMASTER') {
+      const nextMilestoneLp = 500;
+      const lpToNextMilestone = Math.max(0, nextMilestoneLp - rawPoints);
+      const divisionProgressPercent = Math.min(100, Math.max(0, ((rawPoints - 250) / 250) * 100));
+      return {
+        division: 'GRANDMASTER',
+        divisionNumber: 4,
+        starsFilled: 2,
+        nextMilestoneLp,
+        lpToNextMilestone,
+        lpToNextTier: lpToNextMilestone,
+        divisionProgressPercent,
+        isPromoSeries: lpToNextMilestone <= 40,
+        fullRankName: meta.name,
+        compactRankName: meta.compactName,
+      };
+    } else {
+      // MASTER
+      const nextMilestoneLp = 250;
+      const lpToNextMilestone = Math.max(0, nextMilestoneLp - rawPoints);
+      const divisionProgressPercent = Math.min(100, Math.max(0, (rawPoints / 250) * 100));
+      return {
+        division: 'MASTER',
+        divisionNumber: 4,
+        starsFilled: 1,
+        nextMilestoneLp,
+        lpToNextMilestone,
+        lpToNextTier: lpToNextMilestone,
+        divisionProgressPercent,
+        isPromoSeries: lpToNextMilestone <= 40,
+        fullRankName: meta.name,
+        compactRankName: meta.compactName,
+      };
+    }
   }
+
+  const clampedPoints = Math.min(100, Math.max(0, points || 0));
 
   // Each division (III -> II -> I) requires 100 LP (0 to 100 LP per division)
   const division: 'III' | 'II' | 'I' =
@@ -253,8 +358,11 @@ export const RankBadge: React.FC<RankBadgeProps> = ({
   }[size];
 
   const isApex = safeTier === 'BOWER_JJ';
+  const apexMeta = isApex
+    ? APEX_TIER_CONFIG[divInfo.division as ApexDivision] || APEX_TIER_CONFIG.MASTER
+    : null;
   const isHighTier = safeTier === 'K' || safeTier === 'A' || safeTier === 'BOWER_JJ';
-  const lpPercent = Math.min(100, Math.max(0, points ?? 0));
+  const lpPercent = isApex ? divInfo.divisionProgressPercent : Math.min(100, Math.max(0, points ?? 0));
 
   // SVG progress ring geometry
   const ringRadius = (sizePixels - 4) / 2;
@@ -279,8 +387,8 @@ export const RankBadge: React.FC<RankBadgeProps> = ({
               animateGlow ? 'animate-pulse' : ''
             }`}
             style={{
-              background: isApex
-                ? 'conic-gradient(from 0deg, #f59e0b, #22d3ee, #a855f7, #f59e0b)'
+              background: isApex && apexMeta
+                ? `radial-gradient(circle, ${apexMeta.glow} 0%, transparent 70%)`
                 : info.glow,
             }}
           />
@@ -291,8 +399,12 @@ export const RankBadge: React.FC<RankBadgeProps> = ({
           className="relative w-full h-full rounded-2xl overflow-hidden flex items-center justify-center shadow-xl"
           style={{
             background: info.bg,
-            border: `${size === 'xs' || size === 'sm' ? 1.5 : 2}px solid ${info.border}`,
-            boxShadow: `0 0 ${size === 'xl' ? 24 : 14}px ${info.glow}, inset 0 1px 3px rgba(255,255,255,0.35)`,
+            border: `${size === 'xs' || size === 'sm' ? 1.5 : 2}px solid ${
+              isApex && apexMeta ? apexMeta.border : info.border
+            }`,
+            boxShadow: `0 0 ${size === 'xl' ? 24 : 14}px ${
+              isApex && apexMeta ? apexMeta.glow : info.glow
+            }, inset 0 1px 3px rgba(255,255,255,0.35)`,
           }}
         >
           {/* Illustrated Emblem Artwork Layer */}
@@ -326,7 +438,7 @@ export const RankBadge: React.FC<RankBadgeProps> = ({
               <polygon
                 points="50,3 95,25 95,75 50,97 5,75 5,25"
                 fill="none"
-                stroke={info.accentColor}
+                stroke={isApex && apexMeta ? apexMeta.accentColor : info.accentColor}
                 strokeWidth="1.5"
                 strokeDasharray={isApex ? '4 2' : 'none'}
               />
@@ -361,13 +473,13 @@ export const RankBadge: React.FC<RankBadgeProps> = ({
               cy={(sizePixels + 6) / 2}
               r={ringRadius + 1.5}
               fill="none"
-              stroke={divInfo.isPromoSeries ? '#fbbf24' : info.color}
+              stroke={isApex && apexMeta ? apexMeta.color : divInfo.isPromoSeries ? '#fbbf24' : info.color}
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeDasharray={ringCircumference}
               strokeDashoffset={ringDashOffset}
               style={{
-                filter: `drop-shadow(0 0 4px ${info.glow})`,
+                filter: `drop-shadow(0 0 4px ${isApex && apexMeta ? apexMeta.glow : info.glow})`,
                 transition: 'stroke-dashoffset 0.6s ease-out',
               }}
             />
@@ -375,11 +487,12 @@ export const RankBadge: React.FC<RankBadgeProps> = ({
         )}
 
         {/* Apex Crown Floating Crest */}
-        {isApex && size !== 'xs' && (
+        {isApex && apexMeta && size !== 'xs' && (
           <div
-            className="absolute -top-2.5 z-20 px-1.5 py-0.2 rounded-full bg-gradient-to-r from-amber-500 via-yellow-300 to-cyan-400 text-slate-950 font-black text-[8px] uppercase tracking-tighter shadow-[0_0_10px_rgba(251,191,36,0.9)] border border-white/80"
+            className={`absolute -top-2.5 z-20 px-2 py-0.2 rounded-full bg-gradient-to-r ${apexMeta.crestGradient} text-slate-950 font-black text-[8px] uppercase tracking-tighter shadow-md border border-white/80 flex items-center gap-0.5`}
           >
-            APEX
+            <span>{apexMeta.icon}</span>
+            <span>{apexMeta.compactName}</span>
           </div>
         )}
 
@@ -388,18 +501,18 @@ export const RankBadge: React.FC<RankBadgeProps> = ({
           <div
             className="absolute -bottom-2 z-20 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-950/95 border shadow-md"
             style={{
-              borderColor: info.border,
-              boxShadow: `0 2px 6px rgba(0,0,0,0.85), 0 0 6px ${info.glow}`,
+              borderColor: isApex && apexMeta ? apexMeta.border : info.border,
+              boxShadow: `0 2px 6px rgba(0,0,0,0.85), 0 0 6px ${isApex && apexMeta ? apexMeta.glow : info.glow}`,
             }}
           >
             <span
               className="font-black leading-none tracking-tight"
               style={{
                 fontSize: size === 'sm' ? 8 : size === 'md' ? 9 : 10,
-                color: info.color,
+                color: isApex && apexMeta ? apexMeta.color : info.color,
               }}
             >
-              {isApex ? 'JJ' : `${ info.monogram }•${divInfo.division}`}
+              {isApex && apexMeta ? `JJ • ${apexMeta.compactName}` : `${info.monogram}•${divInfo.division}`}
             </span>
             {size !== 'sm' && !isApex && (
               <span className="flex items-center gap-[1.5px] ml-0.5">
@@ -432,9 +545,9 @@ export const RankBadge: React.FC<RankBadgeProps> = ({
         <div className={`${showDivisionPips && size !== 'xs' ? 'mt-2.5' : 'mt-1'} text-center`}>
           <div
             className="text-xs font-black leading-tight tracking-wide flex items-center justify-center gap-1"
-            style={{ color: info.color }}
+            style={{ color: isApex && apexMeta ? apexMeta.color : info.color }}
           >
-            <span>{info.name}</span>
+            <span>{isApex && apexMeta ? apexMeta.name : info.name}</span>
             {!isApex && points !== undefined && (
               <span className="text-[10px] px-1 py-0.2 rounded bg-slate-800/90 border border-slate-700 text-amber-300 font-mono">
                 {divInfo.division}
@@ -446,10 +559,13 @@ export const RankBadge: React.FC<RankBadgeProps> = ({
           </div>
           {points !== undefined && (
             <div className="mt-0.5 flex flex-col items-center">
-              <div className="text-[10px] text-gray-300 font-mono font-bold">
-                {isApex ? `${points} LP (Apex)` : `${points}/100 LP`}
+              <div
+                className="text-[10px] font-mono font-bold"
+                style={{ color: isApex && apexMeta ? apexMeta.color : '#e2e8f0' }}
+              >
+                {isApex ? `${points} LP` : `${points}/100 LP`}
               </div>
-              {divInfo.isPromoSeries && (
+              {divInfo.isPromoSeries && !isApex && (
                 <div className="mt-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-amber-500/20 border border-amber-400/50 text-[8px] font-black text-amber-300 uppercase tracking-wider animate-pulse">
                   <span>🔥 Promo Series</span>
                 </div>

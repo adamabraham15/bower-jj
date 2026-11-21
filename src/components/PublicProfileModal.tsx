@@ -299,10 +299,10 @@ export const PublicProfileModal: React.FC<PublicProfileModalProps> = ({
             </div>
             <div className="text-right">
               <div className="text-sm font-black font-mono text-white">
-                {p.rankPoints}/100 LP
+                {p.rankTier === 'BOWER_JJ' ? `${p.rankPoints} LP` : `${p.rankPoints}/100 LP`}
               </div>
               <div className="text-[10px] text-amber-300 font-bold">
-                Div {divInfo.division}
+                {p.rankTier === 'BOWER_JJ' ? divInfo.compactRankName : `Div ${divInfo.division}`}
               </div>
             </div>
           </div>

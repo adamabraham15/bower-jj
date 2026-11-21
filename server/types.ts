@@ -17,7 +17,8 @@ import {
 import { CardIdentity, RarityTier } from '../src/config/collectiblesCatalog';
 
 export type RankTier = '9' | '10' | 'Q' | 'K' | 'A' | 'BOWER_JJ';
-export type RankDivision = 'III' | 'II' | 'I' | 'APEX';
+export type RankDivision = 'III' | 'II' | 'I' | 'APEX' | 'MASTER' | 'GRANDMASTER' | 'CHALLENGER';
+export type ApexDivision = 'MASTER' | 'GRANDMASTER' | 'CHALLENGER';
 
 export interface MatchRecord {
   id: string;

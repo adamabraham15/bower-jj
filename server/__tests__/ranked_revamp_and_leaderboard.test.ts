@@ -59,9 +59,24 @@ describe('Season 2 Sovereign Hierarchy Ranked System & Leaderboard Filter', () =
     expect(div1Promo.lpToNextTier).toBe(18);
     expect(div1Promo.isPromoSeries).toBe(true);
 
-    // Apex Tier
-    const apex = getRankDivisionInfo('BOWER_JJ', 40);
-    expect(apex.division).toBe('APEX');
+    // League of Legends Style Apex Tiers (Master, Grandmaster, Challenger)
+    const master = getRankDivisionInfo('BOWER_JJ', 40);
+    expect(master.division).toBe('MASTER');
+    expect(master.fullRankName).toBe('JJ Master');
+    expect(master.compactRankName).toBe('Master');
+    expect(master.lpToNextMilestone).toBe(210); // 250 - 40
+
+    const gm = getRankDivisionInfo('BOWER_JJ', 310);
+    expect(gm.division).toBe('GRANDMASTER');
+    expect(gm.fullRankName).toBe('JJ Grandmaster');
+    expect(gm.compactRankName).toBe('Grandmaster');
+    expect(gm.lpToNextMilestone).toBe(190); // 500 - 310
+
+    const chal = getRankDivisionInfo('BOWER_JJ', 720);
+    expect(chal.division).toBe('CHALLENGER');
+    expect(chal.fullRankName).toBe('JJ Challenger');
+    expect(chal.compactRankName).toBe('Challenger');
+    expect(chal.divisionProgressPercent).toBe(100);
   });
 
   it('progresses through Division III -> II -> I (100 LP each) before promoting to the next Rank Tier', () => {
@@ -213,5 +228,45 @@ describe('Season 2 Sovereign Hierarchy Ranked System & Leaderboard Filter', () =
     } finally {
       await pool.end();
     }
+  });
+
+  it('handles League of Legends style uncapped LP in BOWER_JJ (Master -> Grandmaster -> Challenger)', async () => {
+    const { user } = db.getOrCreateUser(`ApexHero_${Date.now()}`, 'the_outlaw');
+    // Start at Astral Ace Division I with 90 LP
+    user.rankTier = 'A';
+    user.rankDivision = 'I';
+    user.rankPoints = 90;
+
+    // 1. Promote to BOWER_JJ -> Enters Master with rollover LP (not capped at 100)
+    const resJJ = db.recordRankedMatchResult(user.id, true, 1600, 1600, '10 - 5', ['Opp A', 'Opp B']);
+    expect(resJJ!.didRankUp).toBe(true);
+    expect(resJJ!.didDivisionUp).toBe(true);
+    expect(resJJ!.newTier).toBe('BOWER_JJ');
+    expect(resJJ!.newDivision).toBe('MASTER');
+    expect(user.rankTier).toBe('BOWER_JJ');
+    expect(user.rankDivision).toBe('MASTER');
+    expect(user.rankPoints).toBeGreaterThan(0);
+
+    // 2. Climb in Master beyond 100 LP (e.g. 240 LP)
+    user.rankPoints = 240;
+    const resGm = db.recordRankedMatchResult(user.id, true, 1800, 1800, '10 - 7', ['Opp A', 'Opp B']);
+    expect(resGm!.didDivisionUp).toBe(true);
+    expect(resGm!.newDivision).toBe('GRANDMASTER');
+    expect(user.rankDivision).toBe('GRANDMASTER');
+    expect(user.rankPoints).toBeGreaterThanOrEqual(250);
+
+    // 3. Climb in Grandmaster beyond 500 LP -> Promotes to Challenger (Apex pinnacle)
+    user.rankPoints = 490;
+    const resChal = db.recordRankedMatchResult(user.id, true, 2000, 2000, '10 - 8', ['Opp A', 'Opp B']);
+    expect(resChal!.didDivisionUp).toBe(true);
+    expect(resChal!.newDivision).toBe('CHALLENGER');
+    expect(user.rankDivision).toBe('CHALLENGER');
+    expect(user.rankPoints).toBeGreaterThanOrEqual(500);
+
+    // 4. In Challenger, LP continues to climb uncapped
+    user.rankPoints = 850;
+    const resUncapped = db.recordRankedMatchResult(user.id, true, 2200, 2200, '10 - 2', ['Opp A', 'Opp B']);
+    expect(resUncapped!.newDivision).toBe('CHALLENGER');
+    expect(user.rankPoints).toBeGreaterThan(850);
   });
 });

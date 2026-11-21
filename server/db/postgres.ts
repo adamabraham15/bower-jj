@@ -65,8 +65,15 @@ export const DIVISION_UP_WAX_SEALS: Record<'II' | 'I', number> = {
   I: 35,
 };
 
-export function normalizeRankDivision(tier: RankTier, division?: string): RankDivision {
-  if (tier === 'BOWER_JJ') return 'APEX';
+export function normalizeRankDivision(tier: RankTier, division?: string, points: number = 0): RankDivision {
+  if (tier === 'BOWER_JJ') {
+    if (division === 'CHALLENGER' || division === 'GRANDMASTER' || division === 'MASTER') {
+      return division;
+    }
+    if (points >= 500) return 'CHALLENGER';
+    if (points >= 250) return 'GRANDMASTER';
+    return 'MASTER';
+  }
   if (division === 'I' || division === 'II' || division === 'III') return division;
   return 'III';
 }
@@ -1432,12 +1439,49 @@ export class PostgresDatabaseRepository {
           newPoints = currentPoints + lpChange;
           const currentTierIdx = TIER_ORDER.indexOf(currentTier);
 
-          if (newPoints >= 100) {
-            if (currentTier === 'BOWER_JJ') {
-              // Respect DB CHECK constraint (rank_points BETWEEN 0 AND 100) at max tier BOWER_JJ
-              newDivision = 'APEX';
-              newPoints = 100;
-            } else if (currentDivision === 'III') {
+          if (currentTier === 'BOWER_JJ') {
+            // Apex Tier (League of Legends style): Uncapped LP across Master, Grandmaster, Challenger
+            newPoints = Math.max(0, currentPoints + lpChange);
+            const oldApexDiv: RankDivision =
+              currentDivision === 'CHALLENGER' || currentDivision === 'GRANDMASTER' || currentDivision === 'MASTER'
+                ? currentDivision
+                : currentPoints >= 500
+                ? 'CHALLENGER'
+                : currentPoints >= 250
+                ? 'GRANDMASTER'
+                : 'MASTER';
+
+            if (newPoints >= 500) {
+              newDivision = 'CHALLENGER';
+              if (oldApexDiv !== 'CHALLENGER') {
+                didDivisionUp = true;
+                promotionSealsAwarded = 300;
+              }
+            } else if (newPoints >= 250) {
+              newDivision = 'GRANDMASTER';
+              if (oldApexDiv === 'MASTER') {
+                didDivisionUp = true;
+                promotionSealsAwarded = 150;
+              }
+            } else {
+              newDivision = 'MASTER';
+            }
+
+            if (currentPoints + lpChange < 0) {
+              if (hasDemotionShield) {
+                newPoints = 0;
+                hasDemotionShield = false;
+                newDivision = 'MASTER';
+              } else {
+                // Demote back to Astral Ace Division I (soft landing at 75 LP)
+                newTier = 'A';
+                newDivision = 'I';
+                newPoints = 75;
+                hasDemotionShield = true;
+              }
+            }
+          } else if (newPoints >= 100) {
+            if (currentDivision === 'III') {
               // Division Promotion: III -> II (100 LP each)
               newDivision = 'II';
               newPoints = Math.min(100, newPoints - 100);
@@ -1452,18 +1496,18 @@ export class PostgresDatabaseRepository {
               didDivisionUp = true;
               promotionSealsAwarded = DIVISION_UP_WAX_SEALS['I'];
             } else {
-              // Full Rank Tier Promotion: Division I -> Next Tier Division III!
+              // Full Rank Tier Promotion: Division I -> Next Tier Division III or BOWER_JJ MASTER!
               if (currentTierIdx < TIER_ORDER.length - 1) {
                 newTier = TIER_ORDER[currentTierIdx + 1];
-                newDivision = newTier === 'BOWER_JJ' ? 'APEX' : 'III';
-                newPoints = Math.min(100, newPoints - 100);
+                newDivision = newTier === 'BOWER_JJ' ? 'MASTER' : 'III';
+                newPoints = newTier === 'BOWER_JJ' ? Math.max(0, newPoints - 100) : Math.min(100, newPoints - 100);
                 hasDemotionShield = true;
                 didRankUp = true;
                 didDivisionUp = true;
                 promotionSealsAwarded = PROMOTION_WAX_SEALS[newTier] || 75;
               } else {
-                newDivision = 'APEX';
-                newPoints = 100;
+                newDivision = 'MASTER';
+                newPoints = Math.max(0, newPoints);
               }
             }
           } else if (newPoints < 0) {
@@ -1926,6 +1970,9 @@ export class PostgresDatabaseRepository {
           ELSE 1
         END DESC,
         CASE COALESCE(r.rank_division, 'III')
+          WHEN 'CHALLENGER' THEN 6
+          WHEN 'GRANDMASTER' THEN 5
+          WHEN 'MASTER' THEN 4
           WHEN 'APEX' THEN 4
           WHEN 'I' THEN 3
           WHEN 'II' THEN 2
@@ -1975,7 +2022,7 @@ export class PostgresDatabaseRepository {
         avatarIcon: resolveAvatarId(r.avatarIcon),
         equippedCardBack: resolveCardBackId(r.equippedCardBack),
         rankTier: r.rankTier || '9',
-        rankDivision: normalizeRankDivision((r.rankTier || '9') as RankTier, r.rankDivision),
+        rankDivision: normalizeRankDivision((r.rankTier || '9') as RankTier, r.rankDivision, r.rankPoints || 0),
         rankPoints: r.rankPoints || 0,
         mmr: r.mmr || 1200,
         wins,
@@ -2885,7 +2932,7 @@ export class PostgresDatabaseRepository {
       xp: normalizedXp,
       nextLevelXp: 1000,
       rankTier: (row.rankTier as RankTier) || '9',
-      rankDivision: normalizeRankDivision((row.rankTier as RankTier) || '9', row.rankDivision),
+      rankDivision: normalizeRankDivision((row.rankTier as RankTier) || '9', row.rankDivision, row.rankPoints ?? 0),
       rankPoints: row.rankPoints ?? 0,
       mmr: row.mmr ?? 1200,
       placementMatchesRemaining: row.placementMatchesRemaining ?? 0,
