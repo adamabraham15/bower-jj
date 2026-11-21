@@ -116,7 +116,8 @@ export interface TableCenterTrumpProps {
 
 /**
  * Centered table felt emblem displaying ONLY the Trump suit symbol in the middle of the table arena.
- * Pure symbol design with no text labels, ensuring full visibility even when 3 or 4 cards are played.
+ * Pure symbol design with no text labels, sized prominently for high visibility while preserving
+ * generous clearance from played trick cards in the diamond layout without any card obstruction.
  */
 export const TableCenterTrump: React.FC<TableCenterTrumpProps> = ({
   trumpSuit,
@@ -131,11 +132,11 @@ export const TableCenterTrump: React.FC<TableCenterTrumpProps> = ({
     >
       <div
         title={`Trump: ${trumpSuit.toUpperCase()}`}
-        className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-950/95 border-2 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.5)] flex items-center justify-center backdrop-blur-xs transition-transform duration-150"
+        className="w-11 h-11 xs:w-12 xs:h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-b from-slate-900/95 to-slate-950/98 border-2 border-amber-400/90 shadow-[0_0_20px_rgba(245,158,11,0.45),inset_0_0_8px_rgba(0,0,0,0.8)] flex items-center justify-center backdrop-blur-xs transition-transform duration-150"
       >
         <SuitIcon
           suit={trumpSuit}
-          className="w-5 h-5 sm:w-5.5 sm:h-5.5 drop-shadow-sm"
+          className="w-7 h-7 xs:w-8 xs:h-8 sm:w-9.5 sm:h-9.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
           overrideColor={trumpSuit === 'spades' ? '#f8fafc' : undefined}
         />
       </div>
