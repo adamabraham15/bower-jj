@@ -121,7 +121,10 @@ export interface TableCenterTrumpProps {
  */
 export const TableCenterTrump: React.FC<TableCenterTrumpProps> = ({
   trumpSuit,
+  isTrickResolving,
 }) => {
+  if (isTrickResolving) return null;
+
   return (
     <div
       data-testid="table-center-trump"
