@@ -132,11 +132,11 @@ export const TableCenterTrump: React.FC<TableCenterTrumpProps> = ({
     >
       <div
         title={`Trump: ${trumpSuit.toUpperCase()}`}
-        className="w-11 h-11 xs:w-12 xs:h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-b from-slate-900/95 to-slate-950/98 border-2 border-amber-400/90 shadow-[0_0_20px_rgba(245,158,11,0.45),inset_0_0_8px_rgba(0,0,0,0.8)] flex items-center justify-center backdrop-blur-xs transition-transform duration-150"
+        className="w-10.5 h-10.5 xs:w-11.5 xs:h-11.5 sm:w-13 sm:h-13 rounded-full bg-gradient-to-b from-slate-900/95 to-slate-950/98 border-2 border-amber-400/90 shadow-[0_0_20px_rgba(245,158,11,0.45),inset_0_0_8px_rgba(0,0,0,0.8)] flex items-center justify-center backdrop-blur-xs transition-transform duration-150"
       >
         <SuitIcon
           suit={trumpSuit}
-          className="w-7 h-7 xs:w-8 xs:h-8 sm:w-9.5 sm:h-9.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+          className="w-6.5 h-6.5 xs:w-7.5 xs:h-7.5 sm:w-8.5 sm:h-8.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
           overrideColor={trumpSuit === 'spades' ? '#f8fafc' : undefined}
         />
       </div>

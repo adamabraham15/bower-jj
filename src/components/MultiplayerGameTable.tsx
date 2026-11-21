@@ -752,7 +752,7 @@ export const MultiplayerGameTable: React.FC<MultiplayerGameTableProps> = ({
                 const tagVariant = isYou ? 'you' : isTeammate ? 'teammate' : 'opponent';
 
                 const positionStyle = {
-                  bottom: 'bottom-1 sm:bottom-1.5 left-1/2 -translate-x-1/2',
+                  bottom: '-bottom-1.5 xs:-bottom-2 sm:-bottom-0.5 md:bottom-0.5 left-1/2 -translate-x-1/2',
                   left: 'left-2 sm:left-2.5 top-1/2 -translate-y-1/2',
                   top: 'top-1 sm:top-1.5 left-1/2 -translate-x-1/2',
                   right: 'right-2 sm:right-2.5 top-1/2 -translate-y-1/2',
